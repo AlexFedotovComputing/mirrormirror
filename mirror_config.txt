@@ -1,0 +1,14 @@
+# Sample configuration for the mirror orientation notebook
+# semi_major and semi_minor are semi-axes of the ellipse (in meters or any unit)
+semi_major=2.0
+semi_minor=1.0
+
+# Direction vector of the incoming ray (points toward the mirror)
+incoming_direction=0, 0, -1
+
+# Two points that lie on the reflected ray; the first one is assumed to be the reflection point on the mirror
+reflected_point1=0, 0, 0
+reflected_point2=1, 1, 1
+
+# Optional: explicit mirror center (defaults to reflected_point1 if omitted)
+mirror_center=0, 0, 0
