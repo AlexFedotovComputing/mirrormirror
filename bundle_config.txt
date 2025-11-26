@@ -1,21 +1,25 @@
-# Пучок микрозеркал TPC (пример: центр + 6 на окружности)
-# Все размеры — в миллиметрах.
+# Mirror bundle (7 truncated cylinders)
+# Units: millimeters.
+#
+# Cylinder radius: 0.5 mm, height: 23.5 mm. Lower base at (0,0,0).
+# Cut plane comes from a block rotated 45 deg about X through point (0,0,23).
+# Plane normal for the central mirror points roughly along (0, -1/sqrt(2), 1/sqrt(2)):
+#   cut = 45 deg to +Z, tilt = 270 deg (toward -Y).
+# Each mirror uses the same cut=45 deg, but is rotated around +Z by its own phi_i:
+#   tilt_i = 270 deg + phi_i.
+#
+# Global
+fiber_diameter=1.0
+pitch=1.0
+label_offset=10.0    # length of drawn normals/rays
 
-fiber_diameter=1.0       # диаметр исходного цилиндра
-pitch=1.4                # шаг между центрами волокон в плоскости XY
-label_offset=0.6         # смещение подписи вдоль нормали
+# Mirrors (x, y, z, tilt in degrees)
+# idx | x = cos(k*60 deg) | y = sin(k*60 deg) | z offset | phi_i | tilt = 270 + phi_i
+mirror=ring1,  cut=45, tilt=281.0, height=0.00,  x=1.0,  y=0.0
+mirror=ring2,  cut=45, tilt=286.5, height=0.85,  x=0.5,  y=0.8660254038
+mirror=ring3,  cut=45, tilt=253.5, height=0.85,  x=-0.5, y=0.8660254038
+mirror=ring4,  cut=45, tilt=259.0, height=0.00,  x=-1.0, y=0.0
+mirror=ring5,  cut=45, tilt=264.5, height=-0.85, x=-0.5, y=-0.8660254038
+mirror=ring6,  cut=45, tilt=275.5, height=-0.85, x=0.5,  y=-0.8660254038
+mirror=center, cut=45, tilt=270.0, height=0.00,  x=0.0,  y=0.0
 
-# Формат строки зеркала:
-# mirror=<имя>, cut=<угол_среза>, tilt=<азимут>, height=<z>[, x=<мм>, y=<мм>]
-# cut — угол между нормалью среза и осью волокна (0° => круг, >0° => эллипс)
-# tilt — азимут наклона нормали (0° вдоль +X, против часовой стрелки)
-# height — высота центра среза вдоль оси пучка Z
-# x,y — явные координаты центра; если не заданы, точки распределятся по окружности с радиусом pitch
-
-mirror=center, cut=34, tilt=0, height=0.00, x=0, y=0
-mirror=ring1,  cut=34, tilt=0,   height=0.05
-mirror=ring2,  cut=34, tilt=60,  height=0.05
-mirror=ring3,  cut=34, tilt=120, height=0.05
-mirror=ring4,  cut=34, tilt=180, height=0.05
-mirror=ring5,  cut=34, tilt=240, height=0.05
-mirror=ring6,  cut=34, tilt=300, height=0.05
