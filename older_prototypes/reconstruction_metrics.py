@@ -5,7 +5,7 @@ from typing import Iterable, List, Tuple
 
 import numpy as np
 
-import reconstruction_case as rc
+import older_prototypes.reconstruction_case as rc
 
 
 Array = np.ndarray
