@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import csv
+import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import GaussianBeamSource, RayTracer, build_demo_scene, to_numpy
+from comsol_like_raytrace import GaussianBeamSource, RayTracer, build_demo_scene
+from raytrace_plotly import write_plotly_trajectories
 
 
 def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:
@@ -64,89 +66,15 @@ def write_csv(path: Path, rows: Iterable[Dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
-def add_line_trace(fig: Any, x: np.ndarray, y: np.ndarray, z: np.ndarray, name: str, width: float) -> None:
-    fig.add_scatter3d(
-        x=x,
-        y=y,
-        z=z,
-        mode="lines",
-        line={"width": width},
-        name=name,
-        hoverinfo="skip",
-    )
-
-
-def write_plotly_trajectories(path: Path, result: Any) -> None:
-    import plotly.graph_objects as go
-
-    fig = go.Figure()
-    for block in result.segments:
-        x0 = to_numpy(block["x0"])
-        y0 = to_numpy(block["y0"])
-        z0 = to_numpy(block["z0"])
-        x1 = to_numpy(block["x1"])
-        y1 = to_numpy(block["y1"])
-        z1 = to_numpy(block["z1"])
-        powers = to_numpy(block["power"])
-        surface = str(block["surface"])
-        n = len(x0)
-        stride = max(1, n // 250)
-        for i in range(0, n, stride):
-            width = 2.0 if powers[i] > 0 else 1.0
-            add_line_trace(
-                fig,
-                np.array([x0[i], x1[i]], dtype=float),
-                np.array([y0[i], y1[i]], dtype=float),
-                np.array([z0[i], z1[i]], dtype=float),
-                name=surface,
-                width=width,
-            )
-
-    if result.detector_hits:
-        xs: List[float] = []
-        ys: List[float] = []
-        zs: List[float] = []
-        labels: List[str] = []
-        for block in result.detector_hits:
-            surface = str(block["surface"])
-            points = to_numpy(block["position"])
-            for point in points:
-                xs.append(float(point[0]))
-                ys.append(float(point[1]))
-                zs.append(float(point[2]))
-                labels.append(surface)
-        fig.add_scatter3d(
-            x=xs,
-            y=ys,
-            z=zs,
-            mode="markers",
-            marker={"size": 3, "color": "#d62728"},
-            name="Detector hits",
-            text=labels,
-            hovertemplate="surface=%{text}<br>x=%{x:.4f}<br>y=%{y:.4f}<br>z=%{z:.4f}<extra></extra>",
-        )
-
-    fig.update_layout(
-        title="COMSOL-like Gaussian ray tracing demo",
-        scene={
-            "xaxis_title": "x [m]",
-            "yaxis_title": "y [m]",
-            "zaxis_title": "z [m]",
-            "aspectmode": "data",
-        },
-        margin={"l": 0, "r": 0, "t": 40, "b": 0},
-        showlegend=False,
-    )
-    fig.write_html(path, include_plotlyjs="cdn")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a COMSOL-like Gaussian ray-tracing demo.")
     parser.add_argument("--backend", default="numpy", choices=["numpy", "cupy"], help="Array backend")
     parser.add_argument("--n-glass", type=float, default=1.50, help="Placeholder refractive index of fused silica")
     parser.add_argument("--max-interactions", type=int, default=8)
     parser.add_argument("--outdir", default="demo_output", help="Directory for CSV outputs")
-    parser.add_argument("--plot", action="store_true", help="Also save an interactive 3D Plotly plot of trajectories")
+    parser.add_argument("--no-plot", dest="plot", action="store_false", help="Skip saving the Plotly trajectories plot")
+    parser.add_argument("--no-open-plot", dest="open_plot", action="store_false", help="Do not open the saved plot in a browser")
+    parser.set_defaults(plot=True, open_plot=True)
     args = parser.parse_args()
 
     source = GaussianBeamSource(
@@ -190,8 +118,10 @@ def main() -> None:
 
     if args.plot:
         plot_path = outdir / "trajectories.html"
-        write_plotly_trajectories(plot_path, result)
+        write_plotly_trajectories(plot_path, result, title="COMSOL-like Gaussian ray tracing demo")
         print(f"Wrote: {plot_path}")
+        if args.open_plot:
+            webbrowser.open(plot_path.resolve().as_uri())
 
 
 if __name__ == "__main__":

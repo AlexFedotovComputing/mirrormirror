@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Demo Raytrace",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/example_comsol_like.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "--backend",
+        "numpy"
+      ]
+    },
+    {
+      "name": "Run Gaussian 35ns Scene",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scene_gaussian_35ns.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "--backend",
+        "numpy"
+      ]
+    }
+  ]
+}

@@ -88,14 +88,16 @@ print(result.detector_power_summary())
 ## Demo script
 
 ```bash
-python example_comsol_like.py --backend numpy --plot
+python example_comsol_like.py --backend numpy
 ```
 
 This writes:
 
 - `segments.csv`
 - `detector_hits.csv`
-- optionally `trajectories.html`
+- `trajectories.html`
+
+By default the demo also opens the saved Plotly file in your browser.
 
 ## Notes
 
