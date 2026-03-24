@@ -16,7 +16,7 @@ def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict
     for block in blocks:
         n = len(block["ray_id"])
         for i in range(n):
-            yield {
+            row = {
                 "ray_id": int(block["ray_id"][i]),
                 "parent_id": int(block["parent_id"][i]),
                 "depth": int(block["depth"][i]),
@@ -30,6 +30,11 @@ def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict
                 "power": float(block["power"][i]),
                 "intensity": float(block["intensity"][i]),
             }
+            if "t0_s" in block:
+                row["t0_s"] = float(block["t0_s"][i])
+            if "t1_s" in block:
+                row["t1_s"] = float(block["t1_s"][i])
+            yield row
 
 
 def flatten_detector_hits(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:

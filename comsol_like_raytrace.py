@@ -11,6 +11,7 @@ import numpy as np
 ArrayLike = Any
 Number = Union[int, float]
 IndexModel = Union[Number, Callable[[float], float], "Material"]
+LIGHT_SPEED_M_S = 299_792_458.0
 
 
 # -----------------------------------------------------------------------------
@@ -222,6 +223,7 @@ class RayBundle:
     refractive_index: Any
     polarization: Optional[Any] = None
     intensity: Optional[Any] = None
+    time_s: Optional[Any] = None
     ray_id: Optional[Any] = None
     parent_id: Optional[Any] = None
     depth: Optional[Any] = None
@@ -258,6 +260,13 @@ class RayBundle:
         else:
             self.intensity = xp.asarray(self.intensity, dtype=float).reshape(-1)
 
+        if self.time_s is None:
+            self.time_s = xp.zeros(n, dtype=float)
+        else:
+            self.time_s = xp.asarray(self.time_s, dtype=float).reshape(-1)
+        if self.time_s.shape != (n,):
+            raise ValueError(f"time_s must have shape (N,), got {self.time_s.shape}")
+
         if self.ray_id is None:
             self.ray_id = xp.arange(n, dtype=np.int64)
         else:
@@ -288,6 +297,7 @@ class RayBundle:
             refractive_index=self.refractive_index[mask],
             polarization=self.polarization[mask],
             intensity=self.intensity[mask],
+            time_s=self.time_s[mask],
             ray_id=self.ray_id[mask],
             parent_id=self.parent_id[mask],
             depth=self.depth[mask],
@@ -302,8 +312,24 @@ class RayBundle:
             refractive_index=self.refractive_index,
             polarization=self.polarization,
             intensity=self.intensity,
+            time_s=self.time_s,
             ray_id=ray_id,
             parent_id=parent_id,
+            depth=self.depth,
+        )
+
+    def propagate(self, new_position: Any, delta_time_s: Any) -> "RayBundle":
+        return RayBundle(
+            position=new_position,
+            direction=self.direction,
+            power=self.power,
+            wavelength_m=self.wavelength_m,
+            refractive_index=self.refractive_index,
+            polarization=self.polarization,
+            intensity=self.intensity,
+            time_s=self.time_s + delta_time_s,
+            ray_id=self.ray_id,
+            parent_id=self.parent_id,
             depth=self.depth,
         )
 
@@ -323,6 +349,7 @@ class RayBundle:
                 refractive_index=empty,
                 polarization=empty_vec,
                 intensity=empty,
+                time_s=empty,
                 ray_id=empty_i,
                 parent_id=empty_i,
                 depth=empty_i,
@@ -336,6 +363,7 @@ class RayBundle:
             refractive_index=xp.concatenate([c.refractive_index for c in chunks], axis=0),
             polarization=xp.concatenate([c.polarization for c in chunks], axis=0),
             intensity=xp.concatenate([c.intensity for c in chunks], axis=0),
+            time_s=xp.concatenate([c.time_s for c in chunks], axis=0),
             ray_id=xp.concatenate([c.ray_id for c in chunks], axis=0),
             parent_id=xp.concatenate([c.parent_id for c in chunks], axis=0),
             depth=xp.concatenate([c.depth for c in chunks], axis=0),
@@ -437,6 +465,7 @@ class Surface:
         new_intensity: Any,
         new_n: Any,
         new_pol: Any,
+        new_time_s: Any,
     ) -> RayBundle:
         xp = parent.xp
         return RayBundle(
@@ -447,6 +476,7 @@ class Surface:
             refractive_index=new_n,
             polarization=new_pol,
             intensity=new_intensity,
+            time_s=new_time_s,
             ray_id=xp.zeros(parent.n_rays, dtype=np.int64),
             parent_id=parent.ray_id.copy(),
             depth=parent.depth + 1,
@@ -463,7 +493,16 @@ class Surface:
         new_power = rays.power * refl
         new_intensity = rays.intensity * refl
         new_pol = project_to_transverse(rays.polarization, d_ref)
-        child = self._with_new_state(rays, new_pos, d_ref, new_power, new_intensity, rays.refractive_index, new_pol)
+        child = self._with_new_state(
+            rays,
+            new_pos,
+            d_ref,
+            new_power,
+            new_intensity,
+            rays.refractive_index,
+            new_pol,
+            rays.time_s,
+        )
         keep = child.power > tracer.min_power
         return [child.subset(keep)] if count_nonzero(keep) > 0 else []
 
@@ -479,6 +518,7 @@ class Surface:
             rays.intensity * tcoef,
             rays.refractive_index,
             rays.polarization,
+            rays.time_s,
         )
         keep = child.power > tracer.min_power
         return [child.subset(keep)] if count_nonzero(keep) > 0 else []
@@ -542,6 +582,7 @@ class Surface:
                     rays.intensity * R,
                     n1,
                     pol_ref,
+                    rays.time_s,
                 )
                 out.append(child_ref.subset(refl_mask))
 
@@ -556,6 +597,7 @@ class Surface:
                 rays.intensity * T,
                 n2,
                 pol_trn,
+                rays.time_s,
             )
             out.append(child_trn.subset(trn_mask))
 
@@ -1152,6 +1194,7 @@ class GaussianBeamSource:
             refractive_index=xp.full(n, self.n_medium, dtype=float),
             polarization=polarization,
             intensity=xp.asarray(intensities, dtype=float),
+            time_s=xp.zeros(n, dtype=float),
             ray_id=xp.arange(n, dtype=np.int64),
             parent_id=xp.full(n, -1, dtype=np.int64),
             depth=xp.zeros(n, dtype=np.int64),
@@ -1184,6 +1227,7 @@ class RayTracer:
     scene: Scene
     backend: str = "numpy"
     max_interactions: int = 16
+    max_time_s: Optional[float] = None
     min_power: float = 1e-18
     surface_epsilon: float = 1e-7
     record_segments: bool = True
@@ -1192,6 +1236,37 @@ class RayTracer:
 
     def __post_init__(self) -> None:
         self.compiled_scene = self.scene.compile(self.backend)
+
+    def _distance_to_time(self, distance_m: Any, refractive_index: Any) -> Any:
+        xp = get_array_module(distance_m, refractive_index)
+        return xp.asarray(distance_m, dtype=float) * xp.asarray(refractive_index, dtype=float) / LIGHT_SPEED_M_S
+
+    def _time_to_distance(self, delta_time_s: Any, refractive_index: Any) -> Any:
+        xp = get_array_module(delta_time_s, refractive_index)
+        return xp.asarray(delta_time_s, dtype=float) * LIGHT_SPEED_M_S / xp.asarray(refractive_index, dtype=float)
+
+    def _make_segment_block(self, rays: RayBundle, end_points: Any, surface_names: Any, end_time_s: Any) -> Dict[str, Any]:
+        return {
+            "ray_id": to_numpy(rays.ray_id),
+            "parent_id": to_numpy(rays.parent_id),
+            "depth": to_numpy(rays.depth),
+            "surface": to_numpy(surface_names),
+            "x0": to_numpy(rays.position[:, 0]),
+            "y0": to_numpy(rays.position[:, 1]),
+            "z0": to_numpy(rays.position[:, 2]),
+            "x1": to_numpy(end_points[:, 0]),
+            "y1": to_numpy(end_points[:, 1]),
+            "z1": to_numpy(end_points[:, 2]),
+            "power": to_numpy(rays.power),
+            "intensity": to_numpy(rays.intensity),
+            "t0_s": to_numpy(rays.time_s),
+            "t1_s": to_numpy(end_time_s),
+        }
+
+    def _propagate_to_time_limit(self, rays: RayBundle, delta_time_s: Any) -> RayBundle:
+        end_distance = self._time_to_distance(delta_time_s, rays.refractive_index)
+        end_points = rays.position + end_distance[:, None] * rays.direction
+        return rays.propagate(end_points, delta_time_s)
 
     def trace(self, rays: RayBundle) -> TraceResult:
         xp = get_backend(self.backend)
@@ -1209,12 +1284,42 @@ class RayTracer:
                 order = np.argsort(-to_numpy(active.power))[: self.max_active_rays]
                 active = active.subset(xp.asarray(order, dtype=np.int64))
 
+            if self.max_time_s is not None:
+                remaining_time = float(self.max_time_s) - active.time_s
+                within_time_mask = remaining_time > 0.0
+                if count_nonzero(~within_time_mask) > 0:
+                    finished.append(active.subset(~within_time_mask))
+                if count_nonzero(within_time_mask) == 0:
+                    active = RayBundle.concat([], backend=self.backend)
+                    break
+                active = active.subset(within_time_mask)
+                remaining_time = float(self.max_time_s) - active.time_s
+
             nearest = self.compiled_scene.find_nearest(active)
             hit_mask = nearest.surface_index >= 0
+            hit_time = self._distance_to_time(nearest.distance, active.refractive_index)
+            if self.max_time_s is not None:
+                hit_mask = hit_mask & (hit_time <= remaining_time + 1e-15)
             miss_mask = ~hit_mask
 
             if count_nonzero(miss_mask) > 0:
-                finished.append(active.subset(miss_mask))
+                missed = active.subset(miss_mask)
+                if self.max_time_s is not None:
+                    miss_remaining_time = float(self.max_time_s) - missed.time_s
+                    miss_propagated = self._propagate_to_time_limit(missed, miss_remaining_time)
+                    if self.record_segments:
+                        surface_names = np.full(miss_propagated.n_rays, "<time_limit>", dtype=object)
+                        segments.append(
+                            self._make_segment_block(
+                                missed,
+                                miss_propagated.position,
+                                surface_names,
+                                miss_propagated.time_s,
+                            )
+                        )
+                    finished.append(miss_propagated)
+                else:
+                    finished.append(missed)
 
             if count_nonzero(hit_mask) == 0:
                 active = RayBundle.concat([], backend=self.backend)
@@ -1222,28 +1327,24 @@ class RayTracer:
 
             if self.record_segments:
                 idx_host = to_numpy(nearest.surface_index[hit_mask]).astype(int)
-                seg = {
-                    "ray_id": to_numpy(active.ray_id[hit_mask]),
-                    "parent_id": to_numpy(active.parent_id[hit_mask]),
-                    "depth": to_numpy(active.depth[hit_mask]),
-                    "surface": np.asarray([self.compiled_scene.surfaces[i].name for i in idx_host], dtype=object),
-                    "x0": to_numpy(active.position[hit_mask][:, 0]),
-                    "y0": to_numpy(active.position[hit_mask][:, 1]),
-                    "z0": to_numpy(active.position[hit_mask][:, 2]),
-                    "x1": to_numpy(nearest.points[hit_mask][:, 0]),
-                    "y1": to_numpy(nearest.points[hit_mask][:, 1]),
-                    "z1": to_numpy(nearest.points[hit_mask][:, 2]),
-                    "power": to_numpy(active.power[hit_mask]),
-                    "intensity": to_numpy(active.intensity[hit_mask]),
-                }
-                segments.append(seg)
+                hit_rays = active.subset(hit_mask)
+                hit_end_time = active.time_s[hit_mask] + hit_time[hit_mask]
+                surface_names = np.asarray([self.compiled_scene.surfaces[i].name for i in idx_host], dtype=object)
+                segments.append(
+                    self._make_segment_block(
+                        hit_rays,
+                        nearest.points[hit_mask],
+                        surface_names,
+                        hit_end_time,
+                    )
+                )
 
             children: List[RayBundle] = []
             for i, surface in enumerate(self.compiled_scene.surfaces):
                 surf_mask = hit_mask & (nearest.surface_index == i)
                 if count_nonzero(surf_mask) == 0:
                     continue
-                rays_sub = active.subset(surf_mask)
+                rays_sub = active.subset(surf_mask).propagate(nearest.points[surf_mask], hit_time[surf_mask])
                 hit_sub = nearest.subset(surf_mask)
                 new_children, new_hits = surface.interact(rays_sub, hit_sub, self)
 
@@ -1263,7 +1364,27 @@ class RayTracer:
             active = RayBundle.concat(children, backend=self.backend)
 
         if active.n_rays > 0:
-            finished.append(active)
+            if self.max_time_s is not None:
+                remaining_time = float(self.max_time_s) - active.time_s
+                positive_time_mask = remaining_time > 0.0
+                if count_nonzero(positive_time_mask) > 0:
+                    active_to_limit = active.subset(positive_time_mask)
+                    propagated = self._propagate_to_time_limit(active_to_limit, remaining_time[positive_time_mask])
+                    if self.record_segments:
+                        surface_names = np.full(propagated.n_rays, "<time_limit>", dtype=object)
+                        segments.append(
+                            self._make_segment_block(
+                                active_to_limit,
+                                propagated.position,
+                                surface_names,
+                                propagated.time_s,
+                            )
+                        )
+                    finished.append(propagated)
+                if count_nonzero(~positive_time_mask) > 0:
+                    finished.append(active.subset(~positive_time_mask))
+            else:
+                finished.append(active)
 
         final_rays = RayBundle.concat(finished, backend=self.backend)
         return TraceResult(

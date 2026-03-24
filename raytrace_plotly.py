@@ -129,6 +129,61 @@ def make_marker_trace(
     return trace
 
 
+def make_ray_bundle_preview_overlays(
+    rays: Any,
+    *,
+    length: float,
+    name: str = "Launched rays",
+    color: str = "#4c78a8",
+    line_width: float = 2,
+    endpoint_color: str = "#111111",
+    endpoint_size: float = 2,
+    max_rays: int = 181,
+) -> List[Dict[str, Any]]:
+    positions = to_numpy(rays.position)
+    directions = to_numpy(rays.direction)
+    n = len(positions)
+    if n == 0:
+        return []
+
+    stride = max(1, (n + max_rays - 1) // max_rays)
+    xs: List[float | None] = []
+    ys: List[float | None] = []
+    zs: List[float | None] = []
+    end_points: List[List[float]] = []
+    for i in range(0, n, stride):
+        start = np.asarray(positions[i], dtype=float)
+        end = start + np.asarray(directions[i], dtype=float) * float(length)
+        xs.extend([float(start[0]), float(end[0]), None])
+        ys.extend([float(start[1]), float(end[1]), None])
+        zs.extend([float(start[2]), float(end[2]), None])
+        end_points.append([float(end[0]), float(end[1]), float(end[2])])
+
+    overlays: List[Dict[str, Any]] = [
+        {
+            "x": xs,
+            "y": ys,
+            "z": zs,
+            "mode": "lines",
+            "name": name,
+            "line": {"color": color, "width": line_width},
+            "hoverinfo": "skip",
+        }
+    ]
+    if end_points:
+        overlays.append(
+            make_marker_trace(
+                name=f"{name} ends",
+                points=end_points,
+                color=endpoint_color,
+                size=endpoint_size,
+            )
+        )
+        overlays[-1]["showlegend"] = False
+        overlays[-1]["hoverinfo"] = "skip"
+    return overlays
+
+
 def write_plotly_trajectories(
     path: Path,
     result: Any,
@@ -165,50 +220,51 @@ def write_plotly_trajectories(
                 }
             )
 
-    positive = np.asarray([seg["intensity"] for seg in sampled_segments if seg["intensity"] > 0.0], dtype=float)
-    if positive.size:
-        log_values = np.log10(positive)
-        log_min = float(np.min(log_values))
-        log_max = float(np.max(log_values))
-        if not np.isfinite(log_min) or not np.isfinite(log_max):
-            log_min, log_max = 0.0, 1.0
-        if abs(log_max - log_min) < 1e-12:
-            log_min -= 0.5
-            log_max += 0.5
-    else:
-        log_min, log_max = 0.0, 1.0
-
-    bins = max(1, int(intensity_bins))
-    edges = np.linspace(log_min, log_max, bins + 1, dtype=float)
-    colors = sample_colorscale("Viridis", [i / max(1, bins - 1) for i in range(bins)])
-    grouped_bins: List[Dict[str, List[float | None]]] = [{"x": [], "y": [], "z": []} for _ in range(bins)]
-    for seg in sampled_segments:
-        intensity = seg["intensity"]
-        if intensity > 0.0 and np.isfinite(intensity):
-            log_i = float(np.log10(intensity))
-            idx = int(np.searchsorted(edges, log_i, side="right") - 1)
+    if sampled_segments:
+        positive = np.asarray([seg["intensity"] for seg in sampled_segments if seg["intensity"] > 0.0], dtype=float)
+        if positive.size:
+            log_values = np.log10(positive)
+            log_min = float(np.min(log_values))
+            log_max = float(np.max(log_values))
+            if not np.isfinite(log_min) or not np.isfinite(log_max):
+                log_min, log_max = 0.0, 1.0
+            if abs(log_max - log_min) < 1e-12:
+                log_min -= 0.5
+                log_max += 0.5
         else:
-            idx = 0
-        idx = max(0, min(bins - 1, idx))
-        bucket = grouped_bins[idx]
-        bucket["x"].extend([seg["x0"], seg["x1"], None])
-        bucket["y"].extend([seg["y0"], seg["y1"], None])
-        bucket["z"].extend([seg["z0"], seg["z1"], None])
+            log_min, log_max = 0.0, 1.0
 
-    for idx, bucket in enumerate(grouped_bins):
-        if not bucket["x"]:
-            continue
-        trace_name = f"log10(I) bin {idx + 1}"
-        fig.add_scatter3d(
-            x=bucket["x"],
-            y=bucket["y"],
-            z=bucket["z"],
-            mode="lines",
-            name=trace_name,
-            line={"width": 3, "color": colors[idx]},
-            hoverinfo="skip",
-            showlegend=False,
-        )
+        bins = max(1, int(intensity_bins))
+        edges = np.linspace(log_min, log_max, bins + 1, dtype=float)
+        colors = sample_colorscale("Viridis", [i / max(1, bins - 1) for i in range(bins)])
+        grouped_bins: List[Dict[str, List[float | None]]] = [{"x": [], "y": [], "z": []} for _ in range(bins)]
+        for seg in sampled_segments:
+            intensity = seg["intensity"]
+            if intensity > 0.0 and np.isfinite(intensity):
+                log_i = float(np.log10(intensity))
+                idx = int(np.searchsorted(edges, log_i, side="right") - 1)
+            else:
+                idx = 0
+            idx = max(0, min(bins - 1, idx))
+            bucket = grouped_bins[idx]
+            bucket["x"].extend([seg["x0"], seg["x1"], None])
+            bucket["y"].extend([seg["y0"], seg["y1"], None])
+            bucket["z"].extend([seg["z0"], seg["z1"], None])
+
+        for idx, bucket in enumerate(grouped_bins):
+            if not bucket["x"]:
+                continue
+            trace_name = f"log10(I) bin {idx + 1}"
+            fig.add_scatter3d(
+                x=bucket["x"],
+                y=bucket["y"],
+                z=bucket["z"],
+                mode="lines",
+                name=trace_name,
+                line={"width": 3, "color": colors[idx]},
+                hoverinfo="skip",
+                showlegend=False,
+            )
 
     if result.detector_hits:
         xs: List[float] = []
@@ -234,24 +290,25 @@ def write_plotly_trajectories(
             hovertemplate="surface=%{text}<br>x=%{x:.4f}<br>y=%{y:.4f}<br>z=%{z:.4f}<extra></extra>",
         )
 
-    fig.add_scatter3d(
-        x=[0.0, 0.0],
-        y=[0.0, 0.0],
-        z=[0.0, 0.0],
-        mode="markers",
-        marker={
-            "size": 0.1,
-            "color": [log_min, log_max],
-            "colorscale": "Viridis",
-            "cmin": log_min,
-            "cmax": log_max,
-            "showscale": True,
-            "colorbar": {"title": "log10(I [W/m^2])"},
-        },
-        hoverinfo="skip",
-        showlegend=False,
-        opacity=0.0,
-    )
+    if sampled_segments:
+        fig.add_scatter3d(
+            x=[0.0, 0.0],
+            y=[0.0, 0.0],
+            z=[0.0, 0.0],
+            mode="markers",
+            marker={
+                "size": 0.1,
+                "color": [log_min, log_max],
+                "colorscale": "Viridis",
+                "cmin": log_min,
+                "cmax": log_max,
+                "showscale": True,
+                "colorbar": {"title": "log10(I [W/m^2])"},
+            },
+            hoverinfo="skip",
+            showlegend=False,
+            opacity=0.0,
+        )
 
     for overlay in overlays or []:
         fig.add_scatter3d(**overlay)
