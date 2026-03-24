@@ -56,7 +56,7 @@ pip install numpy
 Optional:
 
 ```bash
-pip install matplotlib
+pip install matplotlib plotly
 # and a matching CuPy build for your CUDA installation
 ```
 
@@ -95,7 +95,7 @@ This writes:
 
 - `segments.csv`
 - `detector_hits.csv`
-- optionally `trajectories.png`
+- optionally `trajectories.html`
 
 ## Notes
 
