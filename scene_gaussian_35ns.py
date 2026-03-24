@@ -57,6 +57,28 @@ PERISCOPE_MIRROR_1 = PlaneMirror(
     reflectance=1.0,
 )
 
+ONE_OF_MANY_MIRRORS = PlaneMirror(
+    name="One of many mirrors",
+    center=(0.2168904, 0.2218567, 0.0),
+    normal=(0.0, 0.0, 1.0),
+    shape="rectangle",
+    width=0.044,
+    height=0.0081,
+    in_plane_reference=(-0.03612, -0.99935, 0.0),
+    reflectance=1.0,
+)
+
+ON_ENTER_BEAMSPLITTER = PlaneMirror(
+    name="On enter beamsplitter",
+    center=(-0.06948408707129516, -0.32689692816523785, 0.025),
+    normal=(-0.566592014759144, 0.42305258397884055, 0.7071067811865476),
+    shape="rectangle",
+    width=0.03,
+    height=0.03,
+    in_plane_reference=(0.5665920147591441, -0.4230525839788406, 0.7071067811865475),
+    reflectance=1.0,
+)
+
 def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
     source = copy.deepcopy(SOURCE_TEMPLATE)
     source.backend = backend
@@ -68,6 +90,8 @@ def build_initial_scene() -> Scene:
     scene.add(
         copy.deepcopy(PERISCOPE_MIRROR_1),
         copy.deepcopy(PERISCOPE_MIRROR_2),
+        copy.deepcopy(ONE_OF_MANY_MIRRORS),
+        copy.deepcopy(ON_ENTER_BEAMSPLITTER),
     )
     return scene
 
@@ -181,6 +205,8 @@ def main() -> None:
     print("Scene elements:")
     print(f"  - {PERISCOPE_MIRROR_1.name}")
     print(f"  - {PERISCOPE_MIRROR_2.name}")
+    print(f"  - {ONE_OF_MANY_MIRRORS.name}")
+    print(f"  - {ON_ENTER_BEAMSPLITTER.name}")
     print("Detector power summary:")
     if not power_summary:
         print("  <no detector hits>")
@@ -231,6 +257,24 @@ def main() -> None:
                 height=float(PERISCOPE_MIRROR_2.height),
                 color="#2ca02c",
                 in_plane_reference=PERISCOPE_MIRROR_2.in_plane_reference,
+            ),
+            make_rectangle_outline(
+                name=ONE_OF_MANY_MIRRORS.name,
+                center=ONE_OF_MANY_MIRRORS.center,
+                normal=ONE_OF_MANY_MIRRORS.normal,
+                width=float(ONE_OF_MANY_MIRRORS.width),
+                height=float(ONE_OF_MANY_MIRRORS.height),
+                color="#d62728",
+                in_plane_reference=ONE_OF_MANY_MIRRORS.in_plane_reference,
+            ),
+            make_rectangle_outline(
+                name=ON_ENTER_BEAMSPLITTER.name,
+                center=ON_ENTER_BEAMSPLITTER.center,
+                normal=ON_ENTER_BEAMSPLITTER.normal,
+                width=float(ON_ENTER_BEAMSPLITTER.width),
+                height=float(ON_ENTER_BEAMSPLITTER.height),
+                color="#9467bd",
+                in_plane_reference=ON_ENTER_BEAMSPLITTER.in_plane_reference,
             ),
         ]
         write_plotly_trajectories(
