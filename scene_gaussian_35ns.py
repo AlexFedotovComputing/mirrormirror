@@ -25,6 +25,11 @@ BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 15
 
+PLANE_MIRROR_COLOR = "#9467bd"
+SEMI_TRANSPARENT_MIRROR_COLOR = "#17becf"
+BLOCK_MIRROR_COLOR = "#1f77b4"
+TRIANGULAR_PRISM_COLOR = "#e377c2"
+
 
 SOURCE_TEMPLATE = GaussianBeamSource(
     waist_position=(-0.3444840871, -0.8032109003, 3.31987),
@@ -435,7 +440,7 @@ def main() -> None:
                 normal=PERISCOPE_MIRROR_1.normal,
                 width=float(PERISCOPE_MIRROR_1.width),
                 height=float(PERISCOPE_MIRROR_1.height),
-                color="#ff7f0e",
+                color=PLANE_MIRROR_COLOR,
                 in_plane_reference=PERISCOPE_MIRROR_1.in_plane_reference,
             ),
             make_rectangle_outline(
@@ -444,7 +449,7 @@ def main() -> None:
                 normal=PERISCOPE_MIRROR_2.normal,
                 width=float(PERISCOPE_MIRROR_2.width),
                 height=float(PERISCOPE_MIRROR_2.height),
-                color="#2ca02c",
+                color=PLANE_MIRROR_COLOR,
                 in_plane_reference=PERISCOPE_MIRROR_2.in_plane_reference,
             ),
             make_rectangle_outline(
@@ -453,7 +458,7 @@ def main() -> None:
                 normal=ONE_OF_MANY_MIRRORS.normal,
                 width=float(ONE_OF_MANY_MIRRORS.width),
                 height=float(ONE_OF_MANY_MIRRORS.height),
-                color="#d62728",
+                color=PLANE_MIRROR_COLOR,
                 in_plane_reference=ONE_OF_MANY_MIRRORS.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
@@ -463,7 +468,7 @@ def main() -> None:
                 width=float(BLOCK_MIRROR_1.width),
                 height=float(BLOCK_MIRROR_1.height),
                 thickness=float(BLOCK_MIRROR_1.thickness),
-                color="#ff7f0e",
+                color=BLOCK_MIRROR_COLOR,
                 in_plane_reference=BLOCK_MIRROR_1.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
@@ -473,7 +478,7 @@ def main() -> None:
                 width=float(BLOCK_MIRROR_2.width),
                 height=float(BLOCK_MIRROR_2.height),
                 thickness=float(BLOCK_MIRROR_2.thickness),
-                color="#1f77b4",
+                color=BLOCK_MIRROR_COLOR,
                 in_plane_reference=BLOCK_MIRROR_2.in_plane_reference,
             ),
             make_rectangle_outline(
@@ -482,7 +487,7 @@ def main() -> None:
                 normal=ON_ENTER_BEAMSPLITTER.normal,
                 width=float(ON_ENTER_BEAMSPLITTER.width),
                 height=float(ON_ENTER_BEAMSPLITTER.height),
-                color="#9467bd",
+                color=PLANE_MIRROR_COLOR,
                 in_plane_reference=ON_ENTER_BEAMSPLITTER.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
@@ -492,7 +497,7 @@ def main() -> None:
                 width=float(SEMI_MIRROR_LEFT_1.width),
                 height=float(SEMI_MIRROR_LEFT_1.height),
                 thickness=float(SEMI_MIRROR_LEFT_1.thickness),
-                color="#8c564b",
+                color=SEMI_TRANSPARENT_MIRROR_COLOR,
                 in_plane_reference=SEMI_MIRROR_LEFT_1.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
@@ -502,7 +507,7 @@ def main() -> None:
                 width=float(SEMI_MIRROR_NEW.width),
                 height=float(SEMI_MIRROR_NEW.height),
                 thickness=float(SEMI_MIRROR_NEW.thickness),
-                color="#e377c2",
+                color=SEMI_TRANSPARENT_MIRROR_COLOR,
                 in_plane_reference=SEMI_MIRROR_NEW.in_plane_reference,
             ),
             *make_triangular_prism_overlays(
@@ -511,7 +516,7 @@ def main() -> None:
                 normal=PRISM_1.normal,
                 vertices_2d=PRISM_1.vertices_2d,
                 thickness=float(PRISM_1.thickness),
-                color="#17becf",
+                color=TRIANGULAR_PRISM_COLOR,
                 in_plane_reference=PRISM_1.in_plane_reference,
             ),
             *make_triangular_prism_overlays(
@@ -520,7 +525,7 @@ def main() -> None:
                 normal=PRISM_2.normal,
                 vertices_2d=PRISM_2.vertices_2d,
                 thickness=float(PRISM_2.thickness),
-                color="#bcbd22",
+                color=TRIANGULAR_PRISM_COLOR,
                 in_plane_reference=PRISM_2.in_plane_reference,
             ),
             *make_triangular_prism_overlays(
@@ -529,7 +534,7 @@ def main() -> None:
                 normal=PRISM_3.normal,
                 vertices_2d=PRISM_3.vertices_2d,
                 thickness=float(PRISM_3.thickness),
-                color="#e377c2",
+                color=TRIANGULAR_PRISM_COLOR,
                 in_plane_reference=PRISM_3.in_plane_reference,
             ),
             *make_triangular_prism_overlays(
@@ -538,7 +543,7 @@ def main() -> None:
                 normal=PRISM_4.normal,
                 vertices_2d=PRISM_4.vertices_2d,
                 thickness=float(PRISM_4.thickness),
-                color="#8c564b",
+                color=TRIANGULAR_PRISM_COLOR,
                 in_plane_reference=PRISM_4.in_plane_reference,
             ),
             *make_triangular_prism_overlays(
@@ -547,7 +552,7 @@ def main() -> None:
                 normal=PRISM_5.normal,
                 vertices_2d=PRISM_5.vertices_2d,
                 thickness=float(PRISM_5.thickness),
-                color="#9467bd",
+                color=TRIANGULAR_PRISM_COLOR,
                 in_plane_reference=PRISM_5.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
@@ -557,7 +562,7 @@ def main() -> None:
                 width=float(SEMI_MIRROR_3.width),
                 height=float(SEMI_MIRROR_3.height),
                 thickness=float(SEMI_MIRROR_3.thickness),
-                color="#7f7f7f",
+                color=SEMI_TRANSPARENT_MIRROR_COLOR,
                 in_plane_reference=SEMI_MIRROR_3.in_plane_reference,
             ),
         ]
