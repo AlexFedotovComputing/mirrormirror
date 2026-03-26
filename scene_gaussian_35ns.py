@@ -149,6 +149,21 @@ PRISM_2 = TriangularPrism(
     side_transmittances=[0.5, 1.0, 0.5],
 )
 
+PRISM_3 = TriangularPrism(
+    name="Prism_114_5deg",
+    center=(0.293337, -0.133680, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    in_plane_reference=(-0.414693, -0.909961, 0.0),
+    vertices_2d=[
+        (-0.026645, -0.013362),
+        (0.026645, -0.013362),
+        (0.0, 0.026725)
+    ],
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR
+)
+
 SEMI_MIRROR_3 = SemiTransparentMirror(
     name="SemiMirror_134_5deg",
     center=(0.221274, -0.213235, 0.025),
@@ -184,6 +199,7 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(SEMI_MIRROR_NEW),
         copy.deepcopy(PRISM_1),
         copy.deepcopy(PRISM_2),
+        copy.deepcopy(PRISM_3),
         copy.deepcopy(SEMI_MIRROR_3),
     )
     return scene
@@ -310,6 +326,7 @@ def main() -> None:
     print(f"  - {SEMI_MIRROR_NEW.name}")
     print(f"  - {PRISM_1.name}")
     print(f"  - {PRISM_2.name}")
+    print(f"  - {PRISM_3.name}")
     print(f"  - {SEMI_MIRROR_3.name}")
     print("Detector power summary:")
     if not power_summary:
@@ -417,6 +434,15 @@ def main() -> None:
                 thickness=float(PRISM_2.thickness),
                 color="#bcbd22",
                 in_plane_reference=PRISM_2.in_plane_reference,
+            ),
+            *make_triangular_prism_overlays(
+                name=PRISM_3.name,
+                center=PRISM_3.center,
+                normal=PRISM_3.normal,
+                vertices_2d=PRISM_3.vertices_2d,
+                thickness=float(PRISM_3.thickness),
+                color="#e377c2",
+                in_plane_reference=PRISM_3.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
                 name=SEMI_MIRROR_3.name,

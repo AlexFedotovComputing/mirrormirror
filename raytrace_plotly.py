@@ -463,6 +463,11 @@ def write_plotly_trajectories(
             "yaxis_title": "y [m]",
             "zaxis_title": "z [m]",
             "aspectmode": "data",
+            "camera": {
+                "eye": {"x": 0.0, "y": 0.0, "z": 2.5},
+                "up": {"x": 0.0, "y": 1.0, "z": 0.0},
+                "center": {"x": 0.0, "y": 0.0, "z": 0.0},
+            },
         },
         margin={"l": 0, "r": 0, "t": 40, "b": 0},
         legend={"itemsizing": "constant"},
