@@ -23,7 +23,7 @@ INTEGRATION_TIME_S = 35e-9
 BEAM_RADIAL_POSITIONS = 55
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
-MAX_SECONDARY_RAY_GENERATIONS = 13
+MAX_SECONDARY_RAY_GENERATIONS = 15
 
 
 SOURCE_TEMPLATE = GaussianBeamSource(
@@ -80,6 +80,17 @@ BLOCK_MIRROR_1 = BlockMirror(
     height=0.0081,
     thickness=0.05,
     in_plane_reference=(-0.036121, -0.999348, 0.0),
+    reflectance=1.0,
+)
+
+BLOCK_MIRROR_2 = BlockMirror(
+    name="BlockMirror_315_4deg",
+    center=(-0.215102, 0.222493, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    width=0.044,
+    height=0.0081,
+    thickness=0.05,
+    in_plane_reference=(-0.068884, 0.997624, 0.0),
     reflectance=1.0,
 )
 
@@ -244,6 +255,7 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(PERISCOPE_MIRROR_2),
         copy.deepcopy(ONE_OF_MANY_MIRRORS),
         copy.deepcopy(BLOCK_MIRROR_1),
+        copy.deepcopy(BLOCK_MIRROR_2),
         copy.deepcopy(ON_ENTER_BEAMSPLITTER),
         copy.deepcopy(SEMI_MIRROR_LEFT_1),
         copy.deepcopy(SEMI_MIRROR_NEW),
@@ -374,6 +386,7 @@ def main() -> None:
     print(f"  - {PERISCOPE_MIRROR_2.name}")
     print(f"  - {ONE_OF_MANY_MIRRORS.name}")
     print(f"  - {BLOCK_MIRROR_1.name}")
+    print(f"  - {BLOCK_MIRROR_2.name}")
     print(f"  - {ON_ENTER_BEAMSPLITTER.name}")
     print(f"  - {SEMI_MIRROR_LEFT_1.name}")
     print(f"  - {SEMI_MIRROR_NEW.name}")
@@ -452,6 +465,16 @@ def main() -> None:
                 thickness=float(BLOCK_MIRROR_1.thickness),
                 color="#ff7f0e",
                 in_plane_reference=BLOCK_MIRROR_1.in_plane_reference,
+            ),
+            *make_rectangular_prism_overlays(
+                name=BLOCK_MIRROR_2.name,
+                center=BLOCK_MIRROR_2.center,
+                normal=BLOCK_MIRROR_2.normal,
+                width=float(BLOCK_MIRROR_2.width),
+                height=float(BLOCK_MIRROR_2.height),
+                thickness=float(BLOCK_MIRROR_2.thickness),
+                color="#1f77b4",
+                in_plane_reference=BLOCK_MIRROR_2.in_plane_reference,
             ),
             make_rectangle_outline(
                 name=ON_ENTER_BEAMSPLITTER.name,
