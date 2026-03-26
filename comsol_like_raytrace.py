@@ -190,6 +190,8 @@ class SurfaceOptics:
     release_transmitted: bool = True
     use_fresnel: bool = True
     allow_total_internal_reflection: bool = True
+    reflect_from_minus_side: bool = True
+    reflect_from_plus_side: bool = True
     detector: bool = False
 
     def _evaluate_model(self, model: IndexModel, wavelengths: Any) -> Any:
@@ -528,6 +530,7 @@ class Surface:
         d_in = rays.direction
         n_geo = hit.normals
         going_plus = dot(d_in, n_geo) > 0.0
+        reflect_allowed = xp.where(going_plus, self.optics.reflect_from_minus_side, self.optics.reflect_from_plus_side)
 
         n_minus = self.optics.n_minus_values(rays.wavelength_m)
         n_plus = self.optics.n_plus_values(rays.wavelength_m)
@@ -567,6 +570,9 @@ class Surface:
             T = xp.where(tir, 0.0, T)
             if self.optics.allow_total_internal_reflection:
                 R = xp.where(tir, 1.0, R)
+
+        R = xp.where(reflect_allowed, R, 0.0)
+        T = xp.where(reflect_allowed, T, xp.where(tir, 0.0, 1.0))
 
         out: List[RayBundle] = []
 
@@ -626,6 +632,7 @@ class PlaneSurface(Surface):
     height: Optional[float] = None
     radius: Optional[float] = None
     in_plane_reference: Optional[Any] = None
+    triangle_vertices: Optional[Sequence[Sequence[float]]] = None
     _u: Any = field(init=False, repr=False, default=None)
     _v: Any = field(init=False, repr=False, default=None)
     _w: Any = field(init=False, repr=False, default=None)
@@ -639,13 +646,15 @@ class PlaneSurface(Surface):
         self._v = v
         self._w = w
         shape = self.shape.lower()
-        if shape not in {"rectangle", "disk", "infinite"}:
+        if shape not in {"rectangle", "disk", "infinite", "triangle"}:
             raise ValueError(f"Unsupported plane shape: {self.shape}")
         self.shape = shape
         if self.shape == "rectangle" and (self.width is None or self.height is None):
             raise ValueError("Rectangle plane requires width and height.")
         if self.shape == "disk" and self.radius is None:
             raise ValueError("Disk plane requires radius.")
+        if self.shape == "triangle" and self.triangle_vertices is None:
+            raise ValueError("Triangle plane requires triangle_vertices.")
 
     def to_backend(self, backend: str = "numpy") -> "PlaneSurface":
         xp = get_backend(backend)
@@ -655,6 +664,7 @@ class PlaneSurface(Surface):
         new._u = asarray1(to_numpy(self._u), xp=xp)
         new._v = asarray1(to_numpy(self._v), xp=xp)
         new._w = asarray1(to_numpy(self._w), xp=xp)
+        new.triangle_vertices = self.triangle_vertices
         return new
 
     def intersect(self, rays: RayBundle) -> Intersection:
@@ -677,6 +687,15 @@ class PlaneSurface(Surface):
             valid = valid & (xp.abs(local_u) <= 0.5 * self.width) & (xp.abs(local_v) <= 0.5 * self.height)
         elif self.shape == "disk":
             valid = valid & ((local_u * local_u + local_v * local_v) <= self.radius * self.radius)
+        elif self.shape == "triangle":
+            u1, v1 = self.triangle_vertices[0]
+            u2, v2 = self.triangle_vertices[1]
+            u3, v3 = self.triangle_vertices[2]
+            d1 = (local_u - u1) * (v2 - v1) - (u2 - u1) * (local_v - v1)
+            d2 = (local_u - u2) * (v3 - v2) - (u3 - u2) * (local_v - v2)
+            d3 = (local_u - u3) * (v1 - v3) - (u1 - u3) * (local_v - v3)
+            in_tri = ((d1 >= -1e-12) & (d2 >= -1e-12) & (d3 >= -1e-12)) | ((d1 <= 1e-12) & (d2 <= 1e-12) & (d3 <= 1e-12))
+            valid = valid & in_tri
 
         t = xp.where(valid, t, xp.inf)
         normals = xp.broadcast_to(normal, points.shape)
@@ -848,7 +867,7 @@ class PlaneMirror(OpticalElement):
 
 
 @dataclass
-class BeamSplitter(OpticalElement):
+class SemiTransparentMirror(OpticalElement):
     name: str
     center: Sequence[float]
     normal: Sequence[float]
@@ -861,13 +880,162 @@ class BeamSplitter(OpticalElement):
     height: Optional[float] = None
     radius: Optional[float] = None
     in_plane_reference: Optional[Sequence[float]] = None
+    # Convenience alias for the interface side pointed to by the surface normal.
+    refractive_index: Optional[IndexModel] = None
+    thickness: Optional[float] = None
+    n_glass: Optional[IndexModel] = None
+    n_outside: IndexModel = AIR
+    front_reflectance: Optional[float] = None
+    front_transmittance: Optional[float] = None
+    back_reflectance: Optional[float] = None
+    back_transmittance: Optional[float] = None
 
     def build_surfaces(self) -> List[Surface]:
+        if self.thickness is not None:
+            center = np.asarray(self.center, dtype=float)
+            normal = normalize(np.asarray(self.normal, dtype=float))
+            axis_u, axis_v, axis_w = orthonormal_basis(normal, self.in_plane_reference, xp=np)
+            front = center - 0.5 * self.thickness * normal
+            back = center + 0.5 * self.thickness * normal
+            n_glass = self.n_glass if self.n_glass is not None else self.refractive_index
+            if n_glass is None:
+                n_glass = self.n_plus
+            front_reflectance = self.reflectance if self.front_reflectance is None else self.front_reflectance
+            front_transmittance = self.transmittance if self.front_transmittance is None else self.front_transmittance
+            back_reflectance = self.reflectance if self.back_reflectance is None else self.back_reflectance
+            back_transmittance = self.transmittance if self.back_transmittance is None else self.back_transmittance
+            side_reflectance = self.reflectance
+            side_transmittance = self.transmittance
+            surfaces: List[Surface] = [
+                PlaneSurface(
+                    name=f"{self.name}:front",
+                    optics=SurfaceOptics(
+                        mode=InteractionMode.BEAMSPLITTER,
+                        label=f"{self.name}:front",
+                        n_minus=self.n_outside,
+                        n_plus=n_glass,
+                        reflectance=front_reflectance,
+                        transmittance=front_transmittance,
+                        release_reflected=True,
+                        release_transmitted=True,
+                        use_fresnel=False,
+                        reflect_from_minus_side=front_reflectance > 0.0,
+                        reflect_from_plus_side=False,
+                    ),
+                    center=front,
+                    normal=normal,
+                    shape=self.shape,
+                    width=self.width,
+                    height=self.height,
+                    radius=self.radius,
+                    in_plane_reference=self.in_plane_reference,
+                ),
+                PlaneSurface(
+                    name=f"{self.name}:back",
+                    optics=SurfaceOptics(
+                        mode=InteractionMode.BEAMSPLITTER,
+                        label=f"{self.name}:back",
+                        n_minus=n_glass,
+                        n_plus=self.n_outside,
+                        reflectance=back_reflectance,
+                        transmittance=back_transmittance,
+                        release_reflected=True,
+                        release_transmitted=True,
+                        use_fresnel=False,
+                        reflect_from_minus_side=False,
+                        reflect_from_plus_side=back_reflectance > 0.0,
+                    ),
+                    center=back,
+                    normal=normal,
+                    shape=self.shape,
+                    width=self.width,
+                    height=self.height,
+                    radius=self.radius,
+                    in_plane_reference=self.in_plane_reference,
+                ),
+            ]
+            if self.shape == "rectangle" and self.width is not None and self.height is not None:
+                side_optics_out_to_in = SurfaceOptics(
+                    mode=InteractionMode.BEAMSPLITTER,
+                    label=f"{self.name}:side",
+                    n_minus=self.n_outside,
+                    n_plus=n_glass,
+                    reflectance=side_reflectance,
+                    transmittance=side_transmittance,
+                    release_reflected=True,
+                    release_transmitted=True,
+                    use_fresnel=False,
+                    reflect_from_minus_side=True,
+                    reflect_from_plus_side=False,
+                )
+                side_optics_in_to_out = SurfaceOptics(
+                    mode=InteractionMode.BEAMSPLITTER,
+                    label=f"{self.name}:side",
+                    n_minus=n_glass,
+                    n_plus=self.n_outside,
+                    reflectance=side_reflectance,
+                    transmittance=side_transmittance,
+                    release_reflected=True,
+                    release_transmitted=True,
+                    use_fresnel=False,
+                    reflect_from_minus_side=False,
+                    reflect_from_plus_side=True,
+                )
+                surfaces.extend(
+                    [
+                        PlaneSurface(
+                            name=f"{self.name}:side_u_minus",
+                            optics=side_optics_out_to_in,
+                            center=center - 0.5 * self.width * axis_u,
+                            normal=axis_u,
+                            shape="rectangle",
+                            width=self.thickness,
+                            height=self.height,
+                            in_plane_reference=axis_w,
+                        ),
+                        PlaneSurface(
+                            name=f"{self.name}:side_u_plus",
+                            optics=side_optics_in_to_out,
+                            center=center + 0.5 * self.width * axis_u,
+                            normal=axis_u,
+                            shape="rectangle",
+                            width=self.thickness,
+                            height=self.height,
+                            in_plane_reference=axis_w,
+                        ),
+                        PlaneSurface(
+                            name=f"{self.name}:side_v_minus",
+                            optics=side_optics_out_to_in,
+                            center=center - 0.5 * self.height * axis_v,
+                            normal=axis_v,
+                            shape="rectangle",
+                            width=self.thickness,
+                            height=self.width,
+                            in_plane_reference=axis_w,
+                        ),
+                        PlaneSurface(
+                            name=f"{self.name}:side_v_plus",
+                            optics=side_optics_in_to_out,
+                            center=center + 0.5 * self.height * axis_v,
+                            normal=axis_v,
+                            shape="rectangle",
+                            width=self.thickness,
+                            height=self.width,
+                            in_plane_reference=axis_w,
+                        ),
+                    ]
+                )
+            return surfaces
+
+        n_minus = self.n_minus
+        n_plus = self.n_plus
+        if self.refractive_index is not None:
+            n_plus = self.refractive_index
         optics = SurfaceOptics(
             mode=InteractionMode.BEAMSPLITTER,
             label=self.name,
-            n_minus=self.n_minus,
-            n_plus=self.n_plus,
+            n_minus=n_minus,
+            n_plus=n_plus,
             reflectance=self.reflectance,
             transmittance=self.transmittance,
             release_reflected=True,
@@ -887,6 +1055,10 @@ class BeamSplitter(OpticalElement):
                 in_plane_reference=self.in_plane_reference,
             )
         ]
+
+
+# Backward compatibility alias for older code paths.
+BeamSplitter = SemiTransparentMirror
 
 
 @dataclass
@@ -1424,14 +1596,14 @@ def fresnel_amplitudes(cos_i: Any, cos_t: Any, n1: Any, n2: Any, tir: Any):
 
 def build_demo_scene(n_glass: float = 1.50) -> Scene:
     """
-    Small demonstration scene with a 50/50 beamsplitter, one mirror and a detector.
+    Small demonstration scene with a 50/50 semi-transparent mirror, one mirror and a detector.
     The geometry is *not* the imported SAT geometry; it is a clean primitive-based
     optical bench showing the intended architecture.
     """
 
     scene = Scene()
     scene.add(
-        BeamSplitter(
+        SemiTransparentMirror(
             name="BS_50_50",
             center=(-0.34448, -0.80321, 3.05),
             normal=normalize(np.asarray((0.0, 1.0, 1.0), dtype=float)),
@@ -1486,6 +1658,102 @@ def build_demo_scene(n_glass: float = 1.50) -> Scene:
     return scene
 
 
+@dataclass
+class TriangularPrism(OpticalElement):
+    name: str
+    center: Sequence[float]
+    normal: Sequence[float]
+    in_plane_reference: Sequence[float]
+    vertices_2d: Sequence[Sequence[float]]
+    thickness: float
+    n_glass: IndexModel
+    n_outside: IndexModel = AIR
+    reflectance: float = 0.5
+    transmittance: float = 0.5
+    bottom_reflectance: Optional[float] = None
+    bottom_transmittance: Optional[float] = None
+    top_reflectance: Optional[float] = None
+    top_transmittance: Optional[float] = None
+    side_reflectances: Optional[Sequence[Optional[float]]] = None
+    side_transmittances: Optional[Sequence[Optional[float]]] = None
+
+    def build_surfaces(self) -> List[Surface]:
+        c = np.asarray(self.center, dtype=float)
+        n = normalize(np.asarray(self.normal, dtype=float))
+        u_ax, v_ax, w_ax = orthonormal_basis(n, self.in_plane_reference, xp=np)
+        half_t = 0.5 * self.thickness
+
+        def _surface_optics(
+            reflectance: Optional[float],
+            transmittance: Optional[float],
+        ) -> SurfaceOptics:
+            r = self.reflectance if reflectance is None else float(reflectance)
+            t = self.transmittance if transmittance is None else float(transmittance)
+            return SurfaceOptics(
+                mode=InteractionMode.BEAMSPLITTER,
+                label=self.name,
+                n_minus=self.n_outside,
+                n_plus=self.n_glass,
+                reflectance=r,
+                transmittance=t,
+                release_reflected=True,
+                release_transmitted=True,
+                use_fresnel=False,
+                reflect_from_minus_side=r > 0.0,
+                reflect_from_plus_side=False,
+            )
+
+        surfaces: List[Surface] = []
+        surfaces.append(
+            PlaneSurface(
+                name=f"{self.name}:bottom",
+                optics=_surface_optics(self.bottom_reflectance, self.bottom_transmittance),
+                center=c - half_t * n,
+                normal=n,
+                shape="triangle",
+                triangle_vertices=self.vertices_2d,
+                in_plane_reference=u_ax,
+            )
+        )
+        surfaces.append(
+            PlaneSurface(
+                name=f"{self.name}:top",
+                optics=_surface_optics(self.top_reflectance, self.top_transmittance),
+                center=c + half_t * n,
+                normal=-n,
+                shape="triangle",
+                triangle_vertices=self.vertices_2d,
+                in_plane_reference=u_ax,
+            )
+        )
+
+        for i in range(3):
+            p1, p2 = self.vertices_2d[i], self.vertices_2d[(i + 1) % 3]
+            edge_c_2d = (0.5 * (p1[0] + p2[0]), 0.5 * (p1[1] + p2[1]))
+            edge_vec = (p2[0] - p1[0], p2[1] - p1[1])
+            edge_len = math.hypot(*edge_vec)
+            inward_n_2d = (-edge_vec[1] / edge_len, edge_vec[0] / edge_len)
+            side_reflectance = None if self.side_reflectances is None else self.side_reflectances[i]
+            side_transmittance = None if self.side_transmittances is None else self.side_transmittances[i]
+
+            side_c = c + edge_c_2d[0] * u_ax + edge_c_2d[1] * v_ax
+            side_n = inward_n_2d[0] * u_ax + inward_n_2d[1] * v_ax
+            surfaces.append(
+                PlaneSurface(
+                    name=f"{self.name}:side_{i}",
+                    optics=_surface_optics(side_reflectance, side_transmittance),
+                    center=side_c,
+                    normal=side_n,
+                    shape="rectangle",
+                    width=edge_len,
+                    height=self.thickness,
+                    in_plane_reference=n,
+                )
+            )
+
+        return surfaces
+
+
 __all__ = [
     "AIR",
     "Material",
@@ -1497,7 +1765,8 @@ __all__ = [
     "CylinderSurface",
     "OpticalElement",
     "PlaneMirror",
-    "BeamSplitter",
+    "SemiTransparentMirror",
+    "TriangularPrism",
     "BeamDump",
     "Detector",
     "Window",

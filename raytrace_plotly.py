@@ -81,6 +81,144 @@ def make_rectangle_outline(
     }
 
 
+def make_rectangular_prism_overlays(
+    *,
+    name: str,
+    center: Sequence[float],
+    normal: Sequence[float],
+    width: float,
+    height: float,
+    thickness: float,
+    color: str,
+    in_plane_reference: Optional[Sequence[float]] = None,
+    line_width: float = 5,
+    opacity: float = 0.18,
+) -> List[Dict[str, Any]]:
+    c = np.asarray(center, dtype=float)
+    u, v, w = _plane_basis(normal, in_plane_reference)
+    half_w = 0.5 * float(width)
+    half_h = 0.5 * float(height)
+    half_t = 0.5 * float(thickness)
+
+    front_center = c - half_t * w
+    back_center = c + half_t * w
+    front = [
+        front_center - half_w * u - half_h * v,
+        front_center + half_w * u - half_h * v,
+        front_center + half_w * u + half_h * v,
+        front_center - half_w * u + half_h * v,
+    ]
+    back = [
+        back_center - half_w * u - half_h * v,
+        back_center + half_w * u - half_h * v,
+        back_center + half_w * u + half_h * v,
+        back_center - half_w * u + half_h * v,
+    ]
+    vertices = front + back
+    edges = [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7),
+    ]
+    edge_x: List[float | None] = []
+    edge_y: List[float | None] = []
+    edge_z: List[float | None] = []
+    for i0, i1 in edges:
+        p0 = vertices[i0]
+        p1 = vertices[i1]
+        edge_x.extend([float(p0[0]), float(p1[0]), None])
+        edge_y.extend([float(p0[1]), float(p1[1]), None])
+        edge_z.extend([float(p0[2]), float(p1[2]), None])
+
+    mesh = {
+        "type": "mesh3d",
+        "x": [float(p[0]) for p in vertices],
+        "y": [float(p[1]) for p in vertices],
+        "z": [float(p[2]) for p in vertices],
+        "i": [0, 0, 4, 4, 0, 0, 1, 1, 2, 2, 3, 3],
+        "j": [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 0, 4],
+        "k": [2, 3, 6, 7, 5, 4, 6, 5, 7, 6, 4, 7],
+        "name": name,
+        "color": color,
+        "opacity": opacity,
+        "flatshading": True,
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+    outline = {
+        "x": edge_x,
+        "y": edge_y,
+        "z": edge_z,
+        "mode": "lines",
+        "name": f"{name} outline",
+        "line": {"color": color, "width": line_width},
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+    return [mesh, outline]
+
+
+def make_triangular_prism_overlays(
+    *,
+    name: str,
+    center: Sequence[float],
+    normal: Sequence[float],
+    vertices_2d: Sequence[Sequence[float]],
+    thickness: float,
+    color: str,
+    in_plane_reference: Sequence[float],
+    line_width: float = 5,
+    opacity: float = 0.18,
+) -> List[Dict[str, Any]]:
+    c = np.asarray(center, dtype=float)
+    u, v, w = _plane_basis(normal, in_plane_reference)
+    half_t = 0.5 * float(thickness)
+
+    front_c = c - half_t * w
+    back_c = c + half_t * w
+
+    front = [front_c + p[0] * u + p[1] * v for p in vertices_2d]
+    back = [back_c + p[0] * u + p[1] * v for p in vertices_2d]
+    vertices = front + back
+
+    edges = [(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3), (0, 3), (1, 4), (2, 5)]
+    edge_x: List[float | None] = []
+    edge_y: List[float | None] = []
+    edge_z: List[float | None] = []
+    for i0, i1 in edges:
+        p0, p1 = vertices[i0], vertices[i1]
+        edge_x.extend([float(p0[0]), float(p1[0]), None])
+        edge_y.extend([float(p0[1]), float(p1[1]), None])
+        edge_z.extend([float(p0[2]), float(p1[2]), None])
+
+    mesh = {
+        "type": "mesh3d",
+        "x": [float(p[0]) for p in vertices],
+        "y": [float(p[1]) for p in vertices],
+        "z": [float(p[2]) for p in vertices],
+        "i": [0, 3, 0, 0, 1, 1, 2, 2],
+        "j": [1, 4, 1, 4, 2, 5, 0, 3],
+        "k": [2, 5, 4, 3, 5, 4, 3, 5],
+        "name": name,
+        "color": color,
+        "opacity": opacity,
+        "flatshading": True,
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+    outline = {
+        "x": edge_x,
+        "y": edge_y,
+        "z": edge_z,
+        "mode": "lines",
+        "name": f"{name} outline",
+        "line": {"color": color, "width": line_width},
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+    return [mesh, outline]
+
+
 def make_circle_outline(
     *,
     name: str,
@@ -311,7 +449,12 @@ def write_plotly_trajectories(
         )
 
     for overlay in overlays or []:
-        fig.add_scatter3d(**overlay)
+        trace_type = str(overlay.get("type", "scatter3d")).lower()
+        payload = {key: value for key, value in overlay.items() if key != "type"}
+        if trace_type == "mesh3d":
+            fig.add_trace(go.Mesh3d(**payload))
+        else:
+            fig.add_scatter3d(**payload)
 
     fig.update_layout(
         title=title,

@@ -5,7 +5,7 @@ This is a compact primitive-based ray-tracing framework intended as a practical 
 - explicit OOP assembly of an optical scheme,
 - simple scene compilation,
 - Gaussian-beam launch with a COMSOL-like hexapolar grid,
-- mirrors, refractive interfaces, 50/50 beam splitters, windows, detectors and beam dumps,
+- mirrors, refractive interfaces, semi-transparent mirrors, windows, detectors and beam dumps,
 - one code path for CPU (`numpy`) and optional GPU (`cupy`).
 
 ## What is implemented
@@ -31,7 +31,7 @@ This is a compact primitive-based ray-tracing framework intended as a practical 
 
 ### Optical elements
 - `PlaneMirror`
-- `BeamSplitter`
+- `SemiTransparentMirror`
 - `Window`
 - `SphericalLens`
 - `Detector`
@@ -105,6 +105,7 @@ By default the demo also opens the saved Plotly file in your browser.
 - It is **not** the imported SAT geometry.
 - The report does not contain enough information to reconstruct every surface automatically with exact labels and material tables, so the intended workflow is to build the optical scheme directly in code from primitives.
 - For the uploaded COMSOL report, the source settings already match the exported Gaussian beam: waist position `(-0.34448, -0.80321, 3.3199) m`, axis `(0, 0, -1)`, `w0 = 10 mm`, 15 radial positions and 721 total rays, peak intensity `8.49e10 W/m^2`, polarization reference `(0, 1, 0)`.
+- `SemiTransparentMirror` accepts `reflectance`, `transmittance`, and an optional `refractive_index` convenience alias for `n_plus` (the side pointed to by the surface normal).
 
 ## Limitations of this first version
 

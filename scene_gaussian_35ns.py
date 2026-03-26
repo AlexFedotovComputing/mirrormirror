@@ -9,10 +9,12 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import GaussianBeamSource, PlaneMirror, RayTracer, Scene, to_numpy
+from comsol_like_raytrace import AIR, GaussianBeamSource, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
 from raytrace_plotly import (
     make_circle_outline,
     make_rectangle_outline,
+    make_rectangular_prism_overlays,
+    make_triangular_prism_overlays,
     write_plotly_trajectories,
 )
 
@@ -20,6 +22,8 @@ from raytrace_plotly import (
 INTEGRATION_TIME_S = 35e-9
 BEAM_RADIAL_POSITIONS = 55
 BEAM_CUTOFF_RATIO = 1.0
+# Limits the number of secondary-ray generations via RayTracer.max_interactions.
+MAX_SECONDARY_RAY_GENERATIONS = 8
 
 
 SOURCE_TEMPLATE = GaussianBeamSource(
@@ -79,6 +83,90 @@ ON_ENTER_BEAMSPLITTER = PlaneMirror(
     reflectance=1.0,
 )
 
+SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
+    name="SemiMirror_Left_1",
+    center=(-0.1388869881677073, -0.2755569348737447, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR,
+    front_reflectance=0.5,
+    front_transmittance=0.5,
+    back_reflectance=0.0,
+    back_transmittance=1.0,
+    shape="rectangle",
+    width=0.044,
+    height=0.0081,
+    in_plane_reference=(-0.35836794954530027, -0.9335804264972017, 0.0),
+)
+
+SEMI_MIRROR_NEW = SemiTransparentMirror(
+    name="SemiMirror_New_225deg",
+    center=(-0.218148, -0.213819, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR,
+    front_reflectance=0.5,
+    front_transmittance=0.5,
+    back_reflectance=0.0,
+    back_transmittance=1.0,
+    shape="rectangle",
+    width=0.044,
+    height=0.0081,
+    in_plane_reference=(-0.997441, -0.071497, 0.0),
+)
+
+PRISM_1 = TriangularPrism(
+    name="Prism_72_5deg",
+    center=(0.311735, 0.098289, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    in_plane_reference=(0.300706, -0.953717, 0.0),
+    vertices_2d=[
+        (-0.026645, -0.013363),
+        (0.026645, -0.013363),
+        (0.0, 0.026725)
+    ],
+    thickness=0.05,
+    n_glass=1.5,
+    n_outside=AIR
+)
+
+PRISM_2 = TriangularPrism(
+    name="Prism_158deg",
+    center=(0.117201, -0.290082, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    in_plane_reference=(-0.927184, -0.374607, 0.0),
+    vertices_2d=[
+        (-0.026645, -0.013363),
+        (0.026645, -0.013363),
+        (0.0, 0.026725)
+    ],
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR,
+    side_reflectances=[0.5, 0.0, 0.5],
+    side_transmittances=[0.5, 1.0, 0.5],
+)
+
+SEMI_MIRROR_3 = SemiTransparentMirror(
+    name="SemiMirror_134_5deg",
+    center=(0.221274, -0.213235, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR,
+    front_reflectance=0.5,
+    front_transmittance=0.5,
+    back_reflectance=0.0,
+    back_transmittance=1.0,
+    shape="rectangle",
+    width=0.044,
+    height=0.0081,
+    in_plane_reference=(-0.999159, 0.041003, 0.0),
+)
+
+
 def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
     source = copy.deepcopy(SOURCE_TEMPLATE)
     source.backend = backend
@@ -92,8 +180,14 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(PERISCOPE_MIRROR_2),
         copy.deepcopy(ONE_OF_MANY_MIRRORS),
         copy.deepcopy(ON_ENTER_BEAMSPLITTER),
+        copy.deepcopy(SEMI_MIRROR_LEFT_1),
+        copy.deepcopy(SEMI_MIRROR_NEW),
+        copy.deepcopy(PRISM_1),
+        copy.deepcopy(PRISM_2),
+        copy.deepcopy(SEMI_MIRROR_3),
     )
     return scene
+
 
 def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:
     for block in blocks:
@@ -169,7 +263,12 @@ def detector_energy_summary(result: object, integration_time_s: float) -> Dict[s
 def main() -> None:
     parser = argparse.ArgumentParser(description="Initial 35 ns scene with the same Gaussian source as the demo.")
     parser.add_argument("--backend", default="numpy", choices=["numpy", "cupy"], help="Array backend")
-    parser.add_argument("--max-interactions", type=int, default=4, help="Number of ray interactions")
+    parser.add_argument(
+        "--max-interactions",
+        type=int,
+        default=MAX_SECONDARY_RAY_GENERATIONS,
+        help="Maximum number of ray interactions / secondary-ray generations",
+    )
     parser.add_argument("--outdir", default="scene_gaussian_35ns_output", help="Directory for outputs")
     parser.add_argument("--no-plot", dest="plot", action="store_false", help="Skip saving the Plotly trajectories plot")
     parser.add_argument("--no-open-plot", dest="open_plot", action="store_false", help="Do not open the saved plot in a browser")
@@ -207,6 +306,11 @@ def main() -> None:
     print(f"  - {PERISCOPE_MIRROR_2.name}")
     print(f"  - {ONE_OF_MANY_MIRRORS.name}")
     print(f"  - {ON_ENTER_BEAMSPLITTER.name}")
+    print(f"  - {SEMI_MIRROR_LEFT_1.name}")
+    print(f"  - {SEMI_MIRROR_NEW.name}")
+    print(f"  - {PRISM_1.name}")
+    print(f"  - {PRISM_2.name}")
+    print(f"  - {SEMI_MIRROR_3.name}")
     print("Detector power summary:")
     if not power_summary:
         print("  <no detector hits>")
@@ -275,6 +379,54 @@ def main() -> None:
                 height=float(ON_ENTER_BEAMSPLITTER.height),
                 color="#9467bd",
                 in_plane_reference=ON_ENTER_BEAMSPLITTER.in_plane_reference,
+            ),
+            *make_rectangular_prism_overlays(
+                name=SEMI_MIRROR_LEFT_1.name,
+                center=SEMI_MIRROR_LEFT_1.center,
+                normal=SEMI_MIRROR_LEFT_1.normal,
+                width=float(SEMI_MIRROR_LEFT_1.width),
+                height=float(SEMI_MIRROR_LEFT_1.height),
+                thickness=float(SEMI_MIRROR_LEFT_1.thickness),
+                color="#8c564b",
+                in_plane_reference=SEMI_MIRROR_LEFT_1.in_plane_reference,
+            ),
+            *make_rectangular_prism_overlays(
+                name=SEMI_MIRROR_NEW.name,
+                center=SEMI_MIRROR_NEW.center,
+                normal=SEMI_MIRROR_NEW.normal,
+                width=float(SEMI_MIRROR_NEW.width),
+                height=float(SEMI_MIRROR_NEW.height),
+                thickness=float(SEMI_MIRROR_NEW.thickness),
+                color="#e377c2",
+                in_plane_reference=SEMI_MIRROR_NEW.in_plane_reference,
+            ),
+            *make_triangular_prism_overlays(
+                name=PRISM_1.name,
+                center=PRISM_1.center,
+                normal=PRISM_1.normal,
+                vertices_2d=PRISM_1.vertices_2d,
+                thickness=float(PRISM_1.thickness),
+                color="#17becf",
+                in_plane_reference=PRISM_1.in_plane_reference,
+            ),
+            *make_triangular_prism_overlays(
+                name=PRISM_2.name,
+                center=PRISM_2.center,
+                normal=PRISM_2.normal,
+                vertices_2d=PRISM_2.vertices_2d,
+                thickness=float(PRISM_2.thickness),
+                color="#bcbd22",
+                in_plane_reference=PRISM_2.in_plane_reference,
+            ),
+            *make_rectangular_prism_overlays(
+                name=SEMI_MIRROR_3.name,
+                center=SEMI_MIRROR_3.center,
+                normal=SEMI_MIRROR_3.normal,
+                width=float(SEMI_MIRROR_3.width),
+                height=float(SEMI_MIRROR_3.height),
+                thickness=float(SEMI_MIRROR_3.thickness),
+                color="#7f7f7f",
+                in_plane_reference=SEMI_MIRROR_3.in_plane_reference,
             ),
         ]
         write_plotly_trajectories(
