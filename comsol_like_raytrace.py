@@ -865,7 +865,6 @@ class PlaneMirror(OpticalElement):
             )
         ]
 
-
 @dataclass
 class BlockMirror(OpticalElement):
     name: str

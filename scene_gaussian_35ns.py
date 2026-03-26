@@ -110,6 +110,27 @@ ON_ENTER_BEAMSPLITTER = PlaneMirror(
     reflectance=1.0,
 )
 
+SMALL_REFLECTIVE_MIRROR = PlaneMirror(
+    name="Turning round mirror 1",
+    center=(-0.7661097252, 1.017574008, 0.02510104076),
+    normal=(0.677282781278, 0.287360519850, 0.677282781278),
+    shape="disk",
+    radius=0.025,
+    in_plane_reference=(0.707106781187, 0.0, -0.707106781187),
+    reflectance=1.0,
+)
+
+TURNING_SQUARE_MIRROR_1 = PlaneMirror(
+    name="Turning square mirror 1",
+    center=(-0.9305, 0.9305, 0.02425),
+    normal=(0.9893994401, -0.1452196698, 0.0),
+    shape="rectangle",
+    width=0.0521000001,
+    height=0.024,
+    in_plane_reference=(0.1452196698, 0.9893994401, 0.0),
+    reflectance=1.0,
+)
+
 SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
     name="SemiMirror_Left_1",
     center=(-0.1388869881677073, -0.2755569348737447, 0.025),
@@ -262,6 +283,8 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(BLOCK_MIRROR_1),
         copy.deepcopy(BLOCK_MIRROR_2),
         copy.deepcopy(ON_ENTER_BEAMSPLITTER),
+        copy.deepcopy(SMALL_REFLECTIVE_MIRROR),
+        copy.deepcopy(TURNING_SQUARE_MIRROR_1),
         copy.deepcopy(SEMI_MIRROR_LEFT_1),
         copy.deepcopy(SEMI_MIRROR_NEW),
         copy.deepcopy(PRISM_1),
@@ -393,6 +416,8 @@ def main() -> None:
     print(f"  - {BLOCK_MIRROR_1.name}")
     print(f"  - {BLOCK_MIRROR_2.name}")
     print(f"  - {ON_ENTER_BEAMSPLITTER.name}")
+    print(f"  - {SMALL_REFLECTIVE_MIRROR.name}")
+    print(f"  - {TURNING_SQUARE_MIRROR_1.name}")
     print(f"  - {SEMI_MIRROR_LEFT_1.name}")
     print(f"  - {SEMI_MIRROR_NEW.name}")
     print(f"  - {PRISM_1.name}")
@@ -489,6 +514,23 @@ def main() -> None:
                 height=float(ON_ENTER_BEAMSPLITTER.height),
                 color=PLANE_MIRROR_COLOR,
                 in_plane_reference=ON_ENTER_BEAMSPLITTER.in_plane_reference,
+            ),
+            make_circle_outline(
+                name=SMALL_REFLECTIVE_MIRROR.name,
+                center=SMALL_REFLECTIVE_MIRROR.center,
+                normal=SMALL_REFLECTIVE_MIRROR.normal,
+                radius=float(SMALL_REFLECTIVE_MIRROR.radius),
+                color=PLANE_MIRROR_COLOR,
+                in_plane_reference=SMALL_REFLECTIVE_MIRROR.in_plane_reference,
+            ),
+            make_rectangle_outline(
+                name=TURNING_SQUARE_MIRROR_1.name,
+                center=TURNING_SQUARE_MIRROR_1.center,
+                normal=TURNING_SQUARE_MIRROR_1.normal,
+                width=float(TURNING_SQUARE_MIRROR_1.width),
+                height=float(TURNING_SQUARE_MIRROR_1.height),
+                color=PLANE_MIRROR_COLOR,
+                in_plane_reference=TURNING_SQUARE_MIRROR_1.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
                 name=SEMI_MIRROR_LEFT_1.name,
