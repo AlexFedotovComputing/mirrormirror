@@ -867,6 +867,101 @@ class PlaneMirror(OpticalElement):
 
 
 @dataclass
+class BlockMirror(OpticalElement):
+    name: str
+    center: Sequence[float]
+    normal: Sequence[float]
+    width: float
+    height: float
+    thickness: float
+    in_plane_reference: Optional[Sequence[float]] = None
+    reflectance: float = 1.0
+
+    def build_surfaces(self) -> List[Surface]:
+        c = np.asarray(self.center, dtype=float)
+        w_ax = normalize(np.asarray(self.normal, dtype=float))
+        u_ax, v_ax, _ = orthonormal_basis(w_ax, self.in_plane_reference, xp=np)
+
+        optics = SurfaceOptics(
+            mode=InteractionMode.MIRROR,
+            label=self.name,
+            reflectance=self.reflectance,
+            transmittance=0.0,
+            release_reflected=True,
+            release_transmitted=False,
+            use_fresnel=False,
+        )
+
+        half_t = 0.5 * self.thickness
+        half_w = 0.5 * self.width
+        half_h = 0.5 * self.height
+
+        surfaces = [
+            PlaneSurface(
+                name=f"{self.name}:front",
+                optics=optics,
+                center=c - half_t * w_ax,
+                normal=-w_ax,
+                shape="rectangle",
+                width=self.width,
+                height=self.height,
+                in_plane_reference=u_ax,
+            ),
+            PlaneSurface(
+                name=f"{self.name}:back",
+                optics=optics,
+                center=c + half_t * w_ax,
+                normal=w_ax,
+                shape="rectangle",
+                width=self.width,
+                height=self.height,
+                in_plane_reference=u_ax,
+            ),
+            PlaneSurface(
+                name=f"{self.name}:side_u_minus",
+                optics=optics,
+                center=c - half_w * u_ax,
+                normal=-u_ax,
+                shape="rectangle",
+                width=self.thickness,
+                height=self.height,
+                in_plane_reference=w_ax,
+            ),
+            PlaneSurface(
+                name=f"{self.name}:side_u_plus",
+                optics=optics,
+                center=c + half_w * u_ax,
+                normal=u_ax,
+                shape="rectangle",
+                width=self.thickness,
+                height=self.height,
+                in_plane_reference=w_ax,
+            ),
+            PlaneSurface(
+                name=f"{self.name}:side_v_minus",
+                optics=optics,
+                center=c - half_h * v_ax,
+                normal=-v_ax,
+                shape="rectangle",
+                width=self.thickness,
+                height=self.width,
+                in_plane_reference=w_ax,
+            ),
+            PlaneSurface(
+                name=f"{self.name}:side_v_plus",
+                optics=optics,
+                center=c + half_h * v_ax,
+                normal=v_ax,
+                shape="rectangle",
+                width=self.thickness,
+                height=self.width,
+                in_plane_reference=w_ax,
+            ),
+        ]
+        return surfaces
+
+
+@dataclass
 class SemiTransparentMirror(OpticalElement):
     name: str
     center: Sequence[float]
@@ -1765,6 +1860,7 @@ __all__ = [
     "CylinderSurface",
     "OpticalElement",
     "PlaneMirror",
+    "BlockMirror",
     "SemiTransparentMirror",
     "TriangularPrism",
     "BeamDump",

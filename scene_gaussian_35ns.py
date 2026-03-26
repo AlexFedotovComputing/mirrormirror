@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import AIR, GaussianBeamSource, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
+from comsol_like_raytrace import AIR, BlockMirror, GaussianBeamSource, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
 from raytrace_plotly import (
     make_circle_outline,
     make_rectangle_outline,
@@ -23,7 +23,7 @@ INTEGRATION_TIME_S = 35e-9
 BEAM_RADIAL_POSITIONS = 55
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
-MAX_SECONDARY_RAY_GENERATIONS = 8
+MAX_SECONDARY_RAY_GENERATIONS = 13
 
 
 SOURCE_TEMPLATE = GaussianBeamSource(
@@ -69,6 +69,17 @@ ONE_OF_MANY_MIRRORS = PlaneMirror(
     width=0.044,
     height=0.0081,
     in_plane_reference=(-0.03612, -0.99935, 0.0),
+    reflectance=1.0,
+)
+
+BLOCK_MIRROR_1 = BlockMirror(
+    name="BlockMirror_44_9deg",
+    center=(0.216890, 0.221857, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    width=0.044,
+    height=0.0081,
+    thickness=0.05,
+    in_plane_reference=(-0.036121, -0.999348, 0.0),
     reflectance=1.0,
 )
 
@@ -129,7 +140,9 @@ PRISM_1 = TriangularPrism(
     ],
     thickness=0.05,
     n_glass=1.5,
-    n_outside=AIR
+    n_outside=AIR,
+    side_reflectances=[0.5, 0.0, 0.5],
+    side_transmittances=[0.5, 1.0, 0.5],
 )
 
 PRISM_2 = TriangularPrism(
@@ -161,7 +174,43 @@ PRISM_3 = TriangularPrism(
     ],
     thickness=0.05,
     n_glass=1.501,
-    n_outside=AIR
+    n_outside=AIR,
+    side_reflectances=[0.5, 0.0, 0.5],
+    side_transmittances=[0.5, 1.0, 0.5],
+)
+
+PRISM_4 = TriangularPrism(
+    name="Prism_240deg",
+    center=(-0.275797, -0.159231, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    in_plane_reference=(-0.5, 0.866025, 0.0),
+    vertices_2d=[
+        (-0.026645, -0.013363),
+        (0.026645, -0.013363),
+        (0.0, 0.026726)
+    ],
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR,
+    side_reflectances=[0.5, 0.5, 0.0],
+    side_transmittances=[0.5, 0.5, 1.0],
+)
+
+PRISM_5 = TriangularPrism(
+    name="Prism_285_1deg",
+    center=(-0.309301, 0.083456, 0.025),
+    normal=(0.0, 0.0, 1.0),
+    in_plane_reference=(0.260505, 0.965471, 0.0),
+    vertices_2d=[
+        (-0.026645, -0.013363),
+        (0.026645, -0.013363),
+        (0.0, 0.026726)
+    ],
+    thickness=0.05,
+    n_glass=1.501,
+    n_outside=AIR,
+    side_reflectances=[0.5, 0.5, 0.0],
+    side_transmittances=[0.5, 0.5, 1.0],
 )
 
 SEMI_MIRROR_3 = SemiTransparentMirror(
@@ -194,12 +243,15 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(PERISCOPE_MIRROR_1),
         copy.deepcopy(PERISCOPE_MIRROR_2),
         copy.deepcopy(ONE_OF_MANY_MIRRORS),
+        copy.deepcopy(BLOCK_MIRROR_1),
         copy.deepcopy(ON_ENTER_BEAMSPLITTER),
         copy.deepcopy(SEMI_MIRROR_LEFT_1),
         copy.deepcopy(SEMI_MIRROR_NEW),
         copy.deepcopy(PRISM_1),
         copy.deepcopy(PRISM_2),
         copy.deepcopy(PRISM_3),
+        copy.deepcopy(PRISM_4),
+        copy.deepcopy(PRISM_5),
         copy.deepcopy(SEMI_MIRROR_3),
     )
     return scene
@@ -321,12 +373,15 @@ def main() -> None:
     print(f"  - {PERISCOPE_MIRROR_1.name}")
     print(f"  - {PERISCOPE_MIRROR_2.name}")
     print(f"  - {ONE_OF_MANY_MIRRORS.name}")
+    print(f"  - {BLOCK_MIRROR_1.name}")
     print(f"  - {ON_ENTER_BEAMSPLITTER.name}")
     print(f"  - {SEMI_MIRROR_LEFT_1.name}")
     print(f"  - {SEMI_MIRROR_NEW.name}")
     print(f"  - {PRISM_1.name}")
     print(f"  - {PRISM_2.name}")
     print(f"  - {PRISM_3.name}")
+    print(f"  - {PRISM_4.name}")
+    print(f"  - {PRISM_5.name}")
     print(f"  - {SEMI_MIRROR_3.name}")
     print("Detector power summary:")
     if not power_summary:
@@ -388,6 +443,16 @@ def main() -> None:
                 color="#d62728",
                 in_plane_reference=ONE_OF_MANY_MIRRORS.in_plane_reference,
             ),
+            *make_rectangular_prism_overlays(
+                name=BLOCK_MIRROR_1.name,
+                center=BLOCK_MIRROR_1.center,
+                normal=BLOCK_MIRROR_1.normal,
+                width=float(BLOCK_MIRROR_1.width),
+                height=float(BLOCK_MIRROR_1.height),
+                thickness=float(BLOCK_MIRROR_1.thickness),
+                color="#ff7f0e",
+                in_plane_reference=BLOCK_MIRROR_1.in_plane_reference,
+            ),
             make_rectangle_outline(
                 name=ON_ENTER_BEAMSPLITTER.name,
                 center=ON_ENTER_BEAMSPLITTER.center,
@@ -443,6 +508,24 @@ def main() -> None:
                 thickness=float(PRISM_3.thickness),
                 color="#e377c2",
                 in_plane_reference=PRISM_3.in_plane_reference,
+            ),
+            *make_triangular_prism_overlays(
+                name=PRISM_4.name,
+                center=PRISM_4.center,
+                normal=PRISM_4.normal,
+                vertices_2d=PRISM_4.vertices_2d,
+                thickness=float(PRISM_4.thickness),
+                color="#8c564b",
+                in_plane_reference=PRISM_4.in_plane_reference,
+            ),
+            *make_triangular_prism_overlays(
+                name=PRISM_5.name,
+                center=PRISM_5.center,
+                normal=PRISM_5.normal,
+                vertices_2d=PRISM_5.vertices_2d,
+                thickness=float(PRISM_5.thickness),
+                color="#9467bd",
+                in_plane_reference=PRISM_5.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
                 name=SEMI_MIRROR_3.name,
