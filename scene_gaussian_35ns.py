@@ -23,7 +23,7 @@ INTEGRATION_TIME_S = 35e-9
 BEAM_RADIAL_POSITIONS = 55
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
-MAX_SECONDARY_RAY_GENERATIONS = 15
+MAX_SECONDARY_RAY_GENERATIONS = 20
 
 PLANE_MIRROR_COLOR = "#9467bd"
 SEMI_TRANSPARENT_MIRROR_COLOR = "#17becf"
@@ -113,10 +113,10 @@ ON_ENTER_BEAMSPLITTER = PlaneMirror(
 SMALL_REFLECTIVE_MIRROR = PlaneMirror(
     name="Turning round mirror 1",
     center=(-0.7661097252, 1.017574008, 0.02510104076),
-    normal=(0.677282781278, 0.287360519850, 0.677282781278),
+    normal=(-0.62259151, -0.33523098, -0.70710678),
     shape="disk",
     radius=0.025,
-    in_plane_reference=(0.707106781187, 0.0, -0.707106781187),
+    in_plane_reference=(0.47408821, -0.88047735, 0.0),
     reflectance=1.0,
 )
 
