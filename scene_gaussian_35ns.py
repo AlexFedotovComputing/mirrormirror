@@ -24,7 +24,7 @@ from raytrace_plotly import (
 
 INTEGRATION_TIME_S = 50e-9
 BEAM_RADIAL_POSITIONS = 55
-INITIAL_RAY_COUNT = 10000
+INITIAL_RAY_COUNT = 15000
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 20
@@ -658,7 +658,7 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
 
 PRISM_1 = TriangularPrism(
     name="Prism_72_5deg",
-    center=(0.3107809928, 0.09798887063, 0.025),
+    center=(0.31187636451381207, 0.09701894118619384, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(0.3007058, -0.95371695, 0.0),
     vertices_2d=[
@@ -1348,7 +1348,7 @@ def main() -> None:
             trim_end_surface_prefixes=("Screen",),
             trim_end_distance=5e-3,
             min_segment_power=20.0,
-            always_include_surface_prefixes=("BUNDLE_",),
+            always_include_surface_prefixes=("BUNDLE_", "Cylindrical Screen"),
         )
         print(f"Wrote: {plot_path}")
         if args.open_plot:
