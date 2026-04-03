@@ -810,7 +810,8 @@ class CylinderSurface(Surface):
         t = xp.minimum(t1, t2)
         valid = valid & xp.isfinite(t)
 
-        points = rays.position + t[:, None] * rays.direction
+        t_safe = xp.where(valid, t, 0.0)
+        points = rays.position + t_safe[:, None] * rays.direction
         axial = dot(points - c0, a)
         valid = valid & (xp.abs(axial) <= 0.5 * self.length)
         radial_vec = points - c0 - axial[:, None] * a
@@ -864,6 +865,83 @@ class PlaneMirror(OpticalElement):
                 in_plane_reference=self.in_plane_reference,
             )
         ]
+
+
+@dataclass
+class MirrorArrayBundle(OpticalElement):
+    configs: Sequence[Any]
+    name: str = "MirrorArrayBundle"
+    tilt_deg: float = 45.0
+    reflectance: float = 0.5
+    transmittance: float = 0.5
+    reflect_from_minus_side: bool = True
+    reflect_from_plus_side: bool = False
+
+    def _parse_config(self, config: Any, idx: int) -> tuple[str, tuple[float, float, float], float, float]:
+        if isinstance(config, dict):
+            center = tuple(float(v) for v in config["center"])
+            phi_deg = float(config.get("phi_deg", config.get("phi")))
+            radius = float(config["radius"])
+            name = str(config.get("name", f"{self.name} Mirror {idx}"))
+            return name, center, phi_deg, radius
+
+        if len(config) == 3:
+            center, phi_deg, radius = config
+            name = f"{self.name} Mirror {idx}"
+            return name, tuple(float(v) for v in center), float(phi_deg), float(radius)
+
+        if len(config) == 4:
+            name, center, phi_deg, radius = config
+            return str(name), tuple(float(v) for v in center), float(phi_deg), float(radius)
+
+        raise ValueError(f"Unsupported mirror bundle config at index {idx}: {config!r}")
+
+    def build_surfaces(self) -> List[OpticalElement]:
+        tilt_rad = math.radians(float(self.tilt_deg))
+        sin_tilt = math.sin(tilt_rad)
+        cos_tilt = math.cos(tilt_rad)
+        mirrors: List[OpticalElement] = []
+
+        for idx, config in enumerate(self.configs, start=1):
+            name, center, phi_deg, radius = self._parse_config(config, idx)
+            phi_rad = math.radians(phi_deg)
+            normal = normalize(
+                np.array(
+                    [
+                        sin_tilt * math.sin(phi_rad),
+                        -sin_tilt * math.cos(phi_rad),
+                        cos_tilt,
+                    ],
+                    dtype=float,
+                )
+            )
+            in_plane_reference = normalize(
+                np.array(
+                    [
+                        math.cos(phi_rad),
+                        math.sin(phi_rad),
+                        0.0,
+                    ],
+                    dtype=float,
+                )
+            )
+            mirrors.append(
+                SemiTransparentMirror(
+                    name=name,
+                    center=tuple(float(v) for v in center),
+                    normal=tuple(float(v) for v in normal),
+                    shape="disk",
+                    radius=float(radius),
+                    in_plane_reference=tuple(float(v) for v in in_plane_reference),
+                    reflectance=self.reflectance,
+                    transmittance=self.transmittance,
+                    reflect_from_minus_side=self.reflect_from_minus_side,
+                    reflect_from_plus_side=self.reflect_from_plus_side,
+                )
+            )
+
+        return mirrors
+
 
 @dataclass
 class BlockMirror(OpticalElement):
@@ -983,6 +1061,8 @@ class SemiTransparentMirror(OpticalElement):
     front_transmittance: Optional[float] = None
     back_reflectance: Optional[float] = None
     back_transmittance: Optional[float] = None
+    reflect_from_minus_side: bool = True
+    reflect_from_plus_side: bool = True
 
     def build_surfaces(self) -> List[Surface]:
         if self.thickness is not None:
@@ -1135,6 +1215,8 @@ class SemiTransparentMirror(OpticalElement):
             release_reflected=True,
             release_transmitted=True,
             use_fresnel=False,
+            reflect_from_minus_side=self.reflect_from_minus_side,
+            reflect_from_plus_side=self.reflect_from_plus_side,
         )
         return [
             PlaneSurface(
@@ -1193,6 +1275,35 @@ class BeamDump(OpticalElement):
 @dataclass
 class Detector(BeamDump):
     detector: bool = True
+
+
+@dataclass
+class CylindricalScreen(OpticalElement):
+    name: str
+    center: Sequence[float]
+    axis: Sequence[float]
+    radius: float
+    length: float
+    detector: bool = True
+
+    def build_surfaces(self) -> List[Surface]:
+        optics = SurfaceOptics(
+            mode=InteractionMode.ABSORB,
+            label=self.name,
+            detector=self.detector,
+            release_reflected=False,
+            release_transmitted=False,
+        )
+        return [
+            CylinderSurface(
+                name=self.name,
+                optics=optics,
+                center=self.center,
+                axis=self.axis,
+                radius=self.radius,
+                length=self.length,
+            )
+        ]
 
 
 @dataclass
@@ -1859,11 +1970,13 @@ __all__ = [
     "CylinderSurface",
     "OpticalElement",
     "PlaneMirror",
+    "MirrorArrayBundle",
     "BlockMirror",
     "SemiTransparentMirror",
     "TriangularPrism",
     "BeamDump",
     "Detector",
+    "CylindricalScreen",
     "Window",
     "SphericalLens",
     "Scene",

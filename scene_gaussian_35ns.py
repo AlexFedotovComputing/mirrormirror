@@ -3,15 +3,18 @@ from __future__ import annotations
 import argparse
 import copy
 import csv
+import math
 import webbrowser
 from pathlib import Path
 from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import AIR, BlockMirror, GaussianBeamSource, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
+from comsol_like_raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
 from raytrace_plotly import (
     make_circle_outline,
+    make_cylindrical_surface_overlays,
+    make_disk_overlays,
     make_rectangle_outline,
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
@@ -19,8 +22,9 @@ from raytrace_plotly import (
 )
 
 
-INTEGRATION_TIME_S = 35e-9
+INTEGRATION_TIME_S = 50e-9
 BEAM_RADIAL_POSITIONS = 55
+INITIAL_RAY_COUNT = 10000
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 20
@@ -29,6 +33,430 @@ PLANE_MIRROR_COLOR = "#9467bd"
 SEMI_TRANSPARENT_MIRROR_COLOR = "#17becf"
 BLOCK_MIRROR_COLOR = "#1f77b4"
 TRIANGULAR_PRISM_COLOR = "#e377c2"
+SCREEN_COLOR = "#2ca02c"
+CYLINDRICAL_SCREEN_COLOR = "#7f7f7f"
+
+BUNDLE_1_1_RADIUS_M = math.sqrt(0.5) * 1e-3 + 1e-9
+BUNDLE_1_1_ROTATION_DEG = 0.0
+BUNDLE_1_1_ROTATION_CENTER = (-0.7649020959, 1.026102123, -2.11135)
+BUNDLE_1_2_Z_SHIFT_M = -0.33
+BUNDLE_1_3_Z_SHIFT_M = -0.66
+BUNDLE_1_4_Z_SHIFT_M = -0.99
+BUNDLE_2_CENTER_X = -1.01917119
+BUNDLE_2_CENTER_Y = -0.765885541
+BUNDLE_2_ROTATION_DEG = 90.0
+BUNDLE_2_ROTATION_CENTER = (BUNDLE_2_CENTER_X, BUNDLE_2_CENTER_Y, BUNDLE_1_1_ROTATION_CENTER[2])
+BUNDLE_2_DX = BUNDLE_2_CENTER_X - BUNDLE_1_1_ROTATION_CENTER[0]
+BUNDLE_2_DY = BUNDLE_2_CENTER_Y - BUNDLE_1_1_ROTATION_CENTER[1]
+BUNDLE_3_CENTER_X = 0.7658855413
+BUNDLE_3_CENTER_Y = -1.01917119
+BUNDLE_3_ROTATION_DEG = -180.0
+BUNDLE_3_ROTATION_CENTER = (BUNDLE_3_CENTER_X, BUNDLE_3_CENTER_Y, BUNDLE_1_1_ROTATION_CENTER[2])
+BUNDLE_3_DX = BUNDLE_3_CENTER_X - BUNDLE_1_1_ROTATION_CENTER[0]
+BUNDLE_3_DY = BUNDLE_3_CENTER_Y - BUNDLE_1_1_ROTATION_CENTER[1]
+BUNDLE_4_CENTER_X = 1.017417566
+BUNDLE_4_CENTER_Y = 0.752082817
+BUNDLE_4_ROTATION_DEG = -90.0
+BUNDLE_4_ROTATION_CENTER = (BUNDLE_4_CENTER_X, BUNDLE_4_CENTER_Y, BUNDLE_1_1_ROTATION_CENTER[2])
+BUNDLE_4_DX = BUNDLE_4_CENTER_X - BUNDLE_1_1_ROTATION_CENTER[0]
+BUNDLE_4_DY = BUNDLE_4_CENTER_Y - BUNDLE_1_1_ROTATION_CENTER[1]
+
+SCREEN_1 = Detector(
+    name="Screen 1",
+    center=(-0.7658855413, 1.01917119, -3.4505),
+    normal=(0.0, 0.0, 1.0),
+    shape="disk",
+    radius=0.025,
+    in_plane_reference=(1.0, 0.0, 0.0),
+)
+
+SCREEN_2 = Detector(
+    name="Screen 2",
+    center=(-1.01917119, -0.7658855413, -3.4505),
+    normal=(0.0, 0.0, 1.0),
+    shape="disk",
+    radius=0.025,
+    in_plane_reference=(1.0, 0.0, 0.0),
+)
+
+SCREEN_3 = Detector(
+    name="Screen 3",
+    center=(0.7658855413, -1.01917119, -3.4505),
+    normal=(0.0, 0.0, 1.0),
+    shape="disk",
+    radius=0.025,
+    in_plane_reference=(1.0, 0.0, 0.0),
+)
+
+SCREEN_4 = Detector(
+    name="Screen 4",
+    center=(1.01917119, 0.7658855413, -3.4505),
+    normal=(0.0, 0.0, 1.0),
+    shape="disk",
+    radius=0.025,
+    in_plane_reference=(1.0, 0.0, 0.0),
+)
+
+CYLINDRICAL_SCREEN_1 = CylindricalScreen(
+    name="Cylindrical Screen 1",
+    center=(0.0, 0.0, -1.7655),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.5,
+    length=3.33,
+    detector=True,
+)
+
+_BUNDLE_1_1_BASE_DATA = [
+    {"name": "BUNDLE_1_1 Mirror 1", "phi": 31.424112270736885, "center": (-0.7647815417, 1.0251094165, -2.1122), "radius": BUNDLE_1_1_RADIUS_M},
+    {"name": "BUNDLE_1_1 Mirror 2", "phi": 25.924090268233982, "center": (-0.76570152805, 1.025501367, -2.11135), "radius": BUNDLE_1_1_RADIUS_M},
+    {"name": "BUNDLE_1_1 Mirror 3", "phi": 20.42413750245636, "center": (-0.7658220822, 1.02649407375, -2.1105), "radius": BUNDLE_1_1_RADIUS_M},
+    {"name": "BUNDLE_1_1 Mirror 4", "phi": 53.42408141233929, "center": (-0.76502265, 1.02709483, -2.1105), "radius": BUNDLE_1_1_RADIUS_M},
+    {"name": "BUNDLE_1_1 Mirror 5", "phi": 47.92405613649733, "center": (-0.764102663675, 1.0267028795, -2.11135), "radius": BUNDLE_1_1_RADIUS_M},
+    {"name": "BUNDLE_1_1 Mirror 6", "phi": 42.42405433213915, "center": (-0.7639821095, 1.02571017275, -2.1122), "radius": BUNDLE_1_1_RADIUS_M},
+    {"name": "BUNDLE_1_1 Mirror 7", "phi": 36.92407312003851, "center": (-0.764902095875, 1.026102123, -2.11135), "radius": BUNDLE_1_1_RADIUS_M},
+]
+
+
+def _rotate_xy_point(point: tuple[float, float, float], pivot: tuple[float, float, float], angle_deg: float) -> tuple[float, float, float]:
+    angle_rad = math.radians(angle_deg)
+    cos_a = math.cos(angle_rad)
+    sin_a = math.sin(angle_rad)
+    dx = point[0] - pivot[0]
+    dy = point[1] - pivot[1]
+    return (
+        pivot[0] + cos_a * dx - sin_a * dy,
+        pivot[1] + sin_a * dx + cos_a * dy,
+        point[2],
+    )
+
+
+def _rotate_bundle_data(
+    data: List[Dict[str, object]],
+    pivot: tuple[float, float, float],
+    angle_deg: float,
+) -> List[Dict[str, object]]:
+    rotated: List[Dict[str, object]] = []
+    for item in data:
+        center = tuple(float(v) for v in item["center"])
+        rotated.append(
+            {
+                **item,
+                "center": _rotate_xy_point(center, pivot, angle_deg),
+                "phi": float(item["phi"]) + angle_deg,
+            }
+        )
+    return rotated
+
+
+def _translate_bundle_data(
+    data: List[Dict[str, object]],
+    *,
+    name_prefix: str,
+    dx: float = 0.0,
+    dy: float = 0.0,
+    dz: float = 0.0,
+) -> List[Dict[str, object]]:
+    translated: List[Dict[str, object]] = []
+    for idx, item in enumerate(data, start=1):
+        center = tuple(float(v) for v in item["center"])
+        translated.append(
+            {
+                **item,
+                "name": f"{name_prefix} Mirror {idx}",
+                "center": (
+                    center[0] + dx,
+                    center[1] + dy,
+                    center[2] + dz,
+                ),
+            }
+        )
+    return translated
+
+
+def _center_of_bundle_data(data: List[Dict[str, object]]) -> tuple[float, float, float]:
+    centers = np.asarray([item["center"] for item in data], dtype=float)
+    return tuple(float(v) for v in np.mean(centers, axis=0))
+
+
+def _recenter_bundle_data(
+    data: List[Dict[str, object]],
+    *,
+    name_prefix: str,
+    center: tuple[float, float, float],
+) -> List[Dict[str, object]]:
+    current_center = _center_of_bundle_data(data)
+    return _translate_bundle_data(
+        data,
+        name_prefix=name_prefix,
+        dx=float(center[0]) - current_center[0],
+        dy=float(center[1]) - current_center[1],
+        dz=float(center[2]) - current_center[2],
+    )
+
+
+BUNDLE_1_1_DATA = _rotate_bundle_data(
+    _BUNDLE_1_1_BASE_DATA,
+    BUNDLE_1_1_ROTATION_CENTER,
+    BUNDLE_1_1_ROTATION_DEG,
+)
+
+
+def make_bundle(name: str, data: List[Dict[str, object]]) -> MirrorArrayBundle:
+    return MirrorArrayBundle(
+        data,
+        name=name,
+        reflectance=0.5,
+        transmittance=0.5,
+        reflect_from_minus_side=False,
+        reflect_from_plus_side=True,
+    )
+
+
+def make_bundle_1_1() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_1_1", BUNDLE_1_1_DATA)
+
+
+BUNDLE_1_2_DATA = _translate_bundle_data(
+    BUNDLE_1_1_DATA,
+    name_prefix="BUNDLE_1_2",
+    dz=BUNDLE_1_2_Z_SHIFT_M,
+)
+
+
+def make_bundle_1_2() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_1_2", BUNDLE_1_2_DATA)
+
+
+BUNDLE_1_3_DATA = _translate_bundle_data(
+    BUNDLE_1_1_DATA,
+    name_prefix="BUNDLE_1_3",
+    dz=BUNDLE_1_3_Z_SHIFT_M,
+)
+
+
+def make_bundle_1_3() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_1_3", BUNDLE_1_3_DATA)
+
+
+BUNDLE_1_4_DATA = _translate_bundle_data(
+    BUNDLE_1_1_DATA,
+    name_prefix="BUNDLE_1_4",
+    dz=BUNDLE_1_4_Z_SHIFT_M,
+)
+
+
+def make_bundle_1_4() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_1_4", BUNDLE_1_4_DATA)
+
+
+def _make_bundle_2_data(name_prefix: str, dz: float = 0.0) -> List[Dict[str, object]]:
+    return _rotate_bundle_data(
+        _translate_bundle_data(
+            BUNDLE_1_1_DATA,
+            name_prefix=name_prefix,
+            dx=BUNDLE_2_DX,
+            dy=BUNDLE_2_DY,
+            dz=dz,
+        ),
+        BUNDLE_2_ROTATION_CENTER,
+        BUNDLE_2_ROTATION_DEG,
+    )
+
+
+BUNDLE_2_1_DATA = _make_bundle_2_data("BUNDLE_2_1")
+
+
+def make_bundle_2_1() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_2_1", BUNDLE_2_1_DATA)
+
+
+BUNDLE_2_2_DATA = _make_bundle_2_data("BUNDLE_2_2", dz=BUNDLE_1_2_Z_SHIFT_M)
+
+
+def make_bundle_2_2() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_2_2", BUNDLE_2_2_DATA)
+
+
+BUNDLE_2_3_DATA = _make_bundle_2_data("BUNDLE_2_3", dz=BUNDLE_1_3_Z_SHIFT_M)
+
+
+def make_bundle_2_3() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_2_3", BUNDLE_2_3_DATA)
+
+
+BUNDLE_2_4_DATA = _make_bundle_2_data("BUNDLE_2_4", dz=BUNDLE_1_4_Z_SHIFT_M)
+
+
+def make_bundle_2_4() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_2_4", BUNDLE_2_4_DATA)
+
+
+def _make_bundle_3_data(name_prefix: str, dz: float = 0.0) -> List[Dict[str, object]]:
+    return _rotate_bundle_data(
+        _translate_bundle_data(
+            BUNDLE_1_1_DATA,
+            name_prefix=name_prefix,
+            dx=BUNDLE_3_DX,
+            dy=BUNDLE_3_DY,
+            dz=dz,
+        ),
+        BUNDLE_3_ROTATION_CENTER,
+        BUNDLE_3_ROTATION_DEG,
+    )
+
+
+BUNDLE_3_1_DATA = _make_bundle_3_data("BUNDLE_3_1")
+
+
+def make_bundle_3_1() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_3_1", BUNDLE_3_1_DATA)
+
+
+BUNDLE_3_2_DATA = _make_bundle_3_data("BUNDLE_3_2", dz=BUNDLE_1_2_Z_SHIFT_M)
+
+
+def make_bundle_3_2() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_3_2", BUNDLE_3_2_DATA)
+
+
+BUNDLE_3_3_DATA = _make_bundle_3_data("BUNDLE_3_3", dz=BUNDLE_1_3_Z_SHIFT_M)
+
+
+def make_bundle_3_3() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_3_3", BUNDLE_3_3_DATA)
+
+
+BUNDLE_3_4_DATA = _make_bundle_3_data("BUNDLE_3_4", dz=BUNDLE_1_4_Z_SHIFT_M)
+
+
+def make_bundle_3_4() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_3_4", BUNDLE_3_4_DATA)
+
+
+def _make_bundle_4_data(name_prefix: str, dz: float = 0.0) -> List[Dict[str, object]]:
+    return _rotate_bundle_data(
+        _translate_bundle_data(
+            BUNDLE_1_1_DATA,
+            name_prefix=name_prefix,
+            dx=BUNDLE_4_DX,
+            dy=BUNDLE_4_DY,
+            dz=dz,
+        ),
+        BUNDLE_4_ROTATION_CENTER,
+        BUNDLE_4_ROTATION_DEG,
+    )
+
+
+BUNDLE_4_1_DATA = _make_bundle_4_data("BUNDLE_4_1")
+
+
+def make_bundle_4_1() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_4_1", BUNDLE_4_1_DATA)
+
+
+BUNDLE_4_2_DATA = _make_bundle_4_data("BUNDLE_4_2", dz=BUNDLE_1_2_Z_SHIFT_M)
+
+
+def make_bundle_4_2() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_4_2", BUNDLE_4_2_DATA)
+
+
+BUNDLE_4_3_DATA = _make_bundle_4_data("BUNDLE_4_3", dz=BUNDLE_1_3_Z_SHIFT_M)
+
+
+def make_bundle_4_3() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_4_3", BUNDLE_4_3_DATA)
+
+
+BUNDLE_4_4_DATA = _make_bundle_4_data("BUNDLE_4_4", dz=BUNDLE_1_4_Z_SHIFT_M)
+
+BUNDLE_1_1_DATA = _recenter_bundle_data(
+    BUNDLE_1_1_DATA,
+    name_prefix="BUNDLE_1_1",
+    center=(-0.7649020959, 1.026102123, -2.11135),
+)
+BUNDLE_1_2_DATA = _recenter_bundle_data(
+    BUNDLE_1_2_DATA,
+    name_prefix="BUNDLE_1_2",
+    center=(-0.7728164745, 1.020154635, -2.44135),
+)
+BUNDLE_1_3_DATA = _recenter_bundle_data(
+    BUNDLE_1_3_DATA,
+    name_prefix="BUNDLE_1_3",
+    center=(-0.7589546081, 1.018187745, -2.77135),
+)
+BUNDLE_1_4_DATA = _recenter_bundle_data(
+    BUNDLE_1_4_DATA,
+    name_prefix="BUNDLE_1_4",
+    center=(-0.7668689867, 1.012240257, -3.10135),
+)
+
+BUNDLE_2_1_DATA = _recenter_bundle_data(
+    BUNDLE_2_1_DATA,
+    name_prefix="BUNDLE_2_1",
+    center=(-1.026102123, -0.7649020959, -2.11135),
+)
+BUNDLE_2_2_DATA = _recenter_bundle_data(
+    BUNDLE_2_2_DATA,
+    name_prefix="BUNDLE_2_2",
+    center=(-1.020154635, -0.7728164745, -2.44135),
+)
+BUNDLE_2_3_DATA = _recenter_bundle_data(
+    BUNDLE_2_3_DATA,
+    name_prefix="BUNDLE_2_3",
+    center=(-1.018187745, -0.7589546081, -2.77135),
+)
+BUNDLE_2_4_DATA = _recenter_bundle_data(
+    BUNDLE_2_4_DATA,
+    name_prefix="BUNDLE_2_4",
+    center=(-1.012240257, -0.7668689867, -3.10135),
+)
+
+BUNDLE_3_1_DATA = _recenter_bundle_data(
+    BUNDLE_3_1_DATA,
+    name_prefix="BUNDLE_3_1",
+    center=(0.7649020959, -1.026102123, -2.11135),
+)
+BUNDLE_3_2_DATA = _recenter_bundle_data(
+    BUNDLE_3_2_DATA,
+    name_prefix="BUNDLE_3_2",
+    center=(0.7728164745, -1.020154635, -2.44135),
+)
+BUNDLE_3_3_DATA = _recenter_bundle_data(
+    BUNDLE_3_3_DATA,
+    name_prefix="BUNDLE_3_3",
+    center=(0.7589546081, -1.018187745, -2.77135),
+)
+BUNDLE_3_4_DATA = _recenter_bundle_data(
+    BUNDLE_3_4_DATA,
+    name_prefix="BUNDLE_3_4",
+    center=(0.7668689867, -1.012240257, -3.10135),
+)
+
+BUNDLE_4_1_DATA = _recenter_bundle_data(
+    BUNDLE_4_1_DATA,
+    name_prefix="BUNDLE_4_1",
+    center=(1.026102123, 0.7649020959, -2.11135),
+)
+BUNDLE_4_2_DATA = _recenter_bundle_data(
+    BUNDLE_4_2_DATA,
+    name_prefix="BUNDLE_4_2",
+    center=(1.020154635, 0.7728164745, -2.44135),
+)
+BUNDLE_4_3_DATA = _recenter_bundle_data(
+    BUNDLE_4_3_DATA,
+    name_prefix="BUNDLE_4_3",
+    center=(1.018187745, 0.7589546081, -2.77135),
+)
+BUNDLE_4_4_DATA = _recenter_bundle_data(
+    BUNDLE_4_4_DATA,
+    name_prefix="BUNDLE_4_4",
+    center=(1.012240257, 0.7668689867, -3.10135),
+)
+
+
+def make_bundle_4_4() -> MirrorArrayBundle:
+    return make_bundle("BUNDLE_4_4", BUNDLE_4_4_DATA)
 
 
 SOURCE_TEMPLATE = GaussianBeamSource(
@@ -199,7 +627,7 @@ SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
     center=(-0.1388869881677073, -0.2755569348737447, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
     front_reflectance=0.5,
     front_transmittance=0.5,
@@ -216,7 +644,7 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
     center=(-0.218148, -0.213819, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
     front_reflectance=0.5,
     front_transmittance=0.5,
@@ -230,13 +658,13 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
 
 PRISM_1 = TriangularPrism(
     name="Prism_72_5deg",
-    center=(0.311735, 0.098289, 0.025),
+    center=(0.3107809928, 0.09798887063, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(0.300706, -0.953717, 0.0),
+    in_plane_reference=(0.3007058, -0.95371695, 0.0),
     vertices_2d=[
-        (-0.026645, -0.013363),
-        (0.026645, -0.013363),
-        (0.0, 0.026725)
+        (-0.026644999988928504, -0.013362922497475945),
+        (0.02664499999877028, -0.013362922497475945),
+        (-9.841807056820695e-12, 0.026725844994951786)
     ],
     thickness=0.05,
     n_glass=1.5,
@@ -256,7 +684,7 @@ PRISM_2 = TriangularPrism(
         (0.0, 0.026725)
     ],
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
     side_reflectances=[0.5, 0.0, 0.5],
     side_transmittances=[0.5, 1.0, 0.5],
@@ -264,19 +692,19 @@ PRISM_2 = TriangularPrism(
 
 PRISM_3 = TriangularPrism(
     name="Prism_114_5deg",
-    center=(0.293337, -0.133680, 0.025),
+    center=(0.29286935123333335, -0.13470485113333333, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(-0.414693, -0.909961, 0.0),
+    in_plane_reference=(0.5253231491917432, -0.8509028134563072, 0.0),
     vertices_2d=[
-        (-0.026645, -0.013362),
-        (0.026645, -0.013362),
-        (0.0, 0.026725)
+        (0.003620019968861894, -0.029587483460877778),
+        (0.022257942427050502, 0.014793741799430887),
+        (-0.02587796239591241, 0.01479374166144684)
     ],
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
-    side_reflectances=[0.5, 0.0, 0.5],
-    side_transmittances=[0.5, 1.0, 0.5],
+    side_reflectances=[0.0, 0.5, 0.5],
+    side_transmittances=[1.0, 0.5, 0.5],
 )
 
 PRISM_4 = TriangularPrism(
@@ -290,7 +718,7 @@ PRISM_4 = TriangularPrism(
         (0.0, 0.026726)
     ],
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
     side_reflectances=[0.5, 0.5, 0.0],
     side_transmittances=[0.5, 0.5, 1.0],
@@ -307,7 +735,7 @@ PRISM_5 = TriangularPrism(
         (0.0, 0.026726)
     ],
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
     side_reflectances=[0.5, 0.5, 0.0],
     side_transmittances=[0.5, 0.5, 1.0],
@@ -318,7 +746,7 @@ SEMI_MIRROR_3 = SemiTransparentMirror(
     center=(0.221274, -0.213235, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
-    n_glass=1.501,
+    n_glass=1.5,
     n_outside=AIR,
     front_reflectance=0.5,
     front_transmittance=0.5,
@@ -337,8 +765,38 @@ def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
     return source
 
 
+def emit_initial_rays(source: GaussianBeamSource, target_count: int = INITIAL_RAY_COUNT):
+    rays = source.emit()
+    while rays.n_rays < target_count:
+        source.radial_positions += 1
+        rays = source.emit()
+    if rays.n_rays == target_count:
+        return rays
+
+    # The hexagonal ring source emits only certain discrete counts, so trim the
+    # nearest larger bundle down to an exact launch count deterministically.
+    keep_idx = np.floor(np.linspace(0, rays.n_rays, target_count, endpoint=False)).astype(np.int64)
+    return rays.subset(rays.xp.asarray(keep_idx, dtype=np.int64))
+
+
 def build_initial_scene() -> Scene:
     scene = Scene()
+    bundle_1_1 = make_bundle_1_1()
+    bundle_1_2 = make_bundle_1_2()
+    bundle_1_3 = make_bundle_1_3()
+    bundle_1_4 = make_bundle_1_4()
+    bundle_2_1 = make_bundle_2_1()
+    bundle_2_2 = make_bundle_2_2()
+    bundle_2_3 = make_bundle_2_3()
+    bundle_2_4 = make_bundle_2_4()
+    bundle_3_1 = make_bundle_3_1()
+    bundle_3_2 = make_bundle_3_2()
+    bundle_3_3 = make_bundle_3_3()
+    bundle_3_4 = make_bundle_3_4()
+    bundle_4_1 = make_bundle_4_1()
+    bundle_4_2 = make_bundle_4_2()
+    bundle_4_3 = make_bundle_4_3()
+    bundle_4_4 = make_bundle_4_4()
     scene.add(
         copy.deepcopy(PERISCOPE_MIRROR_1),
         copy.deepcopy(PERISCOPE_MIRROR_2),
@@ -362,8 +820,57 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(PRISM_4),
         copy.deepcopy(PRISM_5),
         copy.deepcopy(SEMI_MIRROR_3),
+        copy.deepcopy(SCREEN_1),
+        copy.deepcopy(SCREEN_2),
+        copy.deepcopy(SCREEN_3),
+        copy.deepcopy(SCREEN_4),
+        copy.deepcopy(CYLINDRICAL_SCREEN_1),
     )
+    scene.add(*bundle_1_1.build_surfaces())
+    scene.add(*bundle_1_2.build_surfaces())
+    scene.add(*bundle_1_3.build_surfaces())
+    scene.add(*bundle_1_4.build_surfaces())
+    scene.add(*bundle_2_1.build_surfaces())
+    scene.add(*bundle_2_2.build_surfaces())
+    scene.add(*bundle_2_3.build_surfaces())
+    scene.add(*bundle_2_4.build_surfaces())
+    scene.add(*bundle_3_1.build_surfaces())
+    scene.add(*bundle_3_2.build_surfaces())
+    scene.add(*bundle_3_3.build_surfaces())
+    scene.add(*bundle_3_4.build_surfaces())
+    scene.add(*bundle_4_1.build_surfaces())
+    scene.add(*bundle_4_2.build_surfaces())
+    scene.add(*bundle_4_3.build_surfaces())
+    scene.add(*bundle_4_4.build_surfaces())
     return scene
+
+
+def build_bundle_overlays(bundle: MirrorArrayBundle) -> List[Dict[str, object]]:
+    overlays: List[Dict[str, object]] = []
+    for mirror in bundle.build_surfaces():
+        overlays.append(
+            make_circle_outline(
+                name=mirror.name,
+                center=mirror.center,
+                normal=mirror.normal,
+                radius=float(mirror.radius),
+                color=SEMI_TRANSPARENT_MIRROR_COLOR,
+                in_plane_reference=mirror.in_plane_reference,
+            )
+        )
+    return overlays
+
+
+def write_bundle_plot(path: Path, result: object, bundle: MirrorArrayBundle) -> None:
+    bundle_result = copy.copy(result)
+    bundle_result.segments = []
+    bundle_result.detector_hits = []
+    write_plotly_trajectories(
+        path,
+        bundle_result,
+        title=bundle.name,
+        overlays=build_bundle_overlays(bundle),
+    )
 
 
 def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:
@@ -453,7 +960,7 @@ def main() -> None:
     args = parser.parse_args()
 
     source = build_initial_source(args.backend)
-    rays = source.emit()
+    rays = emit_initial_rays(source)
     scene = build_initial_scene()
     tracer = RayTracer(
         scene=scene,
@@ -501,6 +1008,27 @@ def main() -> None:
     print(f"  - {PRISM_4.name}")
     print(f"  - {PRISM_5.name}")
     print(f"  - {SEMI_MIRROR_3.name}")
+    print(f"  - {SCREEN_1.name}")
+    print(f"  - {SCREEN_2.name}")
+    print(f"  - {SCREEN_3.name}")
+    print(f"  - {SCREEN_4.name}")
+    print(f"  - {CYLINDRICAL_SCREEN_1.name}")
+    print("  - BUNDLE_1_1 (7 disk mirrors)")
+    print("  - BUNDLE_1_2 (7 disk mirrors)")
+    print("  - BUNDLE_1_3 (7 disk mirrors)")
+    print("  - BUNDLE_1_4 (7 disk mirrors)")
+    print("  - BUNDLE_2_1 (7 disk mirrors)")
+    print("  - BUNDLE_2_2 (7 disk mirrors)")
+    print("  - BUNDLE_2_3 (7 disk mirrors)")
+    print("  - BUNDLE_2_4 (7 disk mirrors)")
+    print("  - BUNDLE_3_1 (7 disk mirrors)")
+    print("  - BUNDLE_3_2 (7 disk mirrors)")
+    print("  - BUNDLE_3_3 (7 disk mirrors)")
+    print("  - BUNDLE_3_4 (7 disk mirrors)")
+    print("  - BUNDLE_4_1 (7 disk mirrors)")
+    print("  - BUNDLE_4_2 (7 disk mirrors)")
+    print("  - BUNDLE_4_3 (7 disk mirrors)")
+    print("  - BUNDLE_4_4 (7 disk mirrors)")
     print("Detector power summary:")
     if not power_summary:
         print("  <no detector hits>")
@@ -525,6 +1053,22 @@ def main() -> None:
 
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
+        bundle_1_1 = make_bundle_1_1()
+        bundle_1_2 = make_bundle_1_2()
+        bundle_1_3 = make_bundle_1_3()
+        bundle_1_4 = make_bundle_1_4()
+        bundle_2_1 = make_bundle_2_1()
+        bundle_2_2 = make_bundle_2_2()
+        bundle_2_3 = make_bundle_2_3()
+        bundle_2_4 = make_bundle_2_4()
+        bundle_3_1 = make_bundle_3_1()
+        bundle_3_2 = make_bundle_3_2()
+        bundle_3_3 = make_bundle_3_3()
+        bundle_3_4 = make_bundle_3_4()
+        bundle_4_1 = make_bundle_4_1()
+        bundle_4_2 = make_bundle_4_2()
+        bundle_4_3 = make_bundle_4_3()
+        bundle_4_4 = make_bundle_4_4()
         overlays = [
             make_circle_outline(
                 name="Source waist",
@@ -621,6 +1165,67 @@ def main() -> None:
                 radius=float(TURNING_ROUND_MIRROR_4.radius),
                 color=PLANE_MIRROR_COLOR,
                 in_plane_reference=TURNING_ROUND_MIRROR_4.in_plane_reference,
+            ),
+            *build_bundle_overlays(bundle_1_1),
+            *build_bundle_overlays(bundle_1_2),
+            *build_bundle_overlays(bundle_1_3),
+            *build_bundle_overlays(bundle_1_4),
+            *build_bundle_overlays(bundle_2_1),
+            *build_bundle_overlays(bundle_2_2),
+            *build_bundle_overlays(bundle_2_3),
+            *build_bundle_overlays(bundle_2_4),
+            *build_bundle_overlays(bundle_3_1),
+            *build_bundle_overlays(bundle_3_2),
+            *build_bundle_overlays(bundle_3_3),
+            *build_bundle_overlays(bundle_3_4),
+            *build_bundle_overlays(bundle_4_1),
+            *build_bundle_overlays(bundle_4_2),
+            *build_bundle_overlays(bundle_4_3),
+            *build_bundle_overlays(bundle_4_4),
+            *make_disk_overlays(
+                name=SCREEN_1.name,
+                center=SCREEN_1.center,
+                normal=SCREEN_1.normal,
+                radius=float(SCREEN_1.radius),
+                color=SCREEN_COLOR,
+                in_plane_reference=SCREEN_1.in_plane_reference,
+                opacity=0.92,
+            ),
+            *make_disk_overlays(
+                name=SCREEN_2.name,
+                center=SCREEN_2.center,
+                normal=SCREEN_2.normal,
+                radius=float(SCREEN_2.radius),
+                color=SCREEN_COLOR,
+                in_plane_reference=SCREEN_2.in_plane_reference,
+                opacity=0.92,
+            ),
+            *make_disk_overlays(
+                name=SCREEN_3.name,
+                center=SCREEN_3.center,
+                normal=SCREEN_3.normal,
+                radius=float(SCREEN_3.radius),
+                color=SCREEN_COLOR,
+                in_plane_reference=SCREEN_3.in_plane_reference,
+                opacity=0.92,
+            ),
+            *make_disk_overlays(
+                name=SCREEN_4.name,
+                center=SCREEN_4.center,
+                normal=SCREEN_4.normal,
+                radius=float(SCREEN_4.radius),
+                color=SCREEN_COLOR,
+                in_plane_reference=SCREEN_4.in_plane_reference,
+                opacity=0.92,
+            ),
+            *make_cylindrical_surface_overlays(
+                name=CYLINDRICAL_SCREEN_1.name,
+                center=CYLINDRICAL_SCREEN_1.center,
+                axis=CYLINDRICAL_SCREEN_1.axis,
+                radius=float(CYLINDRICAL_SCREEN_1.radius),
+                length=float(CYLINDRICAL_SCREEN_1.length),
+                color=CYLINDRICAL_SCREEN_COLOR,
+                opacity=0.0,
             ),
             make_rectangle_outline(
                 name=TURNING_SQUARE_MIRROR_1.name,
@@ -739,6 +1344,11 @@ def main() -> None:
             result,
             title="Initial 35 ns scene",
             overlays=overlays,
+            detector_hit_exclude_prefixes=("Screen",),
+            trim_end_surface_prefixes=("Screen",),
+            trim_end_distance=5e-3,
+            min_segment_power=20.0,
+            always_include_surface_prefixes=("BUNDLE_",),
         )
         print(f"Wrote: {plot_path}")
         if args.open_plot:

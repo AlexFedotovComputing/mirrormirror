@@ -245,6 +245,134 @@ def make_circle_outline(
     }
 
 
+def make_disk_overlays(
+    *,
+    name: str,
+    center: Sequence[float],
+    normal: Sequence[float],
+    radius: float,
+    color: str,
+    in_plane_reference: Optional[Sequence[float]] = None,
+    line_width: float = 5,
+    samples: int = 96,
+    opacity: float = 0.22,
+) -> List[Dict[str, Any]]:
+    c = np.asarray(center, dtype=float)
+    u, v, _ = _plane_basis(normal, in_plane_reference)
+    theta = np.linspace(0.0, 2.0 * np.pi, samples, endpoint=False, dtype=float)
+    rim = [c + radius * np.cos(t) * u + radius * np.sin(t) * v for t in theta]
+    vertices = [c] + rim
+
+    mesh = {
+        "type": "mesh3d",
+        "x": [float(p[0]) for p in vertices],
+        "y": [float(p[1]) for p in vertices],
+        "z": [float(p[2]) for p in vertices],
+        "i": [0] * samples,
+        "j": list(range(1, samples + 1)),
+        "k": [idx + 1 for idx in range(1, samples)] + [1],
+        "name": name,
+        "color": color,
+        "opacity": opacity,
+        "flatshading": True,
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+    outline = make_circle_outline(
+        name=f"{name} outline",
+        center=center,
+        normal=normal,
+        radius=radius,
+        color=color,
+        in_plane_reference=in_plane_reference,
+        line_width=line_width,
+        samples=samples,
+    )
+    outline["showlegend"] = False
+    return [mesh, outline]
+
+
+def make_cylindrical_surface_overlays(
+    *,
+    name: str,
+    center: Sequence[float],
+    axis: Sequence[float],
+    radius: float,
+    length: float,
+    color: str,
+    line_width: float = 4,
+    samples: int = 96,
+    opacity: float = 0.18,
+) -> List[Dict[str, Any]]:
+    c = np.asarray(center, dtype=float)
+    u, v, w = _plane_basis(axis, None)
+    half_l = 0.5 * float(length)
+    theta = np.linspace(0.0, 2.0 * np.pi, samples, endpoint=False, dtype=float)
+
+    bottom_center = c - half_l * w
+    top_center = c + half_l * w
+    bottom = [bottom_center + radius * np.cos(t) * u + radius * np.sin(t) * v for t in theta]
+    top = [top_center + radius * np.cos(t) * u + radius * np.sin(t) * v for t in theta]
+    vertices = bottom + top
+
+    i_idx: List[int] = []
+    j_idx: List[int] = []
+    k_idx: List[int] = []
+    for idx in range(samples):
+        nxt = (idx + 1) % samples
+        i_idx.extend([idx, idx])
+        j_idx.extend([nxt, samples + nxt])
+        k_idx.extend([samples + idx, samples + idx])
+
+    mesh = {
+        "type": "mesh3d",
+        "x": [float(p[0]) for p in vertices],
+        "y": [float(p[1]) for p in vertices],
+        "z": [float(p[2]) for p in vertices],
+        "i": i_idx,
+        "j": j_idx,
+        "k": k_idx,
+        "name": name,
+        "color": color,
+        "opacity": opacity,
+        "flatshading": True,
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+
+    edge_x: List[float | None] = []
+    edge_y: List[float | None] = []
+    edge_z: List[float | None] = []
+    for ring in (bottom, top):
+        ring_closed = ring + [ring[0]]
+        for p in ring_closed:
+            edge_x.append(float(p[0]))
+            edge_y.append(float(p[1]))
+            edge_z.append(float(p[2]))
+        edge_x.append(None)
+        edge_y.append(None)
+        edge_z.append(None)
+
+    for idx in (0, samples // 4, samples // 2, (3 * samples) // 4):
+        p0 = bottom[idx]
+        p1 = top[idx]
+        edge_x.extend([float(p0[0]), float(p1[0]), None])
+        edge_y.extend([float(p0[1]), float(p1[1]), None])
+        edge_z.extend([float(p0[2]), float(p1[2]), None])
+
+    outline = {
+        "x": edge_x,
+        "y": edge_y,
+        "z": edge_z,
+        "mode": "lines",
+        "name": f"{name} outline",
+        "line": {"color": color, "width": line_width},
+        "hoverinfo": "skip",
+        "showlegend": False,
+    }
+    return [mesh, outline]
+
+
 def make_marker_trace(
     *,
     name: str,
@@ -330,6 +458,12 @@ def write_plotly_trajectories(
     overlays: Optional[List[Dict[str, Any]]] = None,
     max_segments_per_block: int = 400,
     intensity_bins: int = 16,
+    detector_hit_exclude_prefixes: Optional[Sequence[str]] = None,
+    trim_end_surface_prefixes: Optional[Sequence[str]] = None,
+    trim_end_distance: float = 0.0,
+    hide_end_surface_prefixes: Optional[Sequence[str]] = None,
+    min_segment_power: float = 0.0,
+    always_include_surface_prefixes: Optional[Sequence[str]] = None,
 ) -> None:
     import plotly.graph_objects as go
 
@@ -342,18 +476,45 @@ def write_plotly_trajectories(
         x1 = to_numpy(block["x1"])
         y1 = to_numpy(block["y1"])
         z1 = to_numpy(block["z1"])
+        powers = to_numpy(block["power"])
         intensities = to_numpy(block["intensity"])
+        surfaces = np.asarray(block["surface"], dtype=object)
         n = len(x0)
         stride = max(1, (n + max_segments_per_block - 1) // max_segments_per_block)
-        for i in range(0, n, stride):
+        for i in range(n):
+            surface = str(surfaces[i])
+            include = (i % stride == 0)
+            if always_include_surface_prefixes and any(surface.startswith(prefix) for prefix in always_include_surface_prefixes):
+                include = True
+            if not include:
+                continue
+            if float(powers[i]) < float(min_segment_power):
+                continue
+            end_x = float(x1[i])
+            end_y = float(y1[i])
+            end_z = float(z1[i])
+            if hide_end_surface_prefixes and any(surface.startswith(prefix) for prefix in hide_end_surface_prefixes):
+                continue
+            if trim_end_surface_prefixes and trim_end_distance > 0.0:
+                if any(surface.startswith(prefix) for prefix in trim_end_surface_prefixes):
+                    start = np.array((float(x0[i]), float(y0[i]), float(z0[i])), dtype=float)
+                    end = np.array((end_x, end_y, end_z), dtype=float)
+                    delta = end - start
+                    length = float(np.linalg.norm(delta))
+                    if length > 1e-12:
+                        trim = min(float(trim_end_distance), 0.25 * length)
+                        end = end - (delta / length) * trim
+                        end_x = float(end[0])
+                        end_y = float(end[1])
+                        end_z = float(end[2])
             sampled_segments.append(
                 {
                     "x0": float(x0[i]),
                     "y0": float(y0[i]),
                     "z0": float(z0[i]),
-                    "x1": float(x1[i]),
-                    "y1": float(y1[i]),
-                    "z1": float(z1[i]),
+                    "x1": end_x,
+                    "y1": end_y,
+                    "z1": end_z,
                     "intensity": float(intensities[i]),
                 }
             )
@@ -411,22 +572,25 @@ def write_plotly_trajectories(
         labels: List[str] = []
         for block in result.detector_hits:
             surface = str(block["surface"])
+            if detector_hit_exclude_prefixes and any(surface.startswith(prefix) for prefix in detector_hit_exclude_prefixes):
+                continue
             points = to_numpy(block["position"])
             for point in points:
                 xs.append(float(point[0]))
                 ys.append(float(point[1]))
                 zs.append(float(point[2]))
                 labels.append(surface)
-        fig.add_scatter3d(
-            x=xs,
-            y=ys,
-            z=zs,
-            mode="markers",
-            marker={"size": 4, "color": "#d62728"},
-            name="Detector hits",
-            text=labels,
-            hovertemplate="surface=%{text}<br>x=%{x:.4f}<br>y=%{y:.4f}<br>z=%{z:.4f}<extra></extra>",
-        )
+        if xs:
+            fig.add_scatter3d(
+                x=xs,
+                y=ys,
+                z=zs,
+                mode="markers",
+                marker={"size": 2, "color": "#d62728"},
+                name="Detector hits",
+                text=labels,
+                hovertemplate="surface=%{text}<br>x=%{x:.4f}<br>y=%{y:.4f}<br>z=%{z:.4f}<extra></extra>",
+            )
 
     if sampled_segments:
         fig.add_scatter3d(
