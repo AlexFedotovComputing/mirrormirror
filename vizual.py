@@ -626,7 +626,7 @@ def write_detector_screen_views(
             y=0.98,
             xref=f"x{axis_suffix} domain",
             yref=f"y{axis_suffix} domain",
-            text=f"e_{screen_index} = {ellipticity:.4f}" if np.isfinite(ellipticity) else f"e_{screen_index} = n/a",
+            text=f"e<sub>{screen_index}</sub> = {ellipticity:.4f}" if np.isfinite(ellipticity) else f"e<sub>{screen_index}</sub> = n/a",
             showarrow=False,
             xanchor="left",
             yanchor="top",
