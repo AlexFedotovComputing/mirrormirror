@@ -610,7 +610,7 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
     shape="rectangle",
     width=0.044,
     height=0.0081,
-    in_plane_reference=(-0.997441, -0.071497, 0.0),
+    in_plane_reference=(-0.997409708600264, -0.07193220891879001, 0.0),
 )
 
 PRISM_1 = TriangularPrism(
