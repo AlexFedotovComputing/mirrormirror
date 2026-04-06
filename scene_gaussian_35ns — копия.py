@@ -10,8 +10,8 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
-from raytrace_plotly import (
+from raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
+from vizual import (
     make_circle_outline,
     make_cylindrical_surface_overlays,
     make_disk_overlays,

@@ -10,14 +10,15 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
-from raytrace_plotly import (
+from raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
+from vizual import (
     make_circle_outline,
     make_cylindrical_surface_overlays,
     make_disk_overlays,
     make_rectangle_outline,
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
+    write_detector_screen_views,
     write_plotly_trajectories,
 )
 
@@ -1000,6 +1001,7 @@ def main() -> None:
 
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
+        screens_path = outdir / "screens_1_4.html"
         bundle_1_1 = make_bundle_1_1()
         bundle_1_2 = make_bundle_1_2()
         bundle_1_3 = make_bundle_1_3()
@@ -1297,9 +1299,22 @@ def main() -> None:
             min_segment_power=20.0,
             always_include_surface_prefixes=("BUNDLE_", "Cylindrical Screen"),
         )
+        write_detector_screen_views(
+            screens_path,
+            result,
+            title="Screen 1-4: detector hits and intensity distribution",
+            screens=[
+                {"name": SCREEN_1.name, "label": "Screen 1", "radius": float(SCREEN_1.radius)},
+                {"name": SCREEN_3.name, "label": "Screen 3", "radius": float(SCREEN_3.radius)},
+                {"name": SCREEN_2.name, "label": "Screen 2", "radius": float(SCREEN_2.radius)},
+                {"name": SCREEN_4.name, "label": "Screen 4", "radius": float(SCREEN_4.radius)},
+            ],
+        )
         print(f"Wrote: {plot_path}")
+        print(f"Wrote: {screens_path}")
         if args.open_plot:
             webbrowser.open(plot_path.resolve().as_uri())
+            webbrowser.open(screens_path.resolve().as_uri())
 
 if __name__ == "__main__":
     main()

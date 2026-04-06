@@ -63,7 +63,7 @@ pip install matplotlib plotly
 ## Quick start
 
 ```python
-from comsol_like_raytrace import GaussianBeamSource, RayTracer, build_demo_scene
+from raytrace import GaussianBeamSource, RayTracer, build_demo_scene
 
 source = GaussianBeamSource(
     waist_position=(-0.34448, -0.80321, 3.3199),

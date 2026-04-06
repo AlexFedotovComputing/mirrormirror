@@ -8,8 +8,8 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 
-from comsol_like_raytrace import GaussianBeamSource, RayTracer, build_demo_scene
-from raytrace_plotly import write_plotly_trajectories
+from raytrace import GaussianBeamSource, RayTracer, build_demo_scene
+from vizual import write_plotly_trajectories
 
 
 def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:
