@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -21,6 +20,80 @@ _SURFACE_COLORS = [
     "#bcbd22",
     "#17becf",
 ]
+
+
+def _parse_rgb_color(color: str) -> tuple[int, int, int] | None:
+    if color.startswith("rgb(") and color.endswith(")"):
+        parts = [part.strip() for part in color[4:-1].split(",")]
+        if len(parts) == 3:
+            return tuple(max(0, min(255, int(round(float(part))))) for part in parts)
+    return None
+
+
+def _darken_rgb_color(color: str, factor: float = 0.88) -> str:
+    rgb = _parse_rgb_color(color)
+    if rgb is None:
+        return color
+    r, g, b = (max(0, min(255, int(round(channel * factor)))) for channel in rgb)
+    return f"rgb({r}, {g}, {b})"
+
+
+def _increase_rgb_contrast(color: str, factor: float = 1.15, pivot: float = 128.0) -> str:
+    rgb = _parse_rgb_color(color)
+    if rgb is None:
+        return color
+    contrasted = tuple(
+        max(0, min(255, int(round(pivot + factor * (channel - pivot)))))
+        for channel in rgb
+    )
+    return f"rgb({contrasted[0]}, {contrasted[1]}, {contrasted[2]})"
+
+
+def _blend_rgb_color(color: str, target: str, weight: float) -> str:
+    rgb = _parse_rgb_color(color)
+    target_rgb = _parse_rgb_color(target)
+    if rgb is None or target_rgb is None:
+        return color
+    t = float(np.clip(weight, 0.0, 1.0))
+    blended = tuple(
+        max(0, min(255, int(round((1.0 - t) * src + t * dst))))
+        for src, dst in zip(rgb, target_rgb)
+    )
+    return f"rgb({blended[0]}, {blended[1]}, {blended[2]})"
+
+
+def _make_softened_colorscale(
+    base: str,
+    *,
+    start: float = 0.12,
+    end: float = 0.88,
+    blend_to_mid: float = 0.16,
+    darken_factor: float = 1.0,
+    contrast_factor: float = 1.0,
+    steps: int = 11,
+) -> list[list[object]]:
+    positions = np.linspace(float(start), float(end), int(steps), dtype=float)
+    colors = sample_colorscale(base, positions.tolist())
+    mid_color = sample_colorscale(base, [0.5])[0]
+    scale: list[list[object]] = []
+    normalized_positions = np.linspace(0.0, 1.0, int(steps), dtype=float)
+    for pos, color in zip(normalized_positions, colors):
+        softened = _blend_rgb_color(color, mid_color, weight=float(blend_to_mid))
+        softened = _increase_rgb_contrast(softened, factor=float(contrast_factor))
+        softened = _darken_rgb_color(softened, factor=float(darken_factor))
+        scale.append([float(pos), softened])
+    return scale
+
+
+_RAY_INTENSITY_COLORSCALE = _make_softened_colorscale(
+    "Dense",
+    start=0.04,
+    end=0.96,
+    blend_to_mid=0.04,
+    darken_factor=0.76,
+    contrast_factor=1.20,
+    steps=11,
+)
 
 
 def _normalize(v: Sequence[float]) -> np.ndarray:
@@ -640,7 +713,7 @@ def write_detector_screen_views(
     fig.update_layout(
         title=title,
         coloraxis={
-            "colorscale": "Viridis",
+            "colorscale": _RAY_INTENSITY_COLORSCALE,
             "cmin": 0.0,
             "cmax": max_intensity,
             "colorbar": {
@@ -651,6 +724,120 @@ def write_detector_screen_views(
         },
         margin={"l": 50, "r": 120, "t": 60, "b": 40},
         showlegend=False,
+    )
+    fig.write_html(path, include_plotlyjs=True)
+
+
+def write_single_detector_screen_view(
+    path: Path,
+    result: Any,
+    *,
+    screen: Dict[str, Any],
+    title: str,
+    grid_size: int = 80,
+) -> None:
+    import plotly.graph_objects as go
+
+    name = str(screen["name"])
+    label = str(screen.get("label", name))
+    half_width = 0.5 * float(screen["width"])
+    half_height = 0.5 * float(screen["height"])
+
+    u_parts: List[np.ndarray] = []
+    v_parts: List[np.ndarray] = []
+    i_parts: List[np.ndarray] = []
+    for block in result.detector_hits:
+        if str(block["surface"]) != name:
+            continue
+        u = np.asarray(to_numpy(block["local_u"]), dtype=float).reshape(-1)
+        v = np.asarray(to_numpy(block["local_v"]), dtype=float).reshape(-1)
+        intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
+        if u.size == 0:
+            continue
+        u_parts.append(u)
+        v_parts.append(v)
+        i_parts.append(intensity)
+
+    if u_parts:
+        u = np.concatenate(u_parts)
+        v = np.concatenate(v_parts)
+        intensity = np.concatenate(i_parts)
+        max_intensity = max(1.0, float(np.max(intensity)))
+    else:
+        u = np.zeros((0,), dtype=float)
+        v = np.zeros((0,), dtype=float)
+        intensity = np.zeros((0,), dtype=float)
+        max_intensity = 1.0
+
+    ellipticity = _ellipticity_ratio(u, v, intensity)
+
+    u_edges = np.linspace(-half_width, half_width, int(grid_size) + 1, dtype=float)
+    v_edges = np.linspace(-half_height, half_height, int(grid_size) + 1, dtype=float)
+    u_centers = 0.5 * (u_edges[:-1] + u_edges[1:])
+    v_centers = 0.5 * (v_edges[:-1] + v_edges[1:])
+
+    if u.size > 0:
+        count_grid, _, _ = np.histogram2d(u, v, bins=(u_edges, v_edges))
+        sum_grid, _, _ = np.histogram2d(u, v, bins=(u_edges, v_edges), weights=intensity)
+        avg_grid = np.full(count_grid.shape, np.nan, dtype=float)
+        mask = count_grid > 0
+        avg_grid[mask] = sum_grid[mask] / count_grid[mask]
+    else:
+        avg_grid = np.full((grid_size, grid_size), np.nan, dtype=float)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Heatmap(
+            x=u_centers,
+            y=v_centers,
+            z=avg_grid.T,
+            colorscale=_RAY_INTENSITY_COLORSCALE,
+            zmin=0.0,
+            zmax=max_intensity,
+            colorbar={"title": "I [W/m^2]", "x": 1.02, "tickformat": ".2e"},
+            hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=u.tolist(),
+            y=v.tolist(),
+            mode="markers",
+            marker={
+                "size": 5,
+                "color": intensity.tolist(),
+                "colorscale": _RAY_INTENSITY_COLORSCALE,
+                "cmin": 0.0,
+                "cmax": max_intensity,
+                "line": {"color": "#111111", "width": 0.4},
+                "opacity": 0.92,
+                "showscale": False,
+            },
+            name=f"{label} hits",
+            hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{marker.color:.3e} W/m^2<extra></extra>",
+            showlegend=False,
+        )
+    )
+    fig.update_layout(
+        title=title,
+        xaxis={"title": "u [m]", "range": [-half_width, half_width], "constrain": "domain"},
+        yaxis={"title": "v [m]", "range": [-half_height, half_height], "scaleanchor": "x", "scaleratio": 1, "constrain": "domain"},
+        margin={"l": 60, "r": 95, "t": 60, "b": 50},
+        showlegend=False,
+    )
+    fig.add_annotation(
+        x=1.02,
+        y=0.98,
+        xref="paper",
+        yref="paper",
+        text=f"e = {ellipticity:.4f}" if np.isfinite(ellipticity) else "e = n/a",
+        showarrow=False,
+        xanchor="left",
+        yanchor="top",
+        font={"size": 13, "color": "#111111"},
+        bgcolor="rgba(255,255,255,0.80)",
+        bordercolor="rgba(0,0,0,0.18)",
+        borderwidth=1,
     )
     fig.write_html(path, include_plotlyjs=True)
 
@@ -740,7 +927,7 @@ def write_plotly_trajectories(
 
         bins = max(1, int(intensity_bins))
         edges = np.linspace(log_min, log_max, bins + 1, dtype=float)
-        colors = sample_colorscale("Viridis", [i / max(1, bins - 1) for i in range(bins)])
+        colors = sample_colorscale(_RAY_INTENSITY_COLORSCALE, [i / max(1, bins - 1) for i in range(bins)])
         grouped_bins: List[Dict[str, List[float | None]]] = [{"x": [], "y": [], "z": []} for _ in range(bins)]
         for seg in sampled_segments:
             intensity = seg["intensity"]
@@ -791,7 +978,7 @@ def write_plotly_trajectories(
                 y=ys,
                 z=zs,
                 mode="markers",
-                marker={"size": 2, "color": "#d62728"},
+                marker={"size": 2, "color": "#444444"},
                 name="Detector hits",
                 text=labels,
                 hovertemplate="surface=%{text}<br>x=%{x:.4f}<br>y=%{y:.4f}<br>z=%{z:.4f}<extra></extra>",
@@ -806,7 +993,7 @@ def write_plotly_trajectories(
             marker={
                 "size": 0.1,
                 "color": [log_min, log_max],
-                "colorscale": "Viridis",
+                "colorscale": _RAY_INTENSITY_COLORSCALE,
                 "cmin": log_min,
                 "cmax": log_max,
                 "showscale": True,

@@ -19,6 +19,7 @@ from vizual import (
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
     write_detector_screen_views,
+    write_single_detector_screen_view,
     write_plotly_trajectories,
 )
 
@@ -104,6 +105,16 @@ CYLINDRICAL_SCREEN_1 = CylindricalScreen(
     radius=0.5,
     length=3.33,
     detector=True,
+)
+
+PRISM_2_BRANCH_PROBE_SCREEN = Detector(
+    name="Probe Screen Prism2 Branch",
+    center=(0.17516137, -0.25346948, 0.0250005),
+    normal=(0.76267452, 0.64678248, 0.0),
+    shape="rectangle",
+    width=0.2,
+    height=0.2,
+    in_plane_reference=(0.0, 0.0, 1.0),
 )
 
 _BUNDLE_1_1_BASE_DATA = [
@@ -1002,6 +1013,7 @@ def main() -> None:
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
         screens_path = outdir / "screens_1_4.html"
+        prism_2_probe_path = outdir / "probe_screen_prism_2_branch.html"
         bundle_1_1 = make_bundle_1_1()
         bundle_1_2 = make_bundle_1_2()
         bundle_1_3 = make_bundle_1_3()
@@ -1293,7 +1305,7 @@ def main() -> None:
             result,
             title="Initial 35 ns scene",
             overlays=overlays,
-            detector_hit_exclude_prefixes=("Screen",),
+            detector_hit_exclude_prefixes=("Screen", "Cylindrical Screen"),
             trim_end_surface_prefixes=("Screen",),
             trim_end_distance=5e-3,
             min_segment_power=20.0,
@@ -1305,16 +1317,40 @@ def main() -> None:
             title="Screen 1-4: detector hits and intensity distribution",
             screens=[
                 {"name": SCREEN_1.name, "label": "Screen 1", "radius": float(SCREEN_1.radius)},
-                {"name": SCREEN_3.name, "label": "Screen 3", "radius": float(SCREEN_3.radius)},
-                {"name": SCREEN_2.name, "label": "Screen 2", "radius": float(SCREEN_2.radius)},
                 {"name": SCREEN_4.name, "label": "Screen 4", "radius": float(SCREEN_4.radius)},
+                {"name": SCREEN_2.name, "label": "Screen 2", "radius": float(SCREEN_2.radius)},
+                {"name": SCREEN_3.name, "label": "Screen 3", "radius": float(SCREEN_3.radius)},
             ],
+        )
+        probe_source = build_initial_source(args.backend)
+        probe_rays = emit_initial_rays(probe_source)
+        probe_scene = build_initial_scene()
+        probe_scene.add(copy.deepcopy(PRISM_2_BRANCH_PROBE_SCREEN))
+        probe_tracer = RayTracer(
+            scene=probe_scene,
+            backend=args.backend,
+            max_interactions=args.max_interactions,
+            max_time_s=INTEGRATION_TIME_S,
+        )
+        probe_result = probe_tracer.trace(probe_rays)
+        write_single_detector_screen_view(
+            prism_2_probe_path,
+            probe_result,
+            title="Probe screen between Prism_158deg and SemiMirror_134_5deg",
+            screen={
+                "name": PRISM_2_BRANCH_PROBE_SCREEN.name,
+                "label": PRISM_2_BRANCH_PROBE_SCREEN.name,
+                "width": float(PRISM_2_BRANCH_PROBE_SCREEN.width),
+                "height": float(PRISM_2_BRANCH_PROBE_SCREEN.height),
+            },
         )
         print(f"Wrote: {plot_path}")
         print(f"Wrote: {screens_path}")
+        print(f"Wrote: {prism_2_probe_path}")
         if args.open_plot:
             webbrowser.open(plot_path.resolve().as_uri())
             webbrowser.open(screens_path.resolve().as_uri())
+            webbrowser.open(prism_2_probe_path.resolve().as_uri())
 
 if __name__ == "__main__":
     main()
