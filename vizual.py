@@ -547,13 +547,145 @@ def _ellipticity_ratio(u: np.ndarray, v: np.ndarray, intensity: np.ndarray) -> f
     return float(np.sqrt(minor / major))
 
 
+def _select_detector_block(
+    blocks: Sequence[Dict[str, Any]],
+    *,
+    primary_block_only: bool = False,
+) -> List[Dict[str, Any]]:
+    if not blocks:
+        return []
+    if not primary_block_only:
+        return list(blocks)
+
+    def block_key(block: Dict[str, Any]) -> Tuple[float, int]:
+        intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
+        total_intensity = float(np.sum(np.clip(intensity, 0.0, None)))
+        hits = int(intensity.size)
+        return total_intensity, hits
+
+    best = max(blocks, key=block_key)
+    return [best]
+
+
+def _apply_radial_quantile_filter(
+    u: np.ndarray,
+    v: np.ndarray,
+    intensity: np.ndarray,
+    *,
+    radial_quantile: Optional[float] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if radial_quantile is None or not (0.0 < float(radial_quantile) < 1.0):
+        return u, v, intensity
+    if u.size < 8:
+        return u, v, intensity
+
+    weights = np.clip(np.asarray(intensity, dtype=float).reshape(-1), 0.0, None)
+    total_weight = float(np.sum(weights))
+    if total_weight <= 0.0:
+        return u, v, intensity
+
+    pts = np.column_stack((u, v))
+    center = np.average(pts, axis=0, weights=weights)
+    radius = np.sqrt(np.sum((pts - center) ** 2, axis=1))
+    threshold = float(np.quantile(radius, float(radial_quantile)))
+    mask = radius <= threshold
+    if int(np.count_nonzero(mask)) < 8:
+        return u, v, intensity
+    return u[mask], v[mask], intensity[mask]
+
+
+def _collect_detector_hits(
+    result: Any,
+    name: str,
+    *,
+    primary_block_only: bool = False,
+    radial_quantile: Optional[float] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    matching_blocks = [block for block in result.detector_hits if str(block["surface"]) == name]
+    selected_blocks = _select_detector_block(matching_blocks, primary_block_only=primary_block_only)
+
+    u_parts: List[np.ndarray] = []
+    v_parts: List[np.ndarray] = []
+    i_parts: List[np.ndarray] = []
+    for block in selected_blocks:
+        u = np.asarray(to_numpy(block["local_u"]), dtype=float).reshape(-1)
+        v = np.asarray(to_numpy(block["local_v"]), dtype=float).reshape(-1)
+        intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
+        if u.size == 0:
+            continue
+        u_parts.append(u)
+        v_parts.append(v)
+        i_parts.append(intensity)
+
+    if not u_parts:
+        return (
+            np.zeros((0,), dtype=float),
+            np.zeros((0,), dtype=float),
+            np.zeros((0,), dtype=float),
+        )
+
+    u_all = np.concatenate(u_parts)
+    v_all = np.concatenate(v_parts)
+    i_all = np.concatenate(i_parts)
+    return _apply_radial_quantile_filter(
+        u_all,
+        v_all,
+        i_all,
+        radial_quantile=radial_quantile,
+    )
+
+
+def _smooth_grid(grid: np.ndarray, passes: int = 2) -> np.ndarray:
+    arr = np.asarray(grid, dtype=float)
+    if passes <= 0:
+        return arr
+    for _ in range(passes):
+        padded = np.pad(arr, 1, mode="edge")
+        arr = (
+            padded[:-2, :-2]
+            + 2.0 * padded[:-2, 1:-1]
+            + padded[:-2, 2:]
+            + 2.0 * padded[1:-1, :-2]
+            + 4.0 * padded[1:-1, 1:-1]
+            + 2.0 * padded[1:-1, 2:]
+            + padded[2:, :-2]
+            + 2.0 * padded[2:, 1:-1]
+            + padded[2:, 2:]
+        ) / 16.0
+    return arr
+
+
+def _smoothed_average_grid(
+    u: np.ndarray,
+    v: np.ndarray,
+    intensity: np.ndarray,
+    x_edges: np.ndarray,
+    y_edges: np.ndarray,
+    *,
+    smooth_passes: int = 2,
+) -> np.ndarray:
+    if u.size == 0:
+        return np.full((x_edges.size - 1, y_edges.size - 1), np.nan, dtype=float)
+
+    count_grid, _, _ = np.histogram2d(u, v, bins=(x_edges, y_edges))
+    sum_grid, _, _ = np.histogram2d(u, v, bins=(x_edges, y_edges), weights=intensity)
+
+    count_grid = _smooth_grid(count_grid, passes=smooth_passes)
+    sum_grid = _smooth_grid(sum_grid, passes=smooth_passes)
+
+    avg_grid = np.full(count_grid.shape, np.nan, dtype=float)
+    mask = count_grid > 1e-12
+    avg_grid[mask] = sum_grid[mask] / count_grid[mask]
+    return avg_grid
+
+
 def write_detector_screen_views(
     path: Path,
     result: Any,
     *,
     screens: Sequence[Dict[str, Any]],
     title: str,
-    grid_size: int = 80,
+    grid_size: int = 120,
 ) -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -565,29 +697,14 @@ def write_detector_screen_views(
     max_intensity = 0.0
     for screen in screens:
         name = str(screen["name"])
-        u_parts: List[np.ndarray] = []
-        v_parts: List[np.ndarray] = []
-        i_parts: List[np.ndarray] = []
-        for block in result.detector_hits:
-            if str(block["surface"]) != name:
-                continue
-            u = np.asarray(to_numpy(block["local_u"]), dtype=float).reshape(-1)
-            v = np.asarray(to_numpy(block["local_v"]), dtype=float).reshape(-1)
-            intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
-            if u.size == 0:
-                continue
-            u_parts.append(u)
-            v_parts.append(v)
-            i_parts.append(intensity)
-        if u_parts:
-            u_all = np.concatenate(u_parts)
-            v_all = np.concatenate(v_parts)
-            i_all = np.concatenate(i_parts)
+        u_all, v_all, i_all = _collect_detector_hits(
+            result,
+            name,
+            primary_block_only=bool(screen.get("primary_block_only", False)),
+            radial_quantile=screen.get("radial_quantile"),
+        )
+        if u_all.size > 0:
             max_intensity = max(max_intensity, float(np.max(i_all)))
-        else:
-            u_all = np.zeros((0,), dtype=float)
-            v_all = np.zeros((0,), dtype=float)
-            i_all = np.zeros((0,), dtype=float)
         hit_map[name] = {"u": u_all, "v": v_all, "intensity": i_all}
 
     if max_intensity <= 0.0:
@@ -617,14 +734,14 @@ def write_detector_screen_views(
 
         edges = np.linspace(-radius, radius, int(grid_size) + 1, dtype=float)
         centers = 0.5 * (edges[:-1] + edges[1:])
-        if u.size > 0:
-            count_grid, _, _ = np.histogram2d(u, v, bins=(edges, edges))
-            sum_grid, _, _ = np.histogram2d(u, v, bins=(edges, edges), weights=intensity)
-            avg_grid = np.full(count_grid.shape, np.nan, dtype=float)
-            mask = count_grid > 0
-            avg_grid[mask] = sum_grid[mask] / count_grid[mask]
-        else:
-            avg_grid = np.full((grid_size, grid_size), np.nan, dtype=float)
+        avg_grid = _smoothed_average_grid(
+            u,
+            v,
+            intensity,
+            edges,
+            edges,
+            smooth_passes=2,
+        )
 
         fig.add_trace(
             go.Heatmap(
@@ -632,6 +749,7 @@ def write_detector_screen_views(
                 y=centers,
                 z=avg_grid.T,
                 coloraxis="coloraxis",
+                zsmooth="best",
                 hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
                 showscale=False,
                 zmin=0.0,
@@ -734,7 +852,7 @@ def write_single_detector_screen_view(
     *,
     screen: Dict[str, Any],
     title: str,
-    grid_size: int = 80,
+    grid_size: int = 140,
 ) -> None:
     import plotly.graph_objects as go
 
@@ -743,30 +861,16 @@ def write_single_detector_screen_view(
     half_width = 0.5 * float(screen["width"])
     half_height = 0.5 * float(screen["height"])
 
-    u_parts: List[np.ndarray] = []
-    v_parts: List[np.ndarray] = []
-    i_parts: List[np.ndarray] = []
-    for block in result.detector_hits:
-        if str(block["surface"]) != name:
-            continue
-        u = np.asarray(to_numpy(block["local_u"]), dtype=float).reshape(-1)
-        v = np.asarray(to_numpy(block["local_v"]), dtype=float).reshape(-1)
-        intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
-        if u.size == 0:
-            continue
-        u_parts.append(u)
-        v_parts.append(v)
-        i_parts.append(intensity)
+    u, v, intensity = _collect_detector_hits(
+        result,
+        name,
+        primary_block_only=bool(screen.get("primary_block_only", False)),
+        radial_quantile=screen.get("radial_quantile"),
+    )
 
-    if u_parts:
-        u = np.concatenate(u_parts)
-        v = np.concatenate(v_parts)
-        intensity = np.concatenate(i_parts)
+    if u.size > 0:
         max_intensity = max(1.0, float(np.max(intensity)))
     else:
-        u = np.zeros((0,), dtype=float)
-        v = np.zeros((0,), dtype=float)
-        intensity = np.zeros((0,), dtype=float)
         max_intensity = 1.0
 
     ellipticity = _ellipticity_ratio(u, v, intensity)
@@ -776,14 +880,14 @@ def write_single_detector_screen_view(
     u_centers = 0.5 * (u_edges[:-1] + u_edges[1:])
     v_centers = 0.5 * (v_edges[:-1] + v_edges[1:])
 
-    if u.size > 0:
-        count_grid, _, _ = np.histogram2d(u, v, bins=(u_edges, v_edges))
-        sum_grid, _, _ = np.histogram2d(u, v, bins=(u_edges, v_edges), weights=intensity)
-        avg_grid = np.full(count_grid.shape, np.nan, dtype=float)
-        mask = count_grid > 0
-        avg_grid[mask] = sum_grid[mask] / count_grid[mask]
-    else:
-        avg_grid = np.full((grid_size, grid_size), np.nan, dtype=float)
+    avg_grid = _smoothed_average_grid(
+        u,
+        v,
+        intensity,
+        u_edges,
+        v_edges,
+        smooth_passes=2,
+    )
 
     fig = go.Figure()
     fig.add_trace(
@@ -794,6 +898,7 @@ def write_single_detector_screen_view(
             colorscale=_RAY_INTENSITY_COLORSCALE,
             zmin=0.0,
             zmax=max_intensity,
+            zsmooth="best",
             colorbar={"title": "I [W/m^2]", "x": 1.02, "tickformat": ".2e"},
             hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
         )

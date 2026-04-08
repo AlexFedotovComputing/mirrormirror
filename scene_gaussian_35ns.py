@@ -64,7 +64,7 @@ BUNDLE_4_DY = BUNDLE_4_CENTER_Y - BUNDLE_1_1_ROTATION_CENTER[1]
 
 SCREEN_1 = Detector(
     name="Screen 1",
-    center=(-0.7658855413, 1.01917119, -3.4505),
+    center=(-0.7658855413, 1.01917119, -3.4495),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -73,7 +73,7 @@ SCREEN_1 = Detector(
 
 SCREEN_2 = Detector(
     name="Screen 2",
-    center=(-1.01917119, -0.7658855413, -3.4505),
+    center=(-1.01917119, -0.7658855413, -3.4495),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -82,7 +82,7 @@ SCREEN_2 = Detector(
 
 SCREEN_3 = Detector(
     name="Screen 3",
-    center=(0.7658855413, -1.01917119, -3.4505),
+    center=(0.7658855413, -1.01917119, -3.4495),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -91,7 +91,7 @@ SCREEN_3 = Detector(
 
 SCREEN_4 = Detector(
     name="Screen 4",
-    center=(1.01917119, 0.7658855413, -3.4505),
+    center=(1.01917119, 0.7658855413, -3.4495),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -638,15 +638,17 @@ PRISM_1 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    side_reflectances=[0.5, 0.0, 0.5],
-    side_transmittances=[0.5, 1.0, 0.5],
+    reflectance=0.0,
+    transmittance=1.0,
+    side_reflectances=[0.0, 0.0, 0.0],
+    side_transmittances=[1.0, 1.0, 1.0],
 )
 
 PRISM_2 = TriangularPrism(
     name="Prism_158deg",
-    center=(0.117201, -0.290082, 0.025),
+    center=(0.11664002180605133, -0.2863352513883027, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(-0.9539791801093099, -0.29987380382915846, 0.0),
+    in_plane_reference=(-0.9644193246517309, -0.2643773179346128, 0.0),
     vertices_2d=[
         (-0.026645, -0.013363),
         (0.026645, -0.013363),
@@ -655,8 +657,10 @@ PRISM_2 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    side_reflectances=[0.5, 0.0, 0.5],
-    side_transmittances=[0.5, 1.0, 0.5],
+    reflectance=0.0,
+    transmittance=1.0,
+    side_reflectances=[0.0, 0.0, 0.0],
+    side_transmittances=[1.0, 1.0, 1.0],
 )
 
 PRISM_3 = TriangularPrism(
@@ -672,8 +676,10 @@ PRISM_3 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    side_reflectances=[0.0, 0.5, 0.5],
-    side_transmittances=[1.0, 0.5, 0.5],
+    reflectance=0.0,
+    transmittance=1.0,
+    side_reflectances=[0.0, 0.0, 0.0],
+    side_transmittances=[1.0, 1.0, 1.0],
 )
 
 PRISM_4 = TriangularPrism(
@@ -689,8 +695,10 @@ PRISM_4 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    side_reflectances=[0.5, 0.5, 0.0],
-    side_transmittances=[0.5, 0.5, 1.0],
+    reflectance=0.0,
+    transmittance=1.0,
+    side_reflectances=[0.0, 0.0, 0.0],
+    side_transmittances=[1.0, 1.0, 1.0],
 )
 
 PRISM_5 = TriangularPrism(
@@ -706,13 +714,15 @@ PRISM_5 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    side_reflectances=[0.5, 0.5, 0.0],
-    side_transmittances=[0.5, 0.5, 1.0],
+    reflectance=0.0,
+    transmittance=1.0,
+    side_reflectances=[0.0, 0.0, 0.0],
+    side_transmittances=[1.0, 1.0, 1.0],
 )
 
 SEMI_MIRROR_3 = SemiTransparentMirror(
     name="SemiMirror_134_5deg",
-    center=(0.221274, -0.213235, 0.025),
+    center=(0.22079954730233842, -0.20936883305823095, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
     n_glass=1.5,
@@ -724,7 +734,7 @@ SEMI_MIRROR_3 = SemiTransparentMirror(
     shape="rectangle",
     width=0.044,
     height=0.0081,
-    in_plane_reference=(-0.999159, 0.041003, 0.0),
+    in_plane_reference=(-0.9989601392462023, 0.045592106742375134, 0.0),
 )
 
 def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
@@ -1319,7 +1329,12 @@ def main() -> None:
                 {"name": SCREEN_1.name, "label": "Screen 1", "radius": float(SCREEN_1.radius)},
                 {"name": SCREEN_4.name, "label": "Screen 4", "radius": float(SCREEN_4.radius)},
                 {"name": SCREEN_2.name, "label": "Screen 2", "radius": float(SCREEN_2.radius)},
-                {"name": SCREEN_3.name, "label": "Screen 3", "radius": float(SCREEN_3.radius)},
+                {
+                    "name": SCREEN_3.name,
+                    "label": "Screen 3",
+                    "radius": float(SCREEN_3.radius),
+                    "primary_block_only": True,
+                },
             ],
         )
         probe_source = build_initial_source(args.backend)
@@ -1342,6 +1357,8 @@ def main() -> None:
                 "label": PRISM_2_BRANCH_PROBE_SCREEN.name,
                 "width": float(PRISM_2_BRANCH_PROBE_SCREEN.width),
                 "height": float(PRISM_2_BRANCH_PROBE_SCREEN.height),
+                "primary_block_only": True,
+                "radial_quantile": 0.99,
             },
         )
         print(f"Wrote: {plot_path}")
