@@ -209,8 +209,8 @@ def make_bundle(name: str, data: List[Dict[str, object]]) -> MirrorArrayBundle:
     return MirrorArrayBundle(
         data,
         name=name,
-        reflectance=0.5,
-        transmittance=0.5,
+        reflectance=1.0,
+        transmittance=0.0,
         reflect_from_minus_side=False,
         reflect_from_plus_side=True,
     )
@@ -476,7 +476,7 @@ ONE_OF_MANY_MIRRORS = PlaneMirror(
 
 BLOCK_MIRROR_1 = BlockMirror(
     name="BlockMirror_44_9deg",
-    center=(0.216890, 0.221857, 0.025),
+    center=(0.216787, 0.221857, 0.025),
     normal=(0.0, 0.0, 1.0),
     width=0.044,
     height=0.0081,
@@ -498,7 +498,7 @@ BLOCK_MIRROR_2 = BlockMirror(
 
 ON_ENTER_BEAMSPLITTER = PlaneMirror(
     name="On enter beamsplitter",
-    center=(-0.06988408707129516, -0.3264969281652379, 0.025),
+    center=(-0.069232, -0.326711, 0.025),
     normal=(-0.566592014759144, 0.42305258397884055, 0.7071067811865476),
     shape="rectangle",
     width=0.03,
@@ -627,9 +627,9 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
 
 PRISM_1 = TriangularPrism(
     name="Prism_72_5deg",
-    center=(0.3112809928, 0.09698887063, 0.025),
+    center=(0.3112809928, 0.101876, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(0.3007058, -0.95371695, 0.0),
+    in_plane_reference=(0.24547658281228704, -0.9694025201956846, 0.0),
     vertices_2d=[
         (-0.026644999988928504, -0.013362922497475945),
         (0.02664499999877028, -0.013362922497475945),
@@ -646,9 +646,9 @@ PRISM_1 = TriangularPrism(
 
 PRISM_2 = TriangularPrism(
     name="Prism_158deg",
-    center=(0.11664002180605133, -0.2863352513883027, 0.025),
+    center=(0.110033, -0.289357, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(-0.9644193246517309, -0.2643773179346128, 0.0),
+    in_plane_reference=(-0.9577702162844763, -0.28753304904653577, 0.0),
     vertices_2d=[
         (-0.026645, -0.013363),
         (0.026645, -0.013363),
@@ -665,9 +665,9 @@ PRISM_2 = TriangularPrism(
 
 PRISM_3 = TriangularPrism(
     name="Prism_114_5deg",
-    center=(0.29286935123333335, -0.13470485113333333, 0.025),
+    center=(0.29286935123333335, -0.1339, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(0.5253231491917432, -0.8509028134563072, 0.0),
+    in_plane_reference=(0.5524899187338775, -0.8335195850860513, 0.0),
     vertices_2d=[
         (0.003620019968861894, -0.029587483460877778),
         (0.022257942427050502, 0.014793741799430887),
@@ -722,7 +722,7 @@ PRISM_5 = TriangularPrism(
 
 SEMI_MIRROR_3 = SemiTransparentMirror(
     name="SemiMirror_134_5deg",
-    center=(0.22079954730233842, -0.20936883305823095, 0.025),
+    center=(0.222767, -0.210723, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
     n_glass=1.5,
