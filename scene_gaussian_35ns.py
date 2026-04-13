@@ -432,7 +432,7 @@ SOURCE_TEMPLATE = GaussianBeamSource(
 )
 
 PERISCOPE_MIRROR_2 = PlaneMirror(
-    name="Periscope Mirror 2",
+    name="MP2",
     center=(-0.06948408707129516, -0.32689692816523785, 0.436),
     normal=(-0.35355339059327373, -0.6123724356957946, -0.7071067811865476),
     shape="rectangle",
@@ -443,7 +443,7 @@ PERISCOPE_MIRROR_2 = PlaneMirror(
 )
 
 PERISCOPE_MIRROR_1 = PlaneMirror(
-    name="Periscope Mirror 1",
+    name="MP1",
     center=(-0.3444820035901876, -0.8032092682588535, 0.436),
     normal=(0.35355339059327373, 0.6123724356957946, 0.7071067811865476),
     shape="rectangle",
@@ -465,7 +465,7 @@ ONE_OF_MANY_MIRRORS = PlaneMirror(
 )
 
 BLOCK_MIRROR_1 = BlockMirror(
-    name="BlockMirror_44_9deg",
+    name="MR2",
     center=(0.21695209700473822, 0.2219971873026807, 0.025),
     normal=(0.0, 0.0, 1.0),
     width=0.044,
@@ -476,7 +476,7 @@ BLOCK_MIRROR_1 = BlockMirror(
 )
 
 BLOCK_MIRROR_2 = BlockMirror(
-    name="BlockMirror_315_4deg",
+    name="ML3",
     center=(-0.215102, 0.222493, 0.025),
     normal=(0.0, 0.0, 1.0),
     width=0.044,
@@ -487,7 +487,7 @@ BLOCK_MIRROR_2 = BlockMirror(
 )
 
 ON_ENTER_BEAMSPLITTER = PlaneMirror(
-    name="On enter beamsplitter",
+    name="MP3",
     center=(-0.069232, -0.326711, 0.025),
     normal=(-0.566592014759144, 0.42305258397884055, 0.7071067811865476),
     shape="rectangle",
@@ -498,7 +498,7 @@ ON_ENTER_BEAMSPLITTER = PlaneMirror(
 )
 
 SMALL_REFLECTIVE_MIRROR = PlaneMirror(
-    name="Turning round mirror 1",
+    name="MC1",
     center=(-0.7661097252, 1.017574008, 0.02510104076),
     normal=(-0.62259151, -0.33523098, -0.70710678),
     shape="disk",
@@ -508,7 +508,7 @@ SMALL_REFLECTIVE_MIRROR = PlaneMirror(
 )
 
 TURNING_ROUND_MIRROR_2 = PlaneMirror(
-    name="Turning round mirror 2",
+    name="MC2",
     center=(-1.017574008, -0.7661097252, 0.02510104076),
     normal=(0.33523098, -0.62259151, -0.70710678),
     shape="disk",
@@ -518,7 +518,7 @@ TURNING_ROUND_MIRROR_2 = PlaneMirror(
 )
 
 TURNING_ROUND_MIRROR_3 = PlaneMirror(
-    name="Turning round mirror 3",
+    name="MC3",
     center=(0.7661097252, -1.017574008, 0.02510104076),
     normal=(0.62259151, 0.33523098, -0.70710678),
     shape="disk",
@@ -538,7 +538,7 @@ TURNING_ROUND_MIRROR_4 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_1 = PlaneMirror(
-    name="Turning square mirror 1",
+    name="MS1",
     center=(-0.9305, 0.9305, 0.02425),
     normal=(0.9893994401, -0.1452196698, 0.0),
     shape="rectangle",
@@ -549,7 +549,7 @@ TURNING_SQUARE_MIRROR_1 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_2 = PlaneMirror(
-    name="Turning square mirror 2",
+    name="MS2",
     center=(-0.9305, -0.9305, 0.02425),
     normal=(0.1452196698, 0.9893994401, 0.0),
     shape="rectangle",
@@ -560,7 +560,7 @@ TURNING_SQUARE_MIRROR_2 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_3 = PlaneMirror(
-    name="Turning square mirror 3",
+    name="MS3",
     center=(0.9305, -0.9305, 0.02425),
     normal=(-0.9893994401, 0.1452196698, 0.0),
     shape="rectangle",
@@ -571,7 +571,7 @@ TURNING_SQUARE_MIRROR_3 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_4 = PlaneMirror(
-    name="Turning square mirror 4",
+    name="MS4",
     center=(0.9305, 0.9305, 0.02425),
     normal=(-0.1452196698, -0.9893994401, 0.0),
     shape="rectangle",
@@ -582,7 +582,7 @@ TURNING_SQUARE_MIRROR_4 = PlaneMirror(
 )
 
 SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
-    name="SemiMirror_Left_1",
+    name="ML1",
     center=(-0.1388869881677073, -0.2755569348737447, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
@@ -599,7 +599,7 @@ SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
 )
 
 SEMI_MIRROR_NEW = SemiTransparentMirror(
-    name="SemiMirror_New_225deg",
+    name="ML2",
     center=(-0.218148, -0.213819, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
@@ -616,7 +616,7 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
 )
 
 PRISM_1 = TriangularPrism(
-    name="Prism_72_5deg",
+    name="PR3",
     center=(0.3117431697355989, 0.10132352550066877, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(0.24854724824431537, -0.9686197728010311, 0.0),
@@ -635,7 +635,7 @@ PRISM_1 = TriangularPrism(
 )
 
 PRISM_2 = TriangularPrism(
-    name="Prism_158deg",
+    name="PR1",
     center=(0.110033, -0.289357, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(-0.9577702162844763, -0.28753304904653577, 0.0),
@@ -654,7 +654,7 @@ PRISM_2 = TriangularPrism(
 )
 
 PRISM_3 = TriangularPrism(
-    name="Prism_114_5deg",
+    name="PR2",
     center=(0.2918629328448666, -0.1353909216229391, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(0.5415050193894492, -0.8406975217048175, 0.0),
@@ -673,7 +673,7 @@ PRISM_3 = TriangularPrism(
 )
 
 PRISM_4 = TriangularPrism(
-    name="Prism_240deg",
+    name="PL1",
     center=(-0.275797, -0.159231, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(-0.5, 0.866025, 0.0),
@@ -692,7 +692,7 @@ PRISM_4 = TriangularPrism(
 )
 
 PRISM_5 = TriangularPrism(
-    name="Prism_285_1deg",
+    name="PL2",
     center=(-0.309301, 0.083456, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(0.260505, 0.965471, 0.0),
@@ -711,7 +711,7 @@ PRISM_5 = TriangularPrism(
 )
 
 SEMI_MIRROR_3 = SemiTransparentMirror(
-    name="SemiMirror_134_5deg",
+    name="MR1",
     center=(0.222767, -0.210723, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
