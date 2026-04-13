@@ -1,4 +1,5 @@
 from __future__ import annotations
+from html import escape
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -85,15 +86,21 @@ def _make_softened_colorscale(
     return scale
 
 
-_RAY_INTENSITY_COLORSCALE = _make_softened_colorscale(
-    "Dense",
-    start=0.04,
-    end=0.96,
-    blend_to_mid=0.04,
-    darken_factor=0.76,
-    contrast_factor=1.20,
-    steps=11,
-)
+_LOW_INTENSITY_COLOR = "rgb(48, 112, 220)"
+_HIGH_INTENSITY_COLOR = "rgb(225, 129, 215)"
+_RAY_INTENSITY_COLORSCALE = [
+    [0.0, _LOW_INTENSITY_COLOR],
+    [1.0, _HIGH_INTENSITY_COLOR],
+]
+
+_DETECTOR_SCREEN_GRID_SIZE = 220
+_SINGLE_DETECTOR_SCREEN_GRID_SIZE = 240
+_DETECTOR_SCREEN_SMOOTH_PASSES = 4
+_DETECTOR_HIT_MARKER_SIZE = 3.0
+_DETECTOR_HIT_MARKER_LINE_WIDTH = 0.2
+_DETECTOR_HIT_MARKER_OPACITY = 0.78
+_DETECTOR_SUPPORT_SMOOTH_PASSES = 4
+_DETECTOR_EDGE_FADE_PIXELS = 2.5
 
 
 def _normalize(v: Sequence[float]) -> np.ndarray:
@@ -679,13 +686,105 @@ def _smoothed_average_grid(
     return avg_grid
 
 
+def _detector_support_alpha(
+    count_grid: np.ndarray,
+    *,
+    smooth_passes: int = _DETECTOR_SUPPORT_SMOOTH_PASSES,
+    fade_pixels: float = _DETECTOR_EDGE_FADE_PIXELS,
+) -> np.ndarray:
+    from scipy.ndimage import distance_transform_edt
+
+    occupancy = _smooth_grid((np.asarray(count_grid, dtype=float) > 0.0).astype(float), passes=smooth_passes)
+    support = occupancy >= 0.5
+    if not np.any(support):
+        return np.zeros_like(occupancy, dtype=float)
+
+    inside_distance = distance_transform_edt(support)
+    outside_distance = distance_transform_edt(~support)
+    signed_distance = inside_distance - outside_distance
+    alpha = np.clip(0.5 + signed_distance / max(float(fade_pixels), 1e-6), 0.0, 1.0)
+    return _smooth_grid(alpha, passes=1)
+
+
+def _detector_colorscale_cmap():
+    from matplotlib.colors import LinearSegmentedColormap
+
+    cmap = getattr(_detector_colorscale_cmap, "_cached", None)
+    if cmap is not None:
+        return cmap
+
+    color_points = []
+    for position, color in _RAY_INTENSITY_COLORSCALE:
+        rgb = _parse_rgb_color(str(color))
+        if rgb is None:
+            raise ValueError(f"Expected rgb(...) color, got {color!r}")
+        rgba = (rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0, 1.0)
+        color_points.append((float(position), rgba))
+    cmap = LinearSegmentedColormap.from_list("detector_screen_rgba", color_points)
+    setattr(_detector_colorscale_cmap, "_cached", cmap)
+    return cmap
+
+
+def _detector_rgba_image(
+    avg_grid: np.ndarray,
+    alpha_grid: np.ndarray,
+    *,
+    zmin: float,
+    zmax: float,
+) -> np.ndarray:
+    rgba = np.zeros(avg_grid.shape + (4,), dtype=np.uint8)
+    valid = np.isfinite(avg_grid) & (alpha_grid > 1e-6)
+    if not np.any(valid):
+        return rgba
+
+    denom = max(float(zmax) - float(zmin), 1e-12)
+    normalized = np.clip((np.asarray(avg_grid, dtype=float) - float(zmin)) / denom, 0.0, 1.0)
+    mapped = _detector_colorscale_cmap()(normalized)
+    mapped[..., 3] = np.clip(alpha_grid, 0.0, 1.0)
+
+    rgba = np.rint(np.clip(mapped, 0.0, 1.0) * 255.0).astype(np.uint8)
+    rgba[~valid] = 0
+    return rgba.transpose(1, 0, 2)
+
+
+def _smoothed_detector_field(
+    u: np.ndarray,
+    v: np.ndarray,
+    intensity: np.ndarray,
+    x_edges: np.ndarray,
+    y_edges: np.ndarray,
+    *,
+    smooth_passes: int = 2,
+    zmax: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    if u.size == 0:
+        shape = (x_edges.size - 1, y_edges.size - 1)
+        empty_avg = np.full(shape, np.nan, dtype=float)
+        empty_rgba = np.zeros((y_edges.size - 1, x_edges.size - 1, 4), dtype=np.uint8)
+        return empty_avg, empty_rgba
+
+    count_grid, _, _ = np.histogram2d(u, v, bins=(x_edges, y_edges))
+    avg_grid = _smoothed_average_grid(
+        u,
+        v,
+        intensity,
+        x_edges,
+        y_edges,
+        smooth_passes=smooth_passes,
+    )
+    alpha_grid = _detector_support_alpha(count_grid)
+    rgba_image = _detector_rgba_image(avg_grid, alpha_grid, zmin=0.0, zmax=zmax)
+    return avg_grid, rgba_image
+
+
 def write_detector_screen_views(
     path: Path,
     result: Any,
     *,
     screens: Sequence[Dict[str, Any]],
     title: str,
-    grid_size: int = 120,
+    grid_size: int = _DETECTOR_SCREEN_GRID_SIZE,
+    smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
 ) -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -734,13 +833,28 @@ def write_detector_screen_views(
 
         edges = np.linspace(-radius, radius, int(grid_size) + 1, dtype=float)
         centers = 0.5 * (edges[:-1] + edges[1:])
-        avg_grid = _smoothed_average_grid(
+        avg_grid, rgba_image = _smoothed_detector_field(
             u,
             v,
             intensity,
             edges,
             edges,
-            smooth_passes=2,
+            smooth_passes=smooth_passes,
+            zmax=max_intensity,
+        )
+
+        fig.add_trace(
+            go.Image(
+                z=rgba_image,
+                colormodel="rgba256",
+                x0=centers[0],
+                y0=centers[0],
+                dx=centers[1] - centers[0],
+                dy=centers[1] - centers[0],
+                hoverinfo="skip",
+            ),
+            row=row,
+            col=col,
         )
 
         fig.add_trace(
@@ -749,7 +863,7 @@ def write_detector_screen_views(
                 y=centers,
                 z=avg_grid.T,
                 coloraxis="coloraxis",
-                zsmooth="best",
+                opacity=0.0,
                 hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
                 showscale=False,
                 zmin=0.0,
@@ -780,11 +894,11 @@ def write_detector_screen_views(
                 y=v.tolist(),
                 mode="markers",
                 marker={
-                    "size": 4,
+                    "size": _DETECTOR_HIT_MARKER_SIZE,
                     "color": intensity.tolist(),
                     "coloraxis": "coloraxis",
-                    "line": {"color": "#111111", "width": 0.4},
-                    "opacity": 0.9,
+                    "line": {"color": "#111111", "width": _DETECTOR_HIT_MARKER_LINE_WIDTH},
+                    "opacity": _DETECTOR_HIT_MARKER_OPACITY,
                 },
                 name=f"{label} hits",
                 hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{marker.color:.3e} W/m^2<extra></extra>",
@@ -852,7 +966,8 @@ def write_single_detector_screen_view(
     *,
     screen: Dict[str, Any],
     title: str,
-    grid_size: int = 140,
+    grid_size: int = _SINGLE_DETECTOR_SCREEN_GRID_SIZE,
+    smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
 ) -> None:
     import plotly.graph_objects as go
 
@@ -880,16 +995,28 @@ def write_single_detector_screen_view(
     u_centers = 0.5 * (u_edges[:-1] + u_edges[1:])
     v_centers = 0.5 * (v_edges[:-1] + v_edges[1:])
 
-    avg_grid = _smoothed_average_grid(
+    avg_grid, rgba_image = _smoothed_detector_field(
         u,
         v,
         intensity,
         u_edges,
         v_edges,
-        smooth_passes=2,
+        smooth_passes=smooth_passes,
+        zmax=max_intensity,
     )
 
     fig = go.Figure()
+    fig.add_trace(
+        go.Image(
+            z=rgba_image,
+            colormodel="rgba256",
+            x0=u_centers[0],
+            y0=v_centers[0],
+            dx=u_centers[1] - u_centers[0],
+            dy=v_centers[1] - v_centers[0],
+            hoverinfo="skip",
+        )
+    )
     fig.add_trace(
         go.Heatmap(
             x=u_centers,
@@ -898,7 +1025,7 @@ def write_single_detector_screen_view(
             colorscale=_RAY_INTENSITY_COLORSCALE,
             zmin=0.0,
             zmax=max_intensity,
-            zsmooth="best",
+            opacity=0.0,
             colorbar={"title": "I [W/m^2]", "x": 1.02, "tickformat": ".2e"},
             hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
         )
@@ -909,13 +1036,13 @@ def write_single_detector_screen_view(
             y=v.tolist(),
             mode="markers",
             marker={
-                "size": 5,
+                "size": _DETECTOR_HIT_MARKER_SIZE + 1.0,
                 "color": intensity.tolist(),
                 "colorscale": _RAY_INTENSITY_COLORSCALE,
                 "cmin": 0.0,
                 "cmax": max_intensity,
-                "line": {"color": "#111111", "width": 0.4},
-                "opacity": 0.92,
+                "line": {"color": "#111111", "width": _DETECTOR_HIT_MARKER_LINE_WIDTH},
+                "opacity": _DETECTOR_HIT_MARKER_OPACITY,
                 "showscale": False,
             },
             name=f"{label} hits",
@@ -945,6 +1072,268 @@ def write_single_detector_screen_view(
         borderwidth=1,
     )
     fig.write_html(path, include_plotlyjs=True)
+
+
+def _format_scientific(value: float, *, precision: int = 4) -> str:
+    return f"{float(value):.{precision}e}"
+
+
+def _initial_beam_coordinates(source: Any, rays: Any) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    positions = np.asarray(to_numpy(rays.position), dtype=float)
+    intensities = np.asarray(to_numpy(rays.intensity), dtype=float).reshape(-1)
+    center = np.asarray(source.waist_position, dtype=float)
+    u_axis, v_axis, _ = _plane_basis(source.axis, source.polarization_reference)
+    rel = positions - center
+    u = rel @ u_axis
+    v = rel @ v_axis
+    return u, v, intensities
+
+
+def _beam_coordinates_at_z(source: Any, rays: Any, z_m: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    positions = np.asarray(to_numpy(rays.position), dtype=float)
+    directions = np.asarray(to_numpy(rays.direction), dtype=float)
+    intensities = np.asarray(to_numpy(rays.intensity), dtype=float).reshape(-1)
+    dz = directions[:, 2]
+    valid = np.abs(dz) > 1e-15
+    if not np.any(valid):
+        return np.zeros((0,), dtype=float), np.zeros((0,), dtype=float), np.zeros((0,), dtype=float)
+
+    t = (float(z_m) - positions[:, 2]) / dz
+    valid = valid & (t >= -1e-12)
+    if not np.any(valid):
+        return np.zeros((0,), dtype=float), np.zeros((0,), dtype=float), np.zeros((0,), dtype=float)
+
+    hit_points = positions[valid] + t[valid, None] * directions[valid]
+    u_axis, v_axis, w_axis = _plane_basis(source.axis, source.polarization_reference)
+    waist = np.asarray(source.waist_position, dtype=float)
+    if abs(float(w_axis[2])) > 1e-15:
+        center = waist + ((float(z_m) - waist[2]) / w_axis[2]) * w_axis
+    else:
+        center = np.mean(hit_points, axis=0)
+
+    rel = hit_points - center
+    u = rel @ u_axis
+    v = rel @ v_axis
+    return u, v, intensities[valid]
+
+
+def _initial_beam_diameter(source: Any, rays: Any) -> float:
+    u, v, _ = _initial_beam_coordinates(source, rays)
+    if u.size == 0:
+        return 2.0 * float(source.cutoff_ratio) * float(source.waist_radius)
+    radius_from_rays = float(np.max(np.sqrt(u * u + v * v)))
+    radius_from_source = float(source.cutoff_ratio) * float(source.waist_radius)
+    return 2.0 * max(radius_from_rays, radius_from_source)
+
+
+def _initial_integral_intensity(source: Any, rays: Any, diameter: float) -> float:
+    powers = np.asarray(to_numpy(rays.power), dtype=float).reshape(-1)
+    beam_radius = 0.5 * float(diameter)
+    beam_area = np.pi * beam_radius * beam_radius
+    if beam_area <= 0.0:
+        return float("nan")
+    return float(np.sum(powers) / beam_area)
+
+
+def _beam_cross_section_html(
+    source: Any,
+    rays: Any,
+    *,
+    diameter: float,
+    title: str,
+    z_m: float | None = None,
+) -> str:
+    import plotly.graph_objects as go
+
+    if z_m is None:
+        u, v, intensity = _initial_beam_coordinates(source, rays)
+    else:
+        u, v, intensity = _beam_coordinates_at_z(source, rays, z_m)
+    radius = 0.5 * float(diameter)
+    if radius <= 0.0:
+        radius = float(source.cutoff_ratio) * float(source.waist_radius)
+    if radius <= 0.0:
+        radius = 1.0
+
+    grid_size = 180
+    edges = np.linspace(-radius, radius, grid_size + 1, dtype=float)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    uu, vv = np.meshgrid(centers, centers, indexing="ij")
+    rr = np.sqrt(uu * uu + vv * vv)
+    waist_radius = max(float(source.waist_radius), 1e-12)
+    max_intensity = float(getattr(source, "peak_intensity", np.max(intensity) if intensity.size > 0 else 1.0))
+    avg_grid = max_intensity * np.exp(-2.0 * (rr / waist_radius) ** 2)
+    avg_grid[rr > radius] = np.nan
+    edge_width = max(2.5 * (2.0 * radius / grid_size), 1e-12)
+    alpha_grid = np.clip(0.5 + (radius - rr) / edge_width, 0.0, 1.0)
+    rgba_image = _detector_rgba_image(avg_grid, alpha_grid, zmin=0.0, zmax=max(max_intensity, 1.0))
+
+    theta = np.linspace(0.0, 2.0 * np.pi, 241, dtype=float)
+    fig = go.Figure()
+    fig.add_trace(
+        go.Image(
+            z=rgba_image,
+            colormodel="rgba256",
+            x0=centers[0],
+            y0=centers[0],
+            dx=centers[1] - centers[0],
+            dy=centers[1] - centers[0],
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Heatmap(
+            x=centers,
+            y=centers,
+            z=avg_grid.T,
+            colorscale=_RAY_INTENSITY_COLORSCALE,
+            zmin=0.0,
+            zmax=max(max_intensity, 1.0),
+            opacity=0.0,
+            showscale=False,
+            hovertemplate="u=%{x:.5f} m<br>v=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=(radius * np.cos(theta)).tolist(),
+            y=(radius * np.sin(theta)).tolist(),
+            mode="lines",
+            line={"color": "rgba(30,45,70,0.70)", "width": 2},
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.update_layout(
+        title={"text": title, "x": 0.5, "font": {"size": 15}},
+        width=440,
+        height=360,
+        margin={"l": 48, "r": 18, "t": 46, "b": 44},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="#edf2f8",
+        showlegend=False,
+    )
+    fig.update_xaxes(
+        title_text="u [m]",
+        range=[-radius, radius],
+        constrain="domain",
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.85)",
+    )
+    fig.update_yaxes(
+        title_text="v [m]",
+        range=[-radius, radius],
+        scaleanchor="x",
+        scaleratio=1,
+        constrain="domain",
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.85)",
+    )
+    return fig.to_html(include_plotlyjs=True, full_html=False, config={"displayModeBar": False, "responsive": True})
+
+
+def write_beam_characteristics_window(path: Path, source: Any, rays: Any) -> None:
+    ray_count = int(getattr(rays, "n_rays", len(to_numpy(rays.power))))
+    diameter = _initial_beam_diameter(source, rays)
+    integral_intensity = _initial_integral_intensity(source, rays, diameter)
+    cross_section_html = _beam_cross_section_html(
+        source,
+        rays,
+        diameter=diameter,
+        title="Сечение пучка при z = 3 м",
+        z_m=3.0,
+    )
+    beam_type = "Гауссово распределение интенсивности"
+
+    rows = [
+        ("Начальная интенсивность, <i>I</i><sub>0</sub>", f"{_format_scientific(integral_intensity)} Вт/м<sup>2</sup>"),
+        ("Количество лучей, <i>N</i>", f"{ray_count:d}"),
+        ("Начальный диаметр, <i>D</i><sub>0</sub>", f"{_format_scientific(diameter)} м"),
+    ]
+    html_rows = "\n".join(
+        f"<tr><td>{label}</td><td>{value}</td></tr>"
+        for label, value in rows
+    )
+    html_rows += (
+        "\n<tr>"
+        "<td>Тип пучка</td>"
+        f"<td><div class=\"beam-type\">{escape(beam_type)}</div><div class=\"section-plot\">{cross_section_html}</div></td>"
+        "</tr>"
+    )
+
+    html = f"""<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Характеристики лазерного луча</title>
+  <style>
+    :root {{
+      color: #183052;
+      background: #f4f7fb;
+      font-family: "Segoe UI", "DejaVu Sans", Arial, sans-serif;
+    }}
+    body {{
+      margin: 0;
+      padding: 36px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(225, 129, 215, 0.20), transparent 32rem),
+        radial-gradient(circle at 90% 10%, rgba(48, 112, 220, 0.16), transparent 30rem),
+        #f4f7fb;
+    }}
+    h1 {{
+      margin: 0 0 24px;
+      font-size: 30px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }}
+    table {{
+      width: min(980px, 100%);
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(60, 86, 125, 0.18);
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(32, 58, 96, 0.12);
+    }}
+    td {{
+      padding: 18px 20px;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(60, 86, 125, 0.14);
+      font-size: 17px;
+      line-height: 1.45;
+    }}
+    tr:last-child td {{
+      border-bottom: 0;
+    }}
+    td:first-child {{
+      width: 34%;
+      font-weight: 650;
+      color: #20385d;
+      background: rgba(230, 236, 246, 0.65);
+    }}
+    td:nth-child(2) {{
+      color: #14243d;
+    }}
+    .beam-type {{
+      margin-bottom: 12px;
+      font-weight: 650;
+    }}
+    .section-plot {{
+      max-width: 460px;
+    }}
+  </style>
+</head>
+<body>
+  <h1>Характеристики лазерного луча</h1>
+  <table>
+    {html_rows}
+  </table>
+</body>
+</html>
+"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html, encoding="utf-8")
 
 
 def write_plotly_trajectories(

@@ -18,6 +18,7 @@ from vizual import (
     make_rectangle_outline,
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
+    write_beam_characteristics_window,
     write_detector_screen_views,
     write_plotly_trajectories,
 )
@@ -1012,6 +1013,7 @@ def main() -> None:
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
         screens_path = outdir / "screens_1_4.html"
+        beam_characteristics_path = outdir / "beam_characteristics.html"
         bundle_1_1 = make_bundle_1_1()
         bundle_1_2 = make_bundle_1_2()
         bundle_1_3 = make_bundle_1_3()
@@ -1325,11 +1327,14 @@ def main() -> None:
                 },
             ],
         )
+        write_beam_characteristics_window(beam_characteristics_path, source, rays)
         print(f"Wrote: {plot_path}")
         print(f"Wrote: {screens_path}")
+        print(f"Wrote: {beam_characteristics_path}")
         if args.open_plot:
             webbrowser.open(plot_path.resolve().as_uri())
             webbrowser.open(screens_path.resolve().as_uri())
+            webbrowser.open(beam_characteristics_path.resolve().as_uri())
 
 if __name__ == "__main__":
     main()
