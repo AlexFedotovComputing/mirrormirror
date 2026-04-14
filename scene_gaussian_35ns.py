@@ -6,11 +6,11 @@ import csv
 import math
 import webbrowser
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Sequence
 
 import numpy as np
 
-from raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
+from raytrace import AIR, BlockMirror, CylinderSurface, CylindricalScreen, Detector, GaussianBeamSource, InteractionMode, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, SurfaceOptics, TriangularPrism, to_numpy
 from vizual import (
     make_circle_outline,
     make_cylindrical_surface_overlays,
@@ -19,6 +19,7 @@ from vizual import (
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
     write_beam_characteristics_window,
+    write_cylindrical_unwrap_view,
     write_detector_screen_views,
     write_plotly_trajectories,
 )
@@ -105,6 +106,51 @@ CYLINDRICAL_SCREEN_1 = CylindricalScreen(
     radius=0.5,
     length=3.33,
     detector=True,
+)
+
+class TransparentCylindricalScreen:
+    def __init__(
+        self,
+        *,
+        name: str,
+        center: Sequence[float],
+        axis: Sequence[float],
+        radius: float,
+        length: float,
+    ) -> None:
+        self.name = name
+        self.center = center
+        self.axis = axis
+        self.radius = radius
+        self.length = length
+
+    def build_surfaces(self) -> List[CylinderSurface]:
+        optics = SurfaceOptics(
+            mode=InteractionMode.TRANSPARENT,
+            label=self.name,
+            detector=True,
+            transmittance=1.0,
+            release_reflected=False,
+            release_transmitted=True,
+        )
+        return [
+            CylinderSurface(
+                name=self.name,
+                optics=optics,
+                center=self.center,
+                axis=self.axis,
+                radius=self.radius,
+                length=self.length,
+            )
+        ]
+
+
+CYLINDRICAL_SURFACE_1 = TransparentCylindricalScreen(
+    name="screen_b_1_1",
+    center=(-0.7649020959, 1.026102123, -2.12285),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
 )
 
 _BUNDLE_1_1_BASE_DATA = [
@@ -727,6 +773,80 @@ SEMI_MIRROR_3 = SemiTransparentMirror(
     in_plane_reference=(-0.9989601392462023, 0.045592106742375134, 0.0),
 )
 
+ADJUSTABLE_MIRROR_ZERO_NORMALS: Dict[str, tuple[float, float, float]] = {
+    "MP1": (0.35355339059327373, 0.6123724356957946, 0.7071067811865476),
+    "MP2": (-0.35355339059327373, -0.6123724356957946, -0.7071067811865476),
+    "MS1": (0.9893994401, -0.1452196698, 0.0),
+    "MS2": (0.1452196698, 0.9893994401, 0.0),
+    "MS3": (-0.9893994401, 0.1452196698, 0.0),
+    "MS4": (-0.1452196698, -0.9893994401, 0.0),
+}
+
+ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = {
+    "MP1": {"x": 0.0, "z": 0.0},
+    "MP2": {"x": 0.0, "z": 0.0},
+    "MS1": {"x": 0.0, "z": 0.0},
+    "MS2": {"x": 0.0, "z": 0.0},
+    "MS3": {"x": 0.0, "z": 0.0},
+    "MS4": {"x": 0.0, "z": 0.0},
+}
+
+ADJUSTABLE_MIRRORS = [
+    ("MP1", PERISCOPE_MIRROR_1),
+    ("MP2", PERISCOPE_MIRROR_2),
+    ("MS1", TURNING_SQUARE_MIRROR_1),
+    ("MS2", TURNING_SQUARE_MIRROR_2),
+    ("MS3", TURNING_SQUARE_MIRROR_3),
+    ("MS4", TURNING_SQUARE_MIRROR_4),
+]
+
+
+def _normalized_vector(vector: Iterable[float]) -> np.ndarray:
+    arr = np.asarray(tuple(vector), dtype=float)
+    norm = float(np.linalg.norm(arr))
+    if norm <= 1e-15:
+        return arr
+    return arr / norm
+
+
+def _signed_rotation_about_axis_deg(
+    zero_normal: Iterable[float],
+    current_normal: Iterable[float],
+    axis: Iterable[float],
+) -> float:
+    axis_vec = _normalized_vector(axis)
+    start_vec = _normalized_vector(zero_normal)
+    current_vec = _normalized_vector(current_normal)
+    start_proj = start_vec - float(np.dot(start_vec, axis_vec)) * axis_vec
+    current_proj = current_vec - float(np.dot(current_vec, axis_vec)) * axis_vec
+    start_norm = float(np.linalg.norm(start_proj))
+    current_norm = float(np.linalg.norm(current_proj))
+    if start_norm <= 1e-12 or current_norm <= 1e-12:
+        return 0.0
+    start_proj /= start_norm
+    current_proj /= current_norm
+    sin_angle = float(np.dot(axis_vec, np.cross(start_proj, current_proj)))
+    cos_angle = float(np.dot(start_proj, current_proj))
+    angle = math.degrees(math.atan2(sin_angle, cos_angle))
+    if abs(angle) < 1e-9:
+        return 0.0
+    return angle
+
+
+def adjustable_mirror_angle_rows() -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for mirror_name, mirror in ADJUSTABLE_MIRRORS:
+        rotations = ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror_name]
+        rows.append(
+            {
+                "mirror": mirror_name,
+                "x": float(rotations["x"]),
+                "z": float(rotations["z"]),
+            }
+        )
+    return rows
+
+
 def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
     source = copy.deepcopy(SOURCE_TEMPLATE)
     source.backend = backend
@@ -791,6 +911,7 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(SCREEN_3),
         copy.deepcopy(SCREEN_4),
         copy.deepcopy(CYLINDRICAL_SCREEN_1),
+        copy.deepcopy(CYLINDRICAL_SURFACE_1),
     )
     scene.add(*bundle_1_1.build_surfaces())
     scene.add(*bundle_1_2.build_surfaces())
@@ -972,6 +1093,7 @@ def main() -> None:
     print(f"  - {SCREEN_3.name}")
     print(f"  - {SCREEN_4.name}")
     print(f"  - {CYLINDRICAL_SCREEN_1.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_1.name}")
     print("  - BUNDLE_1_1 (7 disk mirrors)")
     print("  - BUNDLE_1_2 (7 disk mirrors)")
     print("  - BUNDLE_1_3 (7 disk mirrors)")
@@ -1013,6 +1135,7 @@ def main() -> None:
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
         screens_path = outdir / "screens_1_4.html"
+        screen_b_1_1_unwrap_path = outdir / "screen_b_1_1_unwrap.html"
         beam_characteristics_path = outdir / "beam_characteristics.html"
         bundle_1_1 = make_bundle_1_1()
         bundle_1_2 = make_bundle_1_2()
@@ -1305,16 +1428,28 @@ def main() -> None:
             result,
             title="Initial 35 ns scene",
             overlays=overlays,
-            detector_hit_exclude_prefixes=("Screen", "Cylindrical Screen"),
+            detector_hit_exclude_prefixes=("Screen", "Cylindrical Screen", "screen_b_"),
             trim_end_surface_prefixes=("Screen",),
             trim_end_distance=5e-3,
             min_segment_power=20.0,
             always_include_surface_prefixes=("BUNDLE_", "Cylindrical Screen"),
         )
+        write_cylindrical_unwrap_view(
+            screen_b_1_1_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_1.name,
+                "center": CYLINDRICAL_SURFACE_1.center,
+                "axis": CYLINDRICAL_SURFACE_1.axis,
+                "radius": float(CYLINDRICAL_SURFACE_1.radius),
+                "length": float(CYLINDRICAL_SURFACE_1.length),
+            },
+            title="Развертка пересечений лучей с screen_b_1_1",
+        )
         write_detector_screen_views(
             screens_path,
             result,
-            title="Screen 1-4: detector hits and intensity distribution",
+            title="Результаты моделирования",
             screens=[
                 {"name": SCREEN_1.name, "label": "Screen 1", "radius": float(SCREEN_1.radius)},
                 {"name": SCREEN_4.name, "label": "Screen 4", "radius": float(SCREEN_4.radius)},
@@ -1326,10 +1461,18 @@ def main() -> None:
                     "primary_block_only": True,
                 },
             ],
+            remember_spot_centers=True,
+            gas_volume_unwrap_href=screen_b_1_1_unwrap_path.name,
         )
-        write_beam_characteristics_window(beam_characteristics_path, source, rays)
+        write_beam_characteristics_window(
+            beam_characteristics_path,
+            source,
+            rays,
+            mirror_angles=adjustable_mirror_angle_rows(),
+        )
         print(f"Wrote: {plot_path}")
         print(f"Wrote: {screens_path}")
+        print(f"Wrote: {screen_b_1_1_unwrap_path}")
         print(f"Wrote: {beam_characteristics_path}")
         if args.open_plot:
             webbrowser.open(plot_path.resolve().as_uri())

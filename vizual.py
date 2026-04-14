@@ -1,7 +1,8 @@
 from __future__ import annotations
+import json
 from html import escape
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
 from plotly.colors import sample_colorscale
@@ -601,6 +602,44 @@ def _apply_radial_quantile_filter(
     return u[mask], v[mask], intensity[mask]
 
 
+def _empty_detector_hit_data() -> Dict[str, np.ndarray]:
+    return {
+        "u": np.zeros((0,), dtype=float),
+        "v": np.zeros((0,), dtype=float),
+        "intensity": np.zeros((0,), dtype=float),
+        "power": np.zeros((0,), dtype=float),
+        "position": np.zeros((0, 3), dtype=float),
+    }
+
+
+def _radial_quantile_mask(
+    u: np.ndarray,
+    v: np.ndarray,
+    intensity: np.ndarray,
+    *,
+    radial_quantile: Optional[float] = None,
+) -> np.ndarray:
+    mask = np.ones(u.shape, dtype=bool)
+    if radial_quantile is None or not (0.0 < float(radial_quantile) < 1.0):
+        return mask
+    if u.size < 8:
+        return mask
+
+    weights = np.clip(np.asarray(intensity, dtype=float).reshape(-1), 0.0, None)
+    total_weight = float(np.sum(weights))
+    if total_weight <= 0.0:
+        return mask
+
+    pts = np.column_stack((u, v))
+    center = np.average(pts, axis=0, weights=weights)
+    radius = np.sqrt(np.sum((pts - center) ** 2, axis=1))
+    threshold = float(np.quantile(radius, float(radial_quantile)))
+    candidate = radius <= threshold
+    if int(np.count_nonzero(candidate)) < 8:
+        return mask
+    return candidate
+
+
 def _collect_detector_hits(
     result: Any,
     name: str,
@@ -608,38 +647,232 @@ def _collect_detector_hits(
     primary_block_only: bool = False,
     radial_quantile: Optional[float] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    data = _collect_detector_hit_data(
+        result,
+        name,
+        primary_block_only=primary_block_only,
+        radial_quantile=radial_quantile,
+    )
+    return data["u"], data["v"], data["intensity"]
+
+
+def _collect_detector_hit_data(
+    result: Any,
+    name: str,
+    *,
+    primary_block_only: bool = False,
+    radial_quantile: Optional[float] = None,
+) -> Dict[str, np.ndarray]:
     matching_blocks = [block for block in result.detector_hits if str(block["surface"]) == name]
     selected_blocks = _select_detector_block(matching_blocks, primary_block_only=primary_block_only)
 
     u_parts: List[np.ndarray] = []
     v_parts: List[np.ndarray] = []
     i_parts: List[np.ndarray] = []
+    p_parts: List[np.ndarray] = []
+    position_parts: List[np.ndarray] = []
     for block in selected_blocks:
         u = np.asarray(to_numpy(block["local_u"]), dtype=float).reshape(-1)
         v = np.asarray(to_numpy(block["local_v"]), dtype=float).reshape(-1)
         intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
+        power = np.asarray(to_numpy(block["power"]), dtype=float).reshape(-1)
+        position = np.asarray(to_numpy(block["position"]), dtype=float).reshape(-1, 3)
         if u.size == 0:
             continue
         u_parts.append(u)
         v_parts.append(v)
         i_parts.append(intensity)
+        p_parts.append(power)
+        position_parts.append(position)
 
     if not u_parts:
-        return (
-            np.zeros((0,), dtype=float),
-            np.zeros((0,), dtype=float),
-            np.zeros((0,), dtype=float),
-        )
+        return _empty_detector_hit_data()
 
     u_all = np.concatenate(u_parts)
     v_all = np.concatenate(v_parts)
     i_all = np.concatenate(i_parts)
-    return _apply_radial_quantile_filter(
-        u_all,
-        v_all,
-        i_all,
+    p_all = np.concatenate(p_parts)
+    position_all = np.concatenate(position_parts, axis=0)
+    mask = _radial_quantile_mask(
+        u_all, v_all, i_all,
         radial_quantile=radial_quantile,
     )
+    return {
+        "u": u_all[mask],
+        "v": v_all[mask],
+        "intensity": i_all[mask],
+        "power": p_all[mask],
+        "position": position_all[mask],
+    }
+
+
+def _finite_weights(intensity: np.ndarray) -> np.ndarray:
+    weights = np.clip(np.asarray(intensity, dtype=float).reshape(-1), 0.0, None)
+    if weights.size == 0 or float(np.sum(weights)) <= 0.0:
+        return np.ones(weights.shape, dtype=float)
+    return weights
+
+
+def _spot_extent_metrics(u: np.ndarray, v: np.ndarray, intensity: np.ndarray) -> tuple[float, float]:
+    if u.size < 2 or v.size < 2:
+        return float("nan"), float("nan")
+
+    weights = _finite_weights(intensity)
+    pts = np.column_stack((u, v))
+    center = np.average(pts, axis=0, weights=weights)
+    rel = pts - center
+    total_weight = float(np.sum(weights))
+    if total_weight <= 0.0:
+        return float("nan"), float("nan")
+
+    cov = (rel.T * weights) @ rel / total_weight
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    order = np.argsort(eigvals)[::-1]
+    axes = eigvecs[:, order]
+    projected = rel @ axes
+    diameters = np.ptp(projected, axis=0)
+    diameters = np.asarray(diameters, dtype=float)
+    if diameters.size < 2 or not np.all(np.isfinite(diameters)):
+        return float("nan"), float("nan")
+
+    mean_diameter = float(np.mean(diameters[:2]))
+    area = float(np.pi * 0.5 * diameters[0] * 0.5 * diameters[1])
+    if area <= 0.0:
+        area = float("nan")
+    return mean_diameter, area
+
+
+def _screen_spot_metrics(data: Mapping[str, np.ndarray]) -> Dict[str, Any]:
+    u = data["u"]
+    v = data["v"]
+    intensity = data["intensity"]
+    power = data["power"]
+    position = data["position"]
+    if u.size == 0:
+        return {
+            "integral_intensity": float("nan"),
+            "ellipticity": float("nan"),
+            "mean_diameter": float("nan"),
+            "center": None,
+        }
+
+    weights = _finite_weights(intensity)
+    center = np.average(position, axis=0, weights=weights)
+    ellipticity = _ellipticity_ratio(u, v, intensity)
+    mean_diameter, spot_area = _spot_extent_metrics(u, v, intensity)
+    total_power = float(np.sum(np.clip(power, 0.0, None)))
+    integral_intensity = total_power / spot_area if np.isfinite(spot_area) and spot_area > 0.0 else float("nan")
+    return {
+        "integral_intensity": integral_intensity,
+        "ellipticity": ellipticity,
+        "mean_diameter": mean_diameter,
+        "center": center,
+    }
+
+
+def _format_table_number(value: Any, *, precision: int = 4) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "н/д"
+    if not np.isfinite(number):
+        return "н/д"
+    if number == 0.0:
+        return "0"
+    if abs(number) < 1e-4 or abs(number) >= 1e4:
+        return f"{number:.{precision}e}"
+    return f"{number:.{precision + 2}f}".rstrip("0").rstrip(".")
+
+
+def _format_vector_m(value: Any) -> str:
+    if value is None:
+        return "н/д"
+    arr = np.asarray(value, dtype=float).reshape(-1)
+    if arr.size != 3 or not np.all(np.isfinite(arr)):
+        return "н/д"
+    return f"({_format_table_number(arr[0])}, {_format_table_number(arr[1])}, {_format_table_number(arr[2])})"
+
+
+def _screen_number(screen: Mapping[str, Any]) -> int:
+    label = str(screen.get("label", screen.get("name", "")))
+    digits = "".join(ch for ch in label if ch.isdigit())
+    return int(digits) if digits else 0
+
+
+def _load_spot_reference_centers(path: Path) -> Dict[str, np.ndarray]:
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {}
+
+    centers: Dict[str, np.ndarray] = {}
+    if isinstance(raw, dict):
+        for name, value in raw.items():
+            arr = np.asarray(value, dtype=float).reshape(-1)
+            if arr.size == 3 and np.all(np.isfinite(arr)):
+                centers[str(name)] = arr
+    return centers
+
+
+def _write_spot_reference_centers(path: Path, centers: Mapping[str, np.ndarray]) -> None:
+    serializable = {
+        str(name): [float(coord) for coord in np.asarray(center, dtype=float).reshape(3)]
+        for name, center in centers.items()
+    }
+    path.write_text(json.dumps(serializable, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _detector_summary_table_html(
+    screens: Sequence[Dict[str, Any]],
+    metrics_by_name: Mapping[str, Dict[str, Any]],
+    reference_centers: Mapping[str, np.ndarray],
+) -> str:
+    ordered_screens = sorted(screens, key=_screen_number)
+
+    def cells_for(metric: str) -> str:
+        cells: List[str] = []
+        for screen in ordered_screens:
+            name = str(screen["name"])
+            metrics = metrics_by_name[name]
+            if metric == "integral_intensity":
+                value = _format_table_number(metrics["integral_intensity"])
+            elif metric == "ellipticity":
+                value = _format_table_number(metrics["ellipticity"])
+            elif metric == "mean_diameter":
+                value = _format_table_number(metrics["mean_diameter"])
+            elif metric == "center":
+                value = _format_vector_m(metrics["center"])
+            elif metric == "shift":
+                center = metrics["center"]
+                reference = reference_centers.get(name)
+                value = _format_vector_m(np.asarray(center) - reference) if center is not None and reference is not None else "н/д"
+            else:
+                value = "н/д"
+            cells.append(f"<td>{value}</td>")
+        return "".join(cells)
+
+    return f"""
+<table class="detector-summary-table">
+  <thead>
+    <tr>
+      <th>Характеристика</th>
+      <th>Камера 1</th>
+      <th>Камера 2</th>
+      <th>Камера 3</th>
+      <th>Камера 4</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><i>I</i>, Вт/м<sup>2</sup></td>{cells_for("integral_intensity")}</tr>
+    <tr><td>Степень эллиптичности, <i>e</i></td>{cells_for("ellipticity")}</tr>
+    <tr><td><i>d</i>, м</td>{cells_for("mean_diameter")}</tr>
+    <tr><td>Координаты центра пятна, м</td>{cells_for("center")}</tr>
+    <tr><td>Сдвиг центра пятна, м</td>{cells_for("shift")}</tr>
+  </tbody>
+</table>
+"""
 
 
 def _smooth_grid(grid: np.ndarray, passes: int = 2) -> np.ndarray:
@@ -785,6 +1018,8 @@ def write_detector_screen_views(
     title: str,
     grid_size: int = _DETECTOR_SCREEN_GRID_SIZE,
     smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
+    remember_spot_centers: bool = False,
+    gas_volume_unwrap_href: Optional[str] = None,
 ) -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -793,18 +1028,36 @@ def write_detector_screen_views(
         raise ValueError("Expected exactly 4 screens for a 2x2 detector view.")
 
     hit_map: Dict[str, Dict[str, np.ndarray]] = {}
+    metrics_by_name: Dict[str, Dict[str, Any]] = {}
     max_intensity = 0.0
     for screen in screens:
         name = str(screen["name"])
-        u_all, v_all, i_all = _collect_detector_hits(
+        data = _collect_detector_hit_data(
             result,
             name,
             primary_block_only=bool(screen.get("primary_block_only", False)),
             radial_quantile=screen.get("radial_quantile"),
         )
+        u_all = data["u"]
+        i_all = data["intensity"]
         if u_all.size > 0:
             max_intensity = max(max_intensity, float(np.max(i_all)))
-        hit_map[name] = {"u": u_all, "v": v_all, "intensity": i_all}
+        hit_map[name] = data
+        metrics_by_name[name] = _screen_spot_metrics(data)
+
+    reference_centers_path = path.with_name(f"{path.stem}_spot_centers.json")
+    reference_centers = _load_spot_reference_centers(reference_centers_path) if remember_spot_centers else {}
+    if remember_spot_centers:
+        updated_reference_centers = dict(reference_centers)
+        for screen in screens:
+            name = str(screen["name"])
+            center = metrics_by_name[name]["center"]
+            if name not in updated_reference_centers and center is not None:
+                updated_reference_centers[name] = np.asarray(center, dtype=float)
+        if updated_reference_centers:
+            reference_centers_path.parent.mkdir(parents=True, exist_ok=True)
+            _write_spot_reference_centers(reference_centers_path, updated_reference_centers)
+            reference_centers = updated_reference_centers
 
     if max_intensity <= 0.0:
         max_intensity = 1.0
@@ -814,7 +1067,7 @@ def write_detector_screen_views(
         cols=2,
         subplot_titles=[str(screen.get("label", screen["name"])) for screen in screens],
         horizontal_spacing=0.08,
-        vertical_spacing=0.10,
+        vertical_spacing=0.18,
     )
 
     theta = np.linspace(0.0, 2.0 * np.pi, 257, dtype=float)
@@ -943,7 +1196,9 @@ def write_detector_screen_views(
         )
 
     fig.update_layout(
-        title=title,
+        title=None,
+        width=1120,
+        height=820,
         coloraxis={
             "colorscale": _RAY_INTENSITY_COLORSCALE,
             "cmin": 0.0,
@@ -954,10 +1209,134 @@ def write_detector_screen_views(
                 "tickformat": ".2e",
             },
         },
-        margin={"l": 50, "r": 120, "t": 60, "b": 40},
+        margin={"l": 60, "r": 135, "t": 45, "b": 70},
         showlegend=False,
     )
-    fig.write_html(path, include_plotlyjs=True)
+    plot_html = fig.to_html(include_plotlyjs=True, full_html=False, config={"responsive": True})
+    summary_table_html = _detector_summary_table_html(screens, metrics_by_name, reference_centers)
+    gas_volume_section_html = ""
+    if gas_volume_unwrap_href:
+        href = escape(str(gas_volume_unwrap_href), quote=True)
+        gas_volume_section_html = f"""
+  <h2 class="section-heading">Попадание лучей в рабочий газовый объем</h2>
+  <div class="plot-card gas-volume-card">
+    <iframe src="{href}" title="Развертка screen_b_1_1"></iframe>
+  </div>
+"""
+
+    html = f"""<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Результаты моделирования</title>
+  <style>
+    :root {{
+      color: #183052;
+      background: #f4f7fb;
+      font-family: "Segoe UI", "DejaVu Sans", Arial, sans-serif;
+    }}
+    body {{
+      margin: 0;
+      padding: 34px;
+      background:
+        radial-gradient(circle at 16% 0%, rgba(225, 129, 215, 0.18), transparent 30rem),
+        radial-gradient(circle at 88% 12%, rgba(48, 112, 220, 0.14), transparent 28rem),
+        #f4f7fb;
+    }}
+    h1 {{
+      margin: 0 0 10px;
+      font-size: 31px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }}
+    h2 {{
+      margin: 0 0 18px;
+      font-size: 23px;
+      font-weight: 650;
+      color: #20385d;
+    }}
+    .section-heading {{
+      margin-top: 32px;
+    }}
+    .plot-card {{
+      width: min(1120px, 100%);
+      padding: 14px 12px 4px;
+      border: 1px solid rgba(60, 86, 125, 0.16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 18px 45px rgba(32, 58, 96, 0.11);
+    }}
+    .detector-summary-table {{
+      width: min(1120px, 100%);
+      margin-top: 26px;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(60, 86, 125, 0.18);
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(32, 58, 96, 0.12);
+    }}
+    .detector-summary-table th {{
+      padding: 15px 14px;
+      text-align: center;
+      color: #182c4d;
+      background: rgba(198, 211, 232, 0.92);
+      border-bottom: 1px solid rgba(60, 86, 125, 0.18);
+      font-size: 16px;
+      font-weight: 700;
+    }}
+    .detector-summary-table th + th {{
+      border-left: 1px solid rgba(60, 86, 125, 0.12);
+    }}
+    .detector-summary-table td {{
+      padding: 15px 14px;
+      text-align: center;
+      vertical-align: middle;
+      color: #14243d;
+      border-bottom: 1px solid rgba(60, 86, 125, 0.12);
+      font-size: 15px;
+      line-height: 1.4;
+    }}
+    .detector-summary-table tr:last-child td {{
+      border-bottom: 0;
+    }}
+    .detector-summary-table td + td {{
+      border-left: 1px solid rgba(60, 86, 125, 0.10);
+    }}
+    .detector-summary-table td:first-child {{
+      width: 24%;
+      text-align: left;
+      font-weight: 650;
+      color: #20385d;
+      background: rgba(230, 236, 246, 0.62);
+    }}
+    .gas-volume-card {{
+      padding: 0;
+      overflow: hidden;
+    }}
+    .gas-volume-card iframe {{
+      display: block;
+      width: 100%;
+      height: 680px;
+      border: 0;
+      background: #f4f7fb;
+    }}
+  </style>
+</head>
+<body>
+  <h1>Результаты моделирования</h1>
+  <h2>Попадание лучей на камеры</h2>
+  <div class="plot-card">
+    {plot_html}
+  </div>
+  {summary_table_html}
+  {gas_volume_section_html}
+</body>
+</html>
+"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html, encoding="utf-8")
 
 
 def write_single_detector_screen_view(
@@ -1071,6 +1450,212 @@ def write_single_detector_screen_view(
         bordercolor="rgba(0,0,0,0.18)",
         borderwidth=1,
     )
+    fig.write_html(path, include_plotlyjs=True)
+
+
+def _collect_detector_hit_blocks(result: Any, name: str) -> Dict[str, np.ndarray]:
+    matching_blocks = [block for block in result.detector_hits if str(block["surface"]) == name]
+    if not matching_blocks:
+        return _empty_detector_hit_data()
+
+    position_parts: List[np.ndarray] = []
+    intensity_parts: List[np.ndarray] = []
+    power_parts: List[np.ndarray] = []
+    for block in matching_blocks:
+        position = np.asarray(to_numpy(block["position"]), dtype=float).reshape(-1, 3)
+        intensity = np.asarray(to_numpy(block["intensity"]), dtype=float).reshape(-1)
+        power = np.asarray(to_numpy(block["power"]), dtype=float).reshape(-1)
+        if position.size == 0:
+            continue
+        position_parts.append(position)
+        intensity_parts.append(intensity)
+        power_parts.append(power)
+
+    if not position_parts:
+        return _empty_detector_hit_data()
+
+    return {
+        "u": np.zeros((0,), dtype=float),
+        "v": np.zeros((0,), dtype=float),
+        "position": np.concatenate(position_parts, axis=0),
+        "intensity": np.concatenate(intensity_parts),
+        "power": np.concatenate(power_parts),
+    }
+
+
+def _cylindrical_unwrap_coordinates(
+    positions: np.ndarray,
+    *,
+    center: Sequence[float],
+    axis: Sequence[float],
+    radius: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    c = np.asarray(center, dtype=float)
+    u_axis, v_axis, w_axis = _plane_basis(axis, None)
+    rel = np.asarray(positions, dtype=float).reshape(-1, 3) - c
+    axial = rel @ w_axis
+    radial = rel - axial[:, None] * w_axis
+    x_local = radial @ u_axis
+    y_local = radial @ v_axis
+    angle = np.arctan2(y_local, x_local)
+    arc = float(radius) * angle
+    return arc, axial
+
+
+def write_cylindrical_unwrap_view(
+    path: Path,
+    result: Any,
+    *,
+    surface: Dict[str, Any],
+    title: str = "Развертка цилиндрической поверхности",
+    grid_size: int = 180,
+    smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
+    view_padding_m: float = 0.003,
+) -> None:
+    import plotly.graph_objects as go
+
+    name = str(surface["name"])
+    center = surface["center"]
+    axis = surface["axis"]
+    radius = float(surface["radius"])
+    length = float(surface["length"])
+
+    data = _collect_detector_hit_blocks(result, name)
+    positions = data["position"]
+    intensity = data["intensity"]
+    if positions.size > 0:
+        arc, axial = _cylindrical_unwrap_coordinates(
+            positions,
+            center=center,
+            axis=axis,
+            radius=radius,
+        )
+        weights = _finite_weights(intensity)
+        arc_center = float(np.average(arc, weights=weights))
+        axial_center = float(np.average(axial, weights=weights))
+        arc = arc - arc_center
+        axial = axial - axial_center
+        max_intensity = max(1.0, float(np.max(intensity))) if intensity.size > 0 else 1.0
+    else:
+        arc = np.zeros((0,), dtype=float)
+        axial = np.zeros((0,), dtype=float)
+        max_intensity = 1.0
+
+    half_arc = np.pi * radius
+    half_length = 0.5 * length
+    if arc.size > 0:
+        padding = max(float(view_padding_m), 0.0)
+        x_min = max(-half_arc, float(np.min(arc)) - padding)
+        x_max = min(half_arc, float(np.max(arc)) + padding)
+        y_min = max(-half_length, float(np.min(axial)) - padding)
+        y_max = min(half_length, float(np.max(axial)) + padding)
+        min_span = max(2.0 * padding, 0.002)
+        if x_max - x_min < min_span:
+            center_x = 0.5 * (x_min + x_max)
+            x_min = max(-half_arc, center_x - 0.5 * min_span)
+            x_max = min(half_arc, center_x + 0.5 * min_span)
+        if y_max - y_min < min_span:
+            center_y = 0.5 * (y_min + y_max)
+            y_min = max(-half_length, center_y - 0.5 * min_span)
+            y_max = min(half_length, center_y + 0.5 * min_span)
+    else:
+        x_min, x_max = -half_arc, half_arc
+        y_min, y_max = -half_length, half_length
+
+    x_edges = np.linspace(x_min, x_max, int(grid_size) + 1, dtype=float)
+    y_edges = np.linspace(y_min, y_max, int(max(40, grid_size // 2)) + 1, dtype=float)
+    x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
+    avg_grid, rgba_image = _smoothed_detector_field(
+        arc,
+        axial,
+        intensity,
+        x_edges,
+        y_edges,
+        smooth_passes=smooth_passes,
+        zmax=max_intensity,
+    )
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Image(
+            z=rgba_image,
+            colormodel="rgba256",
+            x0=x_centers[0],
+            y0=y_centers[0],
+            dx=x_centers[1] - x_centers[0],
+            dy=y_centers[1] - y_centers[0],
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Heatmap(
+            x=x_centers,
+            y=y_centers,
+            z=avg_grid.T,
+            colorscale=_RAY_INTENSITY_COLORSCALE,
+            zmin=0.0,
+            zmax=max_intensity,
+            opacity=0.0,
+            colorbar={"title": "I [W/m^2]", "x": 1.02, "tickformat": ".2e"},
+            hovertemplate="s-s_c=%{x:.5f} m<br>z-z_c=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=arc.tolist(),
+            y=axial.tolist(),
+            mode="markers",
+            marker={
+                "size": _DETECTOR_HIT_MARKER_SIZE,
+                "color": intensity.tolist(),
+                "colorscale": _RAY_INTENSITY_COLORSCALE,
+                "cmin": 0.0,
+                "cmax": max_intensity,
+                "line": {"color": "#111111", "width": _DETECTOR_HIT_MARKER_LINE_WIDTH},
+                "opacity": _DETECTOR_HIT_MARKER_OPACITY,
+                "showscale": False,
+            },
+            name=f"{name} intersections",
+            hovertemplate="s-s_c=%{x:.5f} m<br>z-z_c=%{y:.5f} m<br>I=%{marker.color:.3e} W/m^2<extra></extra>",
+            showlegend=False,
+        )
+    )
+    if arc.size == 0:
+        fig.add_annotation(
+            x=0.5,
+            y=0.5,
+            xref="paper",
+            yref="paper",
+            text="Пересечений с поверхностью нет",
+            showarrow=False,
+            font={"size": 18, "color": "#20385d"},
+            bgcolor="rgba(255,255,255,0.82)",
+            bordercolor="rgba(60,86,125,0.18)",
+            borderwidth=1,
+        )
+    fig.update_layout(
+        title={"text": title, "x": 0.5, "font": {"size": 22}},
+        width=980,
+        height=620,
+        margin={"l": 70, "r": 110, "t": 80, "b": 70},
+        plot_bgcolor="#edf2f8",
+        paper_bgcolor="#f4f7fb",
+        showlegend=False,
+    )
+    fig.update_xaxes(
+        title_text="s - s_c [m]",
+        range=[x_min, x_max],
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.85)",
+    )
+    fig.update_yaxes(
+        title_text="z - z_c [m]",
+        range=[y_min, y_max],
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.85)",
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.write_html(path, include_plotlyjs=True)
 
 
@@ -1232,10 +1817,57 @@ def _beam_cross_section_html(
     return fig.to_html(include_plotlyjs=True, full_html=False, config={"displayModeBar": False, "responsive": True})
 
 
-def write_beam_characteristics_window(path: Path, source: Any, rays: Any) -> None:
+def _format_angle_deg(value: Any, *, precision: int = 3) -> str:
+    angle = float(value)
+    if abs(angle) < 0.5 * 10 ** (-precision):
+        angle = 0.0
+    return f"{angle:.{precision}f}"
+
+
+def _adjustable_mirror_angles_table_html(mirror_angles: Optional[Sequence[Dict[str, Any]]]) -> str:
+    if not mirror_angles:
+        return ""
+
+    rows: list[str] = [
+        "<table class=\"angle-table\">",
+        "<thead><tr>"
+        "<th>Зеркало</th>"
+        "<th>Ось поворота</th>"
+        "<th>Угол поворота, deg</th>"
+        "</tr></thead>",
+        "<tbody>",
+    ]
+    for item in mirror_angles:
+        mirror_name = escape(str(item.get("mirror", item.get("name", ""))))
+        x_angle = _format_angle_deg(item.get("x", 0.0))
+        z_angle = _format_angle_deg(item.get("z", 0.0))
+        rows.append(
+            "<tr>"
+            f"<td rowspan=\"2\" class=\"mirror-name\">{mirror_name}</td>"
+            "<td class=\"axis-name\"><i>x</i></td>"
+            f"<td>{x_angle}</td>"
+            "</tr>"
+        )
+        rows.append(
+            "<tr>"
+            "<td class=\"axis-name\"><i>z</i></td>"
+            f"<td>{z_angle}</td>"
+            "</tr>"
+        )
+    rows.extend(["</tbody>", "</table>"])
+    return "\n".join(rows)
+
+
+def write_beam_characteristics_window(
+    path: Path,
+    source: Any,
+    rays: Any,
+    mirror_angles: Optional[Sequence[Dict[str, Any]]] = None,
+) -> None:
     ray_count = int(getattr(rays, "n_rays", len(to_numpy(rays.power))))
     diameter = _initial_beam_diameter(source, rays)
     integral_intensity = _initial_integral_intensity(source, rays, diameter)
+    angle_table_html = _adjustable_mirror_angles_table_html(mirror_angles)
     cross_section_html = _beam_cross_section_html(
         source,
         rays,
@@ -1286,6 +1918,12 @@ def write_beam_characteristics_window(path: Path, source: Any, rays: Any) -> Non
       font-weight: 650;
       letter-spacing: 0.01em;
     }}
+    h2 {{
+      margin: 30px 0 16px;
+      font-size: 24px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }}
     table {{
       width: min(980px, 100%);
       border-collapse: separate;
@@ -1322,13 +1960,50 @@ def write_beam_characteristics_window(path: Path, source: Any, rays: Any) -> Non
     .section-plot {{
       max-width: 460px;
     }}
+    .angle-table {{
+      margin-top: 0;
+    }}
+    .angle-table th {{
+      padding: 15px 18px;
+      text-align: center;
+      color: #182c4d;
+      background: rgba(198, 211, 232, 0.92);
+      border-bottom: 1px solid rgba(60, 86, 125, 0.18);
+      font-size: 16px;
+      font-weight: 700;
+    }}
+    .angle-table th + th {{
+      border-left: 1px solid rgba(60, 86, 125, 0.12);
+    }}
+    .angle-table td {{
+      text-align: center;
+      vertical-align: middle;
+      background: rgba(255, 255, 255, 0.86);
+    }}
+    .angle-table td + td {{
+      border-left: 1px solid rgba(60, 86, 125, 0.12);
+    }}
+    .angle-table td:first-child {{
+      width: 22%;
+      color: #20385d;
+      background: rgba(230, 236, 246, 0.62);
+    }}
+    .angle-table .axis-name {{
+      width: 22%;
+      font-weight: 650;
+    }}
+    .angle-table .mirror-name {{
+      font-weight: 700;
+    }}
   </style>
 </head>
 <body>
   <h1>Характеристики лазерного луча</h1>
-  <table>
+  <table class="characteristics-table">
     {html_rows}
   </table>
+  <h2>Угловые координаты регулируемых зеркал</h2>
+  {angle_table_html}
 </body>
 </html>
 """
