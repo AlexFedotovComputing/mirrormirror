@@ -153,6 +153,126 @@ CYLINDRICAL_SURFACE_1 = TransparentCylindricalScreen(
     length=0.094,
 )
 
+CYLINDRICAL_SURFACE_2 = TransparentCylindricalScreen(
+    name="screen_b_1_2",
+    center=(-0.7728622624, 1.020197473, -2.451290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_3 = TransparentCylindricalScreen(
+    name="screen_b_1_3",
+    center=(-0.759000396, 1.018230582, -2.781290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_4 = TransparentCylindricalScreen(
+    name="screen_b_1_4",
+    center=(-0.7669147747, 1.012283094, -3.111290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_5 = TransparentCylindricalScreen(
+    name="screen_b_2_1",
+    center=(-1.02615802, -0.7649305048, -2.121290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_6 = TransparentCylindricalScreen(
+    name="screen_b_2_2",
+    center=(-1.020210533, -0.7728448835, -2.451290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_7 = TransparentCylindricalScreen(
+    name="screen_b_2_3",
+    center=(-1.018243642, -0.7589830171, -2.781290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_8 = TransparentCylindricalScreen(
+    name="screen_b_2_4",
+    center=(-1.012296154, -0.7668973957, -3.111290616),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_9 = TransparentCylindricalScreen(
+    name="screen_b_3_1",
+    center=(0.7649292531, -1.026156355, -2.121291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_10 = TransparentCylindricalScreen(
+    name="screen_b_3_2",
+    center=(0.7728436317, -1.020208867, -2.451291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_11 = TransparentCylindricalScreen(
+    name="screen_b_3_3",
+    center=(0.7589817653, -1.018241976, -2.781291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_12 = TransparentCylindricalScreen(
+    name="screen_b_3_4",
+    center=(0.766896144, -1.012294488, -3.111291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_13 = TransparentCylindricalScreen(
+    name="screen_b_4_1",
+    center=(1.026143295, 0.764946632, -2.121291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_14 = TransparentCylindricalScreen(
+    name="screen_b_4_2",
+    center=(1.020195807, 0.7728610107, -2.451291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_15 = TransparentCylindricalScreen(
+    name="screen_b_4_3",
+    center=(1.018228916, 0.7589991443, -2.781291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
+CYLINDRICAL_SURFACE_16 = TransparentCylindricalScreen(
+    name="screen_b_4_4",
+    center=(1.012281428, 0.7669135229, -3.111291658),
+    axis=(0.0, 0.0, 1.0),
+    radius=0.03,
+    length=0.094,
+)
+
 _BUNDLE_1_1_BASE_DATA = [
     {"name": "BUNDLE_1_1 Mirror 1", "phi": 31.424112270736885, "center": (-0.7647815417, 1.0251094165, -2.1122), "radius": BUNDLE_1_1_RADIUS_M},
     {"name": "BUNDLE_1_1 Mirror 2", "phi": 25.924090268233982, "center": (-0.76570152805, 1.025501367, -2.11135), "radius": BUNDLE_1_1_RADIUS_M},
@@ -912,6 +1032,21 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(SCREEN_4),
         copy.deepcopy(CYLINDRICAL_SCREEN_1),
         copy.deepcopy(CYLINDRICAL_SURFACE_1),
+        copy.deepcopy(CYLINDRICAL_SURFACE_2),
+        copy.deepcopy(CYLINDRICAL_SURFACE_3),
+        copy.deepcopy(CYLINDRICAL_SURFACE_4),
+        copy.deepcopy(CYLINDRICAL_SURFACE_5),
+        copy.deepcopy(CYLINDRICAL_SURFACE_6),
+        copy.deepcopy(CYLINDRICAL_SURFACE_7),
+        copy.deepcopy(CYLINDRICAL_SURFACE_8),
+        copy.deepcopy(CYLINDRICAL_SURFACE_9),
+        copy.deepcopy(CYLINDRICAL_SURFACE_10),
+        copy.deepcopy(CYLINDRICAL_SURFACE_11),
+        copy.deepcopy(CYLINDRICAL_SURFACE_12),
+        copy.deepcopy(CYLINDRICAL_SURFACE_13),
+        copy.deepcopy(CYLINDRICAL_SURFACE_14),
+        copy.deepcopy(CYLINDRICAL_SURFACE_15),
+        copy.deepcopy(CYLINDRICAL_SURFACE_16),
     )
     scene.add(*bundle_1_1.build_surfaces())
     scene.add(*bundle_1_2.build_surfaces())
@@ -1094,6 +1229,21 @@ def main() -> None:
     print(f"  - {SCREEN_4.name}")
     print(f"  - {CYLINDRICAL_SCREEN_1.name}")
     print(f"  - {CYLINDRICAL_SURFACE_1.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_2.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_3.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_4.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_5.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_6.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_7.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_8.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_9.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_10.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_11.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_12.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_13.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_14.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_15.name}")
+    print(f"  - {CYLINDRICAL_SURFACE_16.name}")
     print("  - BUNDLE_1_1 (7 disk mirrors)")
     print("  - BUNDLE_1_2 (7 disk mirrors)")
     print("  - BUNDLE_1_3 (7 disk mirrors)")
@@ -1136,7 +1286,50 @@ def main() -> None:
         plot_path = outdir / "scene_gaussian_35ns.html"
         screens_path = outdir / "screens_1_4.html"
         screen_b_1_1_unwrap_path = outdir / "screen_b_1_1_unwrap.html"
+        screen_b_1_2_unwrap_path = outdir / "screen_b_1_2_unwrap.html"
+        screen_b_1_3_unwrap_path = outdir / "screen_b_1_3_unwrap.html"
+        screen_b_1_4_unwrap_path = outdir / "screen_b_1_4_unwrap.html"
+        screen_b_2_1_unwrap_path = outdir / "screen_b_2_1_unwrap.html"
+        screen_b_2_2_unwrap_path = outdir / "screen_b_2_2_unwrap.html"
+        screen_b_2_3_unwrap_path = outdir / "screen_b_2_3_unwrap.html"
+        screen_b_2_4_unwrap_path = outdir / "screen_b_2_4_unwrap.html"
+        screen_b_3_1_unwrap_path = outdir / "screen_b_3_1_unwrap.html"
+        screen_b_3_2_unwrap_path = outdir / "screen_b_3_2_unwrap.html"
+        screen_b_3_3_unwrap_path = outdir / "screen_b_3_3_unwrap.html"
+        screen_b_3_4_unwrap_path = outdir / "screen_b_3_4_unwrap.html"
+        screen_b_4_1_unwrap_path = outdir / "screen_b_4_1_unwrap.html"
+        screen_b_4_2_unwrap_path = outdir / "screen_b_4_2_unwrap.html"
+        screen_b_4_3_unwrap_path = outdir / "screen_b_4_3_unwrap.html"
+        screen_b_4_4_unwrap_path = outdir / "screen_b_4_4_unwrap.html"
         beam_characteristics_path = outdir / "beam_characteristics.html"
+        screen_b_surfaces = [
+            CYLINDRICAL_SURFACE_1,
+            CYLINDRICAL_SURFACE_2,
+            CYLINDRICAL_SURFACE_3,
+            CYLINDRICAL_SURFACE_4,
+            CYLINDRICAL_SURFACE_5,
+            CYLINDRICAL_SURFACE_6,
+            CYLINDRICAL_SURFACE_7,
+            CYLINDRICAL_SURFACE_8,
+            CYLINDRICAL_SURFACE_9,
+            CYLINDRICAL_SURFACE_10,
+            CYLINDRICAL_SURFACE_11,
+            CYLINDRICAL_SURFACE_12,
+            CYLINDRICAL_SURFACE_13,
+            CYLINDRICAL_SURFACE_14,
+            CYLINDRICAL_SURFACE_15,
+            CYLINDRICAL_SURFACE_16,
+        ]
+        screen_b_surface_specs = [
+            {
+                "name": surface.name,
+                "center": surface.center,
+                "axis": surface.axis,
+                "radius": float(surface.radius),
+                "length": float(surface.length),
+            }
+            for surface in screen_b_surfaces
+        ]
         bundle_1_1 = make_bundle_1_1()
         bundle_1_2 = make_bundle_1_2()
         bundle_1_3 = make_bundle_1_3()
@@ -1446,6 +1639,186 @@ def main() -> None:
             },
             title="Развертка пересечений лучей с screen_b_1_1",
         )
+        write_cylindrical_unwrap_view(
+            screen_b_1_2_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_2.name,
+                "center": CYLINDRICAL_SURFACE_2.center,
+                "axis": CYLINDRICAL_SURFACE_2.axis,
+                "radius": float(CYLINDRICAL_SURFACE_2.radius),
+                "length": float(CYLINDRICAL_SURFACE_2.length),
+            },
+            title="Развертка пересечений лучей с screen_b_1_2",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_1_3_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_3.name,
+                "center": CYLINDRICAL_SURFACE_3.center,
+                "axis": CYLINDRICAL_SURFACE_3.axis,
+                "radius": float(CYLINDRICAL_SURFACE_3.radius),
+                "length": float(CYLINDRICAL_SURFACE_3.length),
+            },
+            title="Развертка пересечений лучей с screen_b_1_3",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_1_4_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_4.name,
+                "center": CYLINDRICAL_SURFACE_4.center,
+                "axis": CYLINDRICAL_SURFACE_4.axis,
+                "radius": float(CYLINDRICAL_SURFACE_4.radius),
+                "length": float(CYLINDRICAL_SURFACE_4.length),
+            },
+            title="Развертка пересечений лучей с screen_b_1_4",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_2_1_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_5.name,
+                "center": CYLINDRICAL_SURFACE_5.center,
+                "axis": CYLINDRICAL_SURFACE_5.axis,
+                "radius": float(CYLINDRICAL_SURFACE_5.radius),
+                "length": float(CYLINDRICAL_SURFACE_5.length),
+            },
+            title="Развертка пересечений лучей с screen_b_2_1",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_2_2_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_6.name,
+                "center": CYLINDRICAL_SURFACE_6.center,
+                "axis": CYLINDRICAL_SURFACE_6.axis,
+                "radius": float(CYLINDRICAL_SURFACE_6.radius),
+                "length": float(CYLINDRICAL_SURFACE_6.length),
+            },
+            title="Развертка пересечений лучей с screen_b_2_2",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_2_3_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_7.name,
+                "center": CYLINDRICAL_SURFACE_7.center,
+                "axis": CYLINDRICAL_SURFACE_7.axis,
+                "radius": float(CYLINDRICAL_SURFACE_7.radius),
+                "length": float(CYLINDRICAL_SURFACE_7.length),
+            },
+            title="Развертка пересечений лучей с screen_b_2_3",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_2_4_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_8.name,
+                "center": CYLINDRICAL_SURFACE_8.center,
+                "axis": CYLINDRICAL_SURFACE_8.axis,
+                "radius": float(CYLINDRICAL_SURFACE_8.radius),
+                "length": float(CYLINDRICAL_SURFACE_8.length),
+            },
+            title="Развертка пересечений лучей с screen_b_2_4",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_3_1_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_9.name,
+                "center": CYLINDRICAL_SURFACE_9.center,
+                "axis": CYLINDRICAL_SURFACE_9.axis,
+                "radius": float(CYLINDRICAL_SURFACE_9.radius),
+                "length": float(CYLINDRICAL_SURFACE_9.length),
+            },
+            title="Развертка пересечений лучей с screen_b_3_1",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_3_2_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_10.name,
+                "center": CYLINDRICAL_SURFACE_10.center,
+                "axis": CYLINDRICAL_SURFACE_10.axis,
+                "radius": float(CYLINDRICAL_SURFACE_10.radius),
+                "length": float(CYLINDRICAL_SURFACE_10.length),
+            },
+            title="Развертка пересечений лучей с screen_b_3_2",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_3_3_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_11.name,
+                "center": CYLINDRICAL_SURFACE_11.center,
+                "axis": CYLINDRICAL_SURFACE_11.axis,
+                "radius": float(CYLINDRICAL_SURFACE_11.radius),
+                "length": float(CYLINDRICAL_SURFACE_11.length),
+            },
+            title="Развертка пересечений лучей с screen_b_3_3",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_3_4_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_12.name,
+                "center": CYLINDRICAL_SURFACE_12.center,
+                "axis": CYLINDRICAL_SURFACE_12.axis,
+                "radius": float(CYLINDRICAL_SURFACE_12.radius),
+                "length": float(CYLINDRICAL_SURFACE_12.length),
+            },
+            title="Развертка пересечений лучей с screen_b_3_4",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_4_1_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_13.name,
+                "center": CYLINDRICAL_SURFACE_13.center,
+                "axis": CYLINDRICAL_SURFACE_13.axis,
+                "radius": float(CYLINDRICAL_SURFACE_13.radius),
+                "length": float(CYLINDRICAL_SURFACE_13.length),
+            },
+            title="Развертка пересечений лучей с screen_b_4_1",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_4_2_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_14.name,
+                "center": CYLINDRICAL_SURFACE_14.center,
+                "axis": CYLINDRICAL_SURFACE_14.axis,
+                "radius": float(CYLINDRICAL_SURFACE_14.radius),
+                "length": float(CYLINDRICAL_SURFACE_14.length),
+            },
+            title="Развертка пересечений лучей с screen_b_4_2",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_4_3_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_15.name,
+                "center": CYLINDRICAL_SURFACE_15.center,
+                "axis": CYLINDRICAL_SURFACE_15.axis,
+                "radius": float(CYLINDRICAL_SURFACE_15.radius),
+                "length": float(CYLINDRICAL_SURFACE_15.length),
+            },
+            title="Развертка пересечений лучей с screen_b_4_3",
+        )
+        write_cylindrical_unwrap_view(
+            screen_b_4_4_unwrap_path,
+            result,
+            surface={
+                "name": CYLINDRICAL_SURFACE_16.name,
+                "center": CYLINDRICAL_SURFACE_16.center,
+                "axis": CYLINDRICAL_SURFACE_16.axis,
+                "radius": float(CYLINDRICAL_SURFACE_16.radius),
+                "length": float(CYLINDRICAL_SURFACE_16.length),
+            },
+            title="Развертка пересечений лучей с screen_b_4_4",
+        )
         write_detector_screen_views(
             screens_path,
             result,
@@ -1462,7 +1835,7 @@ def main() -> None:
                 },
             ],
             remember_spot_centers=True,
-            gas_volume_unwrap_href=screen_b_1_1_unwrap_path.name,
+            gas_volume_surfaces=screen_b_surface_specs,
         )
         write_beam_characteristics_window(
             beam_characteristics_path,
@@ -1473,6 +1846,21 @@ def main() -> None:
         print(f"Wrote: {plot_path}")
         print(f"Wrote: {screens_path}")
         print(f"Wrote: {screen_b_1_1_unwrap_path}")
+        print(f"Wrote: {screen_b_1_2_unwrap_path}")
+        print(f"Wrote: {screen_b_1_3_unwrap_path}")
+        print(f"Wrote: {screen_b_1_4_unwrap_path}")
+        print(f"Wrote: {screen_b_2_1_unwrap_path}")
+        print(f"Wrote: {screen_b_2_2_unwrap_path}")
+        print(f"Wrote: {screen_b_2_3_unwrap_path}")
+        print(f"Wrote: {screen_b_2_4_unwrap_path}")
+        print(f"Wrote: {screen_b_3_1_unwrap_path}")
+        print(f"Wrote: {screen_b_3_2_unwrap_path}")
+        print(f"Wrote: {screen_b_3_3_unwrap_path}")
+        print(f"Wrote: {screen_b_3_4_unwrap_path}")
+        print(f"Wrote: {screen_b_4_1_unwrap_path}")
+        print(f"Wrote: {screen_b_4_2_unwrap_path}")
+        print(f"Wrote: {screen_b_4_3_unwrap_path}")
+        print(f"Wrote: {screen_b_4_4_unwrap_path}")
         print(f"Wrote: {beam_characteristics_path}")
         if args.open_plot:
             webbrowser.open(plot_path.resolve().as_uri())

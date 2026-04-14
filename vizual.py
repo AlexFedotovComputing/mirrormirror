@@ -1,4 +1,5 @@
 from __future__ import annotations
+import csv
 import json
 from html import escape
 from pathlib import Path
@@ -875,6 +876,153 @@ def _detector_summary_table_html(
 """
 
 
+def _screen_b_indices(name: str) -> tuple[int, int]:
+    parts = str(name).split("_")
+    if len(parts) >= 4 and parts[0] == "screen" and parts[1] == "b":
+        try:
+            return int(parts[2]), int(parts[3])
+        except ValueError:
+            pass
+    return 0, 0
+
+
+def _format_bundle_center_m(row: Mapping[str, Any]) -> str:
+    return f"({_format_table_number(row.get('s_center'))}, {_format_table_number(row.get('z_center'))})"
+
+
+def _empty_bundle_metric_row(name: str) -> Dict[str, Any]:
+    return {
+        "name": name,
+        "integral_intensity": float("nan"),
+        "ray_count": 0,
+        "mean_diameter": float("nan"),
+        "total_power": float("nan"),
+        "s_center": float("nan"),
+        "z_center": float("nan"),
+        "s_min": float("nan"),
+        "s_max": float("nan"),
+        "z_min": float("nan"),
+        "z_max": float("nan"),
+    }
+
+
+def _screen_b_bundle_rows(
+    result: Any,
+    surface: Mapping[str, Any],
+    *,
+    cluster_count: int = 7,
+) -> List[Dict[str, Any]]:
+    name = str(surface["name"])
+    rod, assembly = _screen_b_indices(name)
+    prefix = f"b_{rod}_{assembly}" if rod and assembly else name
+    data = _collect_detector_hit_blocks(result, name)
+    positions = data["position"]
+    intensity = data["intensity"]
+    power = data["power"]
+
+    rows_by_index: Dict[int, Dict[str, Any]] = {}
+    if positions.size > 0:
+        arc, axial = _cylindrical_unwrap_coordinates(
+            positions,
+            center=surface["center"],
+            axis=surface["axis"],
+            radius=float(surface["radius"]),
+        )
+        weights = _finite_weights(intensity)
+        arc = arc - float(np.average(arc, weights=weights))
+        axial = axial - float(np.average(axial, weights=weights))
+        for row in _cylindrical_bundle_metrics(
+            arc,
+            axial,
+            intensity,
+            power,
+            cluster_count=cluster_count,
+            name_prefix=prefix,
+        ):
+            try:
+                bundle_index = int(str(row["name"]).rsplit("_", 1)[-1])
+            except (ValueError, TypeError):
+                continue
+            rows_by_index[bundle_index] = row
+
+    return [
+        rows_by_index.get(idx, _empty_bundle_metric_row(f"{prefix}_{idx}"))
+        for idx in range(1, int(cluster_count) + 1)
+    ]
+
+
+def _gas_volume_bundle_table_html(
+    result: Any,
+    surfaces: Sequence[Mapping[str, Any]],
+    *,
+    cluster_count: int = 7,
+) -> str:
+    ordered_surfaces = sorted(surfaces, key=lambda surface: _screen_b_indices(str(surface["name"])))
+    surface_by_index: Dict[tuple[int, int], Mapping[str, Any]] = {
+        _screen_b_indices(str(surface["name"])): surface
+        for surface in ordered_surfaces
+    }
+
+    rows: List[str] = [
+        """
+    <tr class="gas-volume-head-row">
+      <th>Номер сборки</th>
+      <th>Зеркало</th>
+      <th>Координаты центра, м</th>
+      <th>Диаметр <i>d</i>, м</th>
+      <th>Количество лучей <i>N</i></th>
+      <th>Интенсивность <i>I</i>, Вт/м<sup>2</sup></th>
+      <th></th>
+    </tr>"""
+    ]
+
+    for rod in range(1, 5):
+        rows.append(f'    <tr class="rod-row"><td colspan="7">Стержень {rod}</td></tr>')
+        for assembly in range(1, 5):
+            surface = surface_by_index.get((rod, assembly))
+            surface_name = f"screen_b_{rod}_{assembly}"
+            if surface is None:
+                bundle_rows = [_empty_bundle_metric_row(f"b_{rod}_{assembly}_{idx}") for idx in range(1, cluster_count + 1)]
+            else:
+                surface_name = str(surface["name"])
+                bundle_rows = _screen_b_bundle_rows(result, surface, cluster_count=cluster_count)
+            screen_label = f"Screen_b_{rod}_{assembly}"
+            unwrap_href = f"{surface_name}_unwrap.html"
+
+            for mirror_idx, bundle_row in enumerate(bundle_rows, start=1):
+                cells: List[str] = []
+                if mirror_idx == 1:
+                    cells.append(f'<td class="assembly-cell" rowspan="{cluster_count}">{assembly}</td>')
+                cells.extend(
+                    [
+                        f'<td class="mirror-cell">{mirror_idx}</td>',
+                        f"<td>{_format_bundle_center_m(bundle_row)}</td>",
+                        f"<td>{_format_table_number(bundle_row.get('mean_diameter'))}</td>",
+                        f"<td>{int(bundle_row.get('ray_count', 0))}</td>",
+                        f"<td>{_format_table_number(bundle_row.get('integral_intensity'))}</td>",
+                    ]
+                )
+                if mirror_idx == 1:
+                    cells.append(
+                        f'<td class="screen-cell" rowspan="{cluster_count}">'
+                        f'<iframe class="gas-volume-screen-frame" '
+                        f'src="{escape(unwrap_href, quote=True)}" '
+                        f'title="{escape(screen_label, quote=True)}"></iframe>'
+                        "</td>"
+                    )
+                rows.append(f"    <tr>{''.join(cells)}</tr>")
+
+    return f"""
+  <div class="gas-volume-table-wrap">
+    <table class="gas-volume-bundle-table">
+      <tbody>
+{chr(10).join(rows)}
+      </tbody>
+    </table>
+  </div>
+"""
+
+
 def _smooth_grid(grid: np.ndarray, passes: int = 2) -> np.ndarray:
     arr = np.asarray(grid, dtype=float)
     if passes <= 0:
@@ -1020,6 +1168,8 @@ def write_detector_screen_views(
     smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
     remember_spot_centers: bool = False,
     gas_volume_unwrap_href: Optional[str] = None,
+    gas_volume_unwrap_hrefs: Optional[Sequence[str]] = None,
+    gas_volume_surfaces: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -1215,12 +1365,25 @@ def write_detector_screen_views(
     plot_html = fig.to_html(include_plotlyjs=True, full_html=False, config={"responsive": True})
     summary_table_html = _detector_summary_table_html(screens, metrics_by_name, reference_centers)
     gas_volume_section_html = ""
+    if gas_volume_surfaces:
+        gas_volume_section_html = f"""
+  <h2 class="section-heading">Попадание лучей в рабочий газовый объем</h2>
+{_gas_volume_bundle_table_html(result, gas_volume_surfaces)}
+"""
+    unwrap_hrefs: List[str] = []
     if gas_volume_unwrap_href:
-        href = escape(str(gas_volume_unwrap_href), quote=True)
+        unwrap_hrefs.append(str(gas_volume_unwrap_href))
+    if gas_volume_unwrap_hrefs:
+        unwrap_hrefs.extend(str(href) for href in gas_volume_unwrap_hrefs)
+    if unwrap_hrefs and not gas_volume_section_html:
+        iframe_html = "\n".join(
+            f'    <iframe src="{escape(href, quote=True)}" title="Развертка {escape(Path(href).stem)}"></iframe>'
+            for href in unwrap_hrefs
+        )
         gas_volume_section_html = f"""
   <h2 class="section-heading">Попадание лучей в рабочий газовый объем</h2>
   <div class="plot-card gas-volume-card">
-    <iframe src="{href}" title="Развертка screen_b_1_1"></iframe>
+{iframe_html}
   </div>
 """
 
@@ -1321,6 +1484,78 @@ def write_detector_screen_views(
       height: 680px;
       border: 0;
       background: #f4f7fb;
+    }}
+    .gas-volume-card iframe + iframe {{
+      border-top: 1px solid rgba(60, 86, 125, 0.16);
+    }}
+    .gas-volume-table-wrap {{
+      width: min(1120px, 100%);
+      overflow-x: auto;
+      border: 1px solid rgba(60, 86, 125, 0.18);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 18px 45px rgba(32, 58, 96, 0.12);
+    }}
+    .gas-volume-bundle-table {{
+      width: 100%;
+      min-width: 2100px;
+      border-collapse: separate;
+      border-spacing: 0;
+      color: #14243d;
+      font-size: 14px;
+    }}
+    .gas-volume-bundle-table th,
+    .gas-volume-bundle-table td {{
+      padding: 10px 12px;
+      text-align: center;
+      vertical-align: middle;
+      border-right: 1px solid rgba(60, 86, 125, 0.12);
+      border-bottom: 1px solid rgba(60, 86, 125, 0.12);
+      line-height: 1.35;
+      white-space: nowrap;
+    }}
+    .gas-volume-bundle-table th:last-child,
+    .gas-volume-bundle-table td:last-child {{
+      border-right: 0;
+    }}
+    .gas-volume-bundle-table tr:last-child td {{
+      border-bottom: 0;
+    }}
+    .gas-volume-head-row th {{
+      background: rgba(198, 211, 232, 0.96);
+      color: #182c4d;
+      font-weight: 700;
+      font-size: 15px;
+    }}
+    .gas-volume-bundle-table .rod-row td {{
+      background: rgba(203, 216, 235, 0.92);
+      color: #20385d;
+      font-weight: 700;
+      text-align: left;
+      letter-spacing: 0.01em;
+    }}
+    .gas-volume-bundle-table .assembly-cell,
+    .gas-volume-bundle-table .mirror-cell {{
+      background: rgba(230, 236, 246, 0.70);
+      color: #20385d;
+      font-weight: 650;
+    }}
+    .gas-volume-bundle-table .screen-cell {{
+      background: rgba(238, 243, 250, 0.82);
+      color: #20385d;
+      font-weight: 650;
+      width: 1040px;
+      min-width: 1040px;
+      padding: 8px;
+    }}
+    .gas-volume-screen-frame {{
+      display: block;
+      width: 100%;
+      height: 720px;
+      border: 0;
+      border-radius: 12px;
+      background: #f4f7fb;
+      box-shadow: inset 0 0 0 1px rgba(60, 86, 125, 0.12);
     }}
   </style>
 </head>
@@ -1502,6 +1737,136 @@ def _cylindrical_unwrap_coordinates(
     return arc, axial
 
 
+def _cylindrical_bundle_metrics(
+    arc: np.ndarray,
+    axial: np.ndarray,
+    intensity: np.ndarray,
+    power: np.ndarray,
+    *,
+    cluster_count: int,
+    name_prefix: str,
+) -> List[Dict[str, Any]]:
+    count = max(1, int(cluster_count))
+    valid = (
+        np.isfinite(arc)
+        & np.isfinite(axial)
+        & np.isfinite(intensity)
+        & np.isfinite(power)
+    )
+    valid_indices = np.flatnonzero(valid)
+    if valid_indices.size == 0:
+        return []
+
+    count = min(count, int(valid_indices.size))
+    ordered_indices = valid_indices[np.argsort(arc[valid_indices])]
+    if count == 1:
+        groups = [ordered_indices]
+    else:
+        ordered_arc = arc[ordered_indices]
+        gaps = np.diff(ordered_arc)
+        split_points = np.sort(np.argsort(gaps)[-(count - 1):] + 1)
+        groups = [group for group in np.split(ordered_indices, split_points) if group.size > 0]
+
+    rows: List[Dict[str, Any]] = []
+    for idx, group in enumerate(groups, start=1):
+        group_arc = arc[group]
+        group_axial = axial[group]
+        group_intensity = intensity[group]
+        group_power = power[group]
+        weights = _finite_weights(group_intensity)
+        mean_diameter, spot_area = _spot_extent_metrics(group_arc, group_axial, group_intensity)
+        total_power = float(np.sum(np.clip(group_power, 0.0, None)))
+        integral_intensity = (
+            total_power / spot_area
+            if np.isfinite(spot_area) and float(spot_area) > 0.0
+            else float("nan")
+        )
+        rows.append(
+            {
+                "name": f"{name_prefix}_{idx}",
+                "integral_intensity": integral_intensity,
+                "ray_count": int(group.size),
+                "mean_diameter": mean_diameter,
+                "total_power": total_power,
+                "s_center": float(np.average(group_arc, weights=weights)),
+                "z_center": float(np.average(group_axial, weights=weights)),
+                "s_min": float(np.min(group_arc)),
+                "s_max": float(np.max(group_arc)),
+                "z_min": float(np.min(group_axial)),
+                "z_max": float(np.max(group_axial)),
+            }
+        )
+    return rows
+
+
+def _write_cylindrical_bundle_metrics_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [
+        "name",
+        "integral_intensity_W_m2",
+        "ray_count",
+        "mean_diameter_m",
+        "total_power_W",
+        "s_center_m",
+        "z_center_m",
+        "s_min_m",
+        "s_max_m",
+        "z_min_m",
+        "z_max_m",
+    ]
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {
+                    "name": row["name"],
+                    "integral_intensity_W_m2": float(row["integral_intensity"]),
+                    "ray_count": int(row["ray_count"]),
+                    "mean_diameter_m": float(row["mean_diameter"]),
+                    "total_power_W": float(row["total_power"]),
+                    "s_center_m": float(row["s_center"]),
+                    "z_center_m": float(row["z_center"]),
+                    "s_min_m": float(row["s_min"]),
+                    "s_max_m": float(row["s_max"]),
+                    "z_min_m": float(row["z_min"]),
+                    "z_max_m": float(row["z_max"]),
+                }
+            )
+
+
+def _cylindrical_bundle_metrics_table_html(rows: Sequence[Mapping[str, Any]]) -> str:
+    if not rows:
+        return ""
+    body = "\n".join(
+        "      <tr>"
+        f"<td>{escape(str(row['name']))}</td>"
+        f"<td>{_format_table_number(row['integral_intensity'])}</td>"
+        f"<td>{int(row['ray_count'])}</td>"
+        f"<td>{_format_table_number(row['mean_diameter'])}</td>"
+        "</tr>"
+        for row in rows
+    )
+    return f"""
+  <section class="bundle-section">
+    <h2>Характеристики пучков на screen_b_1_1</h2>
+    <table class="bundle-table">
+      <thead>
+        <tr>
+          <th>Пучок</th>
+          <th>Интегральная интенсивность, Вт/м<sup>2</sup></th>
+          <th>Количество лучей</th>
+          <th>Средний диаметр, м</th>
+        </tr>
+      </thead>
+      <tbody>
+{body}
+      </tbody>
+    </table>
+  </section>
+"""
+
+
 def write_cylindrical_unwrap_view(
     path: Path,
     result: Any,
@@ -1511,6 +1876,9 @@ def write_cylindrical_unwrap_view(
     grid_size: int = 180,
     smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
     view_padding_m: float = 0.003,
+    bundle_cluster_count: Optional[int] = None,
+    bundle_name_prefix: Optional[str] = None,
+    bundle_metrics_csv_path: Optional[Path] = None,
 ) -> None:
     import plotly.graph_objects as go
 
@@ -1523,6 +1891,7 @@ def write_cylindrical_unwrap_view(
     data = _collect_detector_hit_blocks(result, name)
     positions = data["position"]
     intensity = data["intensity"]
+    power = data["power"]
     if positions.size > 0:
         arc, axial = _cylindrical_unwrap_coordinates(
             positions,
@@ -1540,6 +1909,19 @@ def write_cylindrical_unwrap_view(
         arc = np.zeros((0,), dtype=float)
         axial = np.zeros((0,), dtype=float)
         max_intensity = 1.0
+
+    bundle_rows: List[Dict[str, Any]] = []
+    if bundle_cluster_count is not None and bundle_name_prefix:
+        bundle_rows = _cylindrical_bundle_metrics(
+            arc,
+            axial,
+            intensity,
+            power,
+            cluster_count=int(bundle_cluster_count),
+            name_prefix=str(bundle_name_prefix),
+        )
+        if bundle_metrics_csv_path is not None:
+            _write_cylindrical_bundle_metrics_csv(bundle_metrics_csv_path, bundle_rows)
 
     half_arc = np.pi * radius
     half_length = 0.5 * length
@@ -1634,6 +2016,18 @@ def write_cylindrical_unwrap_view(
             bordercolor="rgba(60,86,125,0.18)",
             borderwidth=1,
         )
+    for row in bundle_rows:
+        label_y = min(y_max, float(row["z_max"]) + 0.00022)
+        fig.add_annotation(
+            x=float(row["s_center"]),
+            y=label_y,
+            text=escape(str(row["name"])),
+            showarrow=False,
+            font={"size": 11, "color": "#20385d"},
+            bgcolor="rgba(255,255,255,0.78)",
+            bordercolor="rgba(60,86,125,0.18)",
+            borderwidth=1,
+        )
     fig.update_layout(
         title={"text": title, "x": 0.5, "font": {"size": 22}},
         width=980,
@@ -1656,7 +2050,86 @@ def write_cylindrical_unwrap_view(
         gridcolor="rgba(255,255,255,0.85)",
     )
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.write_html(path, include_plotlyjs=True)
+    plot_html = fig.to_html(include_plotlyjs=True, full_html=False, config={"responsive": True})
+    bundle_table_html = _cylindrical_bundle_metrics_table_html(bundle_rows)
+    html = f"""<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{escape(title)}</title>
+  <style>
+    :root {{
+      color: #183052;
+      background: #f4f7fb;
+      font-family: "Segoe UI", "DejaVu Sans", Arial, sans-serif;
+    }}
+    body {{
+      margin: 0;
+      padding: 18px 22px 28px;
+      background: #f4f7fb;
+    }}
+    .plot-wrap {{
+      width: min(980px, 100%);
+      margin: 0 auto;
+    }}
+    .bundle-section {{
+      width: min(940px, calc(100% - 36px));
+      margin: 12px auto 0;
+      padding: 18px 18px 20px;
+      border: 1px solid rgba(60, 86, 125, 0.18);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 12px 34px rgba(32, 58, 96, 0.10);
+    }}
+    .bundle-section h2 {{
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: #20385d;
+    }}
+    .bundle-table {{
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border: 1px solid rgba(60, 86, 125, 0.18);
+      border-radius: 12px;
+      background: #ffffff;
+      font-size: 14px;
+    }}
+    .bundle-table th,
+    .bundle-table td {{
+      padding: 10px 12px;
+      border-right: 1px solid rgba(60, 86, 125, 0.12);
+      border-bottom: 1px solid rgba(60, 86, 125, 0.12);
+      text-align: center;
+      white-space: nowrap;
+    }}
+    .bundle-table th {{
+      background: rgba(190, 204, 224, 0.55);
+      font-weight: 650;
+    }}
+    .bundle-table td:first-child,
+    .bundle-table th:first-child {{
+      text-align: left;
+    }}
+    .bundle-table tr:last-child td {{
+      border-bottom: 0;
+    }}
+    .bundle-table th:last-child,
+    .bundle-table td:last-child {{
+      border-right: 0;
+    }}
+  </style>
+</head>
+<body>
+  <div class="plot-wrap">
+{plot_html}
+  </div>
+{bundle_table_html}
+</body>
+</html>
+"""
+    path.write_text(html, encoding="utf-8")
 
 
 def _format_scientific(value: float, *, precision: int = 4) -> str:
