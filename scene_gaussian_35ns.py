@@ -528,7 +528,7 @@ TURNING_ROUND_MIRROR_3 = PlaneMirror(
 )
 
 TURNING_ROUND_MIRROR_4 = PlaneMirror(
-    name="Turning round mirror 4",
+    name="MC4",
     center=(1.017574008, 0.7661097252, 0.02510104076),
     normal=(-0.33523098, 0.62259151, -0.70710678),
     shape="disk",
