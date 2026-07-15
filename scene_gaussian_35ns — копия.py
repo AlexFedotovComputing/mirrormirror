@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import csv
+import json
 import math
+import subprocess
+import sys
 import webbrowser
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Sequence
 
 import numpy as np
 
@@ -105,6 +110,11 @@ CYLINDRICAL_SCREEN_1 = CylindricalScreen(
     detector=True,
 )
 
+BUNDLE_RAY_INNER_CYLINDER_RADIUS_M = 0.35
+BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M = 1.35
+BUNDLE_RAY_Z_MIN_M = float(CYLINDRICAL_SCREEN_1.center[2]) - 0.5 * float(CYLINDRICAL_SCREEN_1.length)
+BUNDLE_RAY_Z_MAX_M = float(CYLINDRICAL_SCREEN_1.center[2]) + 0.5 * float(CYLINDRICAL_SCREEN_1.length)
+
 _BUNDLE_1_1_BASE_DATA = [
     {"name": "BUNDLE_1_1 Mirror 1", "phi": 31.424112270736885, "center": (-0.7647815417, 1.0251094165, -2.1122), "radius": BUNDLE_1_1_RADIUS_M},
     {"name": "BUNDLE_1_1 Mirror 2", "phi": 25.924090268233982, "center": (-0.76570152805, 1.025501367, -2.11135), "radius": BUNDLE_1_1_RADIUS_M},
@@ -197,10 +207,10 @@ def make_bundle(name: str, data: List[Dict[str, object]]) -> MirrorArrayBundle:
     return MirrorArrayBundle(
         data,
         name=name,
-        reflectance=0.5,
-        transmittance=0.5,
-        reflect_from_minus_side=False,
-        reflect_from_plus_side=True,
+        reflectance=1.0,
+        transmittance=0.0,
+        reflect_from_minus_side=True,
+        reflect_from_plus_side=False,
     )
 
 def make_bundle_1_1() -> MirrorArrayBundle:
@@ -415,6 +425,116 @@ BUNDLE_4_4_DATA = _recenter_bundle_data(
 
 def make_bundle_4_4() -> MirrorArrayBundle:
     return make_bundle("BUNDLE_4_4", BUNDLE_4_4_DATA)
+
+RECONSTRUCTED_MICROASSEMBLIES_PATH = Path(__file__).with_name("Восстановленные_микросборки.txt")
+
+
+def _normalized_reconstructed_vector(vector: np.ndarray) -> tuple[float, float, float]:
+    length = float(np.linalg.norm(vector))
+    if length <= 1e-15:
+        raise ValueError("Cannot normalize a zero-length reconstructed geometry vector.")
+    return tuple(float(value) for value in vector / length)
+
+
+def _reconstructed_mirror_config(
+    points: Sequence[Sequence[float]],
+) -> Dict[str, object]:
+    point_arrays = [np.asarray(point, dtype=float) for point in points]
+    if len(point_arrays) != 4:
+        raise ValueError(f"A reconstructed mirror must have four points, got {len(point_arrays)}.")
+    p0, p1, _, p3 = point_arrays
+    center = np.mean(np.stack(point_arrays, axis=0), axis=0)
+    in_plane_reference = _normalized_reconstructed_vector(p1 - p0)
+    normal_vector = np.cross(p1 - p0, p3 - p0)
+    # Point order is not consistent for every reconstructed mirror. Orient all
+    # normals toward -z, so rays arriving from +z meet the same reflective side.
+    # Reversing a plane normal does not change its position or reflection path.
+    if normal_vector[2] > 0.0:
+        normal_vector = -normal_vector
+    normal = _normalized_reconstructed_vector(normal_vector)
+    return {
+        "center": tuple(float(value) for value in center),
+        "phi": math.degrees(math.atan2(p1[1] - p3[1], p1[0] - p3[0])),
+        "normal": normal,
+        "in_plane_reference": in_plane_reference,
+        "reconstructed_points": [tuple(float(value) for value in point) for point in point_arrays],
+    }
+
+
+def _load_reconstructed_microassemblies(path: Path) -> None:
+    if not path.is_file():
+        raise FileNotFoundError(f"Reconstructed mirror positions file not found: {path}")
+
+    loaded: Dict[str, Dict[int, Dict[str, object]]] = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row_number, row in enumerate(csv.reader(handle, delimiter="\t"), start=1):
+            if not row or not any(cell.strip() for cell in row):
+                continue
+            if len(row) != 5:
+                raise ValueError(f"Unexpected row {row_number} in {path.name}: {row!r}")
+            key_parts = row[0].strip().split(".")
+            if len(key_parts) != 3:
+                raise ValueError(f"Invalid mirror key at row {row_number}: {row[0]!r}")
+            sector, layer, mirror_index = (int(value) for value in key_parts)
+            bundle_key = f"{sector}.{layer}"
+            points = [ast.literal_eval(cell.strip()) for cell in row[1:]]
+            loaded.setdefault(bundle_key, {})[mirror_index] = _reconstructed_mirror_config(points)
+
+    expected_bundle_keys = {f"{sector}.{layer}" for sector in range(1, 5) for layer in range(1, 5)}
+    if set(loaded) != expected_bundle_keys:
+        missing = sorted(expected_bundle_keys - set(loaded))
+        extra = sorted(set(loaded) - expected_bundle_keys)
+        raise ValueError(f"Unexpected reconstructed bundle set; missing={missing}, extra={extra}")
+
+    for sector in range(1, 5):
+        for layer in range(1, 5):
+            bundle_key = f"{sector}.{layer}"
+            items = loaded[bundle_key]
+            if set(items) != set(range(1, 8)):
+                raise ValueError(f"Bundle {bundle_key} must contain mirror indices 1..7.")
+            bundle_variable = f"BUNDLE_{sector}_{layer}_DATA"
+            original_items = globals()[bundle_variable]
+            globals()[bundle_variable] = [
+                {
+                    **original_items[mirror_index - 1],
+                    **items[mirror_index],
+                    "name": f"BUNDLE_{sector}_{layer} Mirror {mirror_index}",
+                }
+                for mirror_index in range(1, 8)
+            ]
+
+
+_load_reconstructed_microassemblies(RECONSTRUCTED_MICROASSEMBLIES_PATH)
+
+# Rigid translations of the four reconstructed sectors.  Every translation is
+# applied equally to all 28 mirrors in BUNDLE_<sector>_1..4, preserving the
+# recovered internal geometry while centering each sector on its incoming beam.
+BUNDLE_SECTOR_TRANSLATIONS_M = {
+    1: (-0.0198703276795, -0.0026805251862, 0.0),
+    2: (0.0025362321414, -0.0193196587392, 0.0),
+    3: (0.0160000000000, 0.0040000000000, 0.0),
+    4: (-0.0032595754172, 0.0181154172432, 0.0),
+}
+
+
+def _apply_bundle_sector_translations() -> None:
+    for sector, translation in BUNDLE_SECTOR_TRANSLATIONS_M.items():
+        offset = np.asarray(translation, dtype=float)
+        for layer in range(1, 5):
+            bundle_data = globals()[f"BUNDLE_{sector}_{layer}_DATA"]
+            for mirror in bundle_data:
+                mirror["center"] = tuple(
+                    float(value) for value in np.asarray(mirror["center"], dtype=float) + offset
+                )
+                reconstructed_points = mirror.get("reconstructed_points")
+                if reconstructed_points is not None:
+                    mirror["reconstructed_points"] = [
+                        tuple(float(value) for value in np.asarray(point, dtype=float) + offset)
+                        for point in reconstructed_points
+                    ]
+
+
+_apply_bundle_sector_translations()
 
 SOURCE_TEMPLATE = GaussianBeamSource(
     waist_position=(-0.3444840871, -0.8032109003, 3.31987),
@@ -800,7 +920,26 @@ def build_initial_scene() -> Scene:
 
 def build_bundle_overlays(bundle: MirrorArrayBundle) -> List[Dict[str, object]]:
     overlays: List[Dict[str, object]] = []
-    for mirror in bundle.build_surfaces():
+    for config, mirror in zip(bundle.configs, bundle.build_surfaces()):
+        if isinstance(config, dict) and "reconstructed_points" in config:
+            points = [tuple(float(value) for value in point) for point in config["reconstructed_points"]]
+            points.append(points[0])
+            overlays.append(
+                {
+                    "x": [point[0] for point in points],
+                    "y": [point[1] for point in points],
+                    "z": [point[2] for point in points],
+                    "mode": "lines+markers",
+                    "name": mirror.name,
+                    "line": {"color": SEMI_TRANSPARENT_MIRROR_COLOR, "width": 5},
+                    "marker": {"color": SEMI_TRANSPARENT_MIRROR_COLOR, "size": 3},
+                    "hovertemplate": (
+                        f"{mirror.name}<br>x=%{{x:.6f}}<br>y=%{{y:.6f}}<br>z=%{{z:.6f}}<extra></extra>"
+                    ),
+                    "showlegend": False,
+                }
+            )
+            continue
         overlays.append(
             make_circle_outline(
                 name=mirror.name,
@@ -812,6 +951,159 @@ def build_bundle_overlays(bundle: MirrorArrayBundle) -> List[Dict[str, object]]:
             )
         )
     return overlays
+
+
+
+
+
+
+CONTROLLED_MIRRORS = [
+    ("Круглое MC1", SMALL_REFLECTIVE_MIRROR),
+    ("Круглое MC2", TURNING_ROUND_MIRROR_2),
+    ("Круглое MC3", TURNING_ROUND_MIRROR_3),
+    ("Круглое MC4", TURNING_ROUND_MIRROR_4),
+    ("Квадратное MS1", TURNING_SQUARE_MIRROR_1),
+    ("Квадратное MS2", TURNING_SQUARE_MIRROR_2),
+    ("Квадратное MS3", TURNING_SQUARE_MIRROR_3),
+    ("Квадратное MS4", TURNING_SQUARE_MIRROR_4),
+]
+
+
+def _empty_controlled_mirror_angles() -> Dict[str, Dict[str, float]]:
+    return {mirror.name: {"x": 0.0, "y": 0.0, "z": 0.0} for _, mirror in CONTROLLED_MIRRORS}
+
+
+def _parse_controlled_mirror_angles(items: Sequence[str]) -> Dict[str, Dict[str, float]]:
+    angles = _empty_controlled_mirror_angles()
+    aliases = {f"MC{i + 1}": mirror.name for i, (_, mirror) in enumerate(CONTROLLED_MIRRORS[:4])}
+    aliases.update({f"MS{i + 1}": mirror.name for i, (_, mirror) in enumerate(CONTROLLED_MIRRORS[4:])})
+    aliases.update({mirror.name: mirror.name for _, mirror in CONTROLLED_MIRRORS})
+    for item in items:
+        key, value_text = item.rsplit("=", 1)
+        mirror_key, axis = key.rsplit(":", 1)
+        mirror_name = aliases.get(mirror_key)
+        axis = axis.lower()
+        value = float(value_text)
+        if mirror_name is None or axis not in ("x", "y", "z") or not math.isfinite(value) or abs(value) > 180.0:
+            raise ValueError(f"Invalid mirror angle override: {item!r}")
+        angles[mirror_name][axis] = value
+    return angles
+
+
+def _rotate_mirror_vector(vector: Sequence[float], axis: Sequence[float], angle_deg: float) -> tuple[float, float, float]:
+    value = np.asarray(vector, dtype=float)
+    axis_value = np.asarray(axis, dtype=float)
+    axis_value /= np.linalg.norm(axis_value)
+    angle = math.radians(float(angle_deg))
+    result = value * math.cos(angle) + np.cross(axis_value, value) * math.sin(angle) + axis_value * float(np.dot(axis_value, value)) * (1.0 - math.cos(angle))
+    return tuple(float(component) for component in result / np.linalg.norm(result))
+
+
+def _apply_controlled_mirror_angles(angles: Dict[str, Dict[str, float]]) -> None:
+    axes = {"x": (1.0, 0.0, 0.0), "y": (0.0, 1.0, 0.0), "z": (0.0, 0.0, 1.0)}
+    for _, mirror in CONTROLLED_MIRRORS:
+        normal = tuple(mirror.normal)
+        reference = tuple(mirror.in_plane_reference)
+        for axis in ("x", "y", "z"):
+            angle = angles[mirror.name][axis]
+            if abs(angle) > 1e-15:
+                normal = _rotate_mirror_vector(normal, axes[axis], angle)
+                reference = _rotate_mirror_vector(reference, axes[axis], angle)
+        mirror.normal = normal
+        mirror.in_plane_reference = reference
+
+
+def _add_mirror_angle_controls(path: Path, angles: Dict[str, Dict[str, float]]) -> None:
+    config = {mirror.name: {"label": label, "center": list(mirror.center)} for label, mirror in CONTROLLED_MIRRORS}
+    sections = []
+    for index, (label, mirror) in enumerate(CONTROLLED_MIRRORS):
+        rows = "".join(
+            f'<label><i>{axis}</i><button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="-0.005">−</button>'
+            f'<input type="number" value="{angles[mirror.name][axis]:.6f}" step="0.005" data-mirror="{index}" data-axis="{axis}">'
+            f'<button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="0.005">+</button></label>'
+            for axis in ("x", "y", "z")
+        )
+        sections.append(f'<details><summary>{label}</summary><div class="axis-rows">{rows}</div><button class="reset-one" data-mirror="{index}">Сбросить</button></details>')
+    panel = f"""
+<style>
+body{{margin:0;overflow:hidden;font-family:Arial,sans-serif}}.plotly-graph-div{{width:calc(100vw - 286px)!important;height:100vh!important}}
+#mirror-panel{{position:fixed;right:0;top:0;z-index:1000;box-sizing:border-box;width:286px;height:100vh;overflow-y:auto;padding:10px;background:#f8fafcf7;border-left:1px solid #cbd5e1;box-shadow:-3px 0 12px #0f17221f;font-size:12px;color:#1f2937}}
+#mirror-panel h3{{margin:0 0 4px;font-size:14px}}#mirror-panel>p{{margin:0 0 8px;color:#64748b}}#mirror-panel details{{margin-bottom:5px;border:1px solid #d7dee8;border-radius:5px;background:white}}#mirror-panel summary{{padding:6px 7px;cursor:pointer;font-weight:700}}
+.axis-rows{{display:grid;gap:4px;padding:0 7px 5px}}.axis-rows label{{display:grid;grid-template-columns:12px 26px 1fr 26px;align-items:center;gap:4px}}.axis-rows input{{box-sizing:border-box;min-width:0;width:100%;padding:3px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px}}
+.angle-step{{height:24px;padding:0;border:1px solid #94a3b8;border-radius:4px;background:white;font-size:16px;cursor:pointer}}.angle-step:active{{background:#e2e8f0}}.reset-one{{margin:0 7px 7px;padding:3px 7px;border:1px solid #94a3b8;border-radius:4px;background:#f8fafc;cursor:pointer}}
+#reset-all,#recalculate{{width:100%;margin-top:6px;padding:7px;border-radius:4px;font-weight:700;cursor:pointer}}#reset-all{{border:1px solid #94a3b8;background:#f8fafc}}#recalculate{{border:0;background:#2563eb;color:white}}#recalculate:disabled{{background:#94a3b8;cursor:wait}}#status{{min-height:16px;margin:6px 0 0}}
+</style>
+<aside id="mirror-panel"><h3>Отклонение зеркал, °</h3><p>Относительно текущего положения по осям x, y, z.</p>{''.join(sections)}<button id="reset-all">Сбросить все</button><button id="recalculate">Пересчитать и показать</button><p id="status"></p></aside>
+<script>
+(()=>{{const config={json.dumps(config, ensure_ascii=False)},names=Object.keys(config),rendered={json.dumps(angles, ensure_ascii=False)},states=names.map(n=>({{...rendered[n]}}));
+function rotate(p,c,a){{let x=p[0]-c[0],y=p[1]-c[1],z=p[2]-c[2],r=a.x*Math.PI/180,ny=y*Math.cos(r)-z*Math.sin(r),nz=y*Math.sin(r)+z*Math.cos(r);y=ny;z=nz;r=a.y*Math.PI/180;let nx=x*Math.cos(r)+z*Math.sin(r);nz=-x*Math.sin(r)+z*Math.cos(r);x=nx;z=nz;r=a.z*Math.PI/180;return[x*Math.cos(r)-y*Math.sin(r)+c[0],x*Math.sin(r)+y*Math.cos(r)+c[1],z+c[2]]}}
+function init(){{const plot=document.querySelector('.plotly-graph-div');if(!plot||!plot.data){{setTimeout(init,50);return}}names.forEach(n=>{{const i=plot.data.findIndex(t=>t.name===n),t=i>=0?plot.data[i]:null;if(t){{config[n].i=i;config[n].points=t.x.map((x,j)=>[Number(x),Number(t.y[j]),Number(t.z[j])])}}}});
+function preview(i){{const n=names[i],c=config[n];if(c.i===undefined)return;const a={{x:states[i].x-rendered[n].x,y:states[i].y-rendered[n].y,z:states[i].z-rendered[n].z}},p=c.points.map(v=>rotate(v,c.center,a));Plotly.restyle(plot,{{x:[p.map(v=>v[0])],y:[p.map(v=>v[1])],z:[p.map(v=>v[2])]}},[c.i])}}
+document.querySelectorAll('#mirror-panel input').forEach(input=>input.addEventListener('input',()=>{{const i=Number(input.dataset.mirror);states[i][input.dataset.axis]=Number(input.value)||0;preview(i)}}));
+document.querySelectorAll('.angle-step').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror),axis=button.dataset.axis;states[i][axis]=Math.round((states[i][axis]+Number(button.dataset.delta))*1000)/1000;const input=document.querySelector(`input[data-mirror="${{i}}"][data-axis="${{axis}}"]`);input.value=states[i][axis].toFixed(3);preview(i)}}));
+document.querySelectorAll('.reset-one').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror);states[i]={{x:0,y:0,z:0}};document.querySelectorAll(`input[data-mirror="${{i}}"]`).forEach(v=>v.value='0');preview(i)}}));
+async function recalc(){{const b=document.getElementById('recalculate'),s=document.getElementById('status'),payload={{}};names.forEach((n,i)=>payload[n]=states[i]);b.disabled=true;s.textContent='Выполняется трассировка лучей…';try{{const r=await fetch('/recalculate',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{angles:payload}})}}),v=await r.json();if(!r.ok)throw new Error(v.error||'Ошибка пересчёта');s.textContent='Готово. Обновляю визуализацию…';location.href='/scene_gaussian_35ns.html?v='+Date.now()}}catch(e){{s.textContent=e.message;b.disabled=false}}}}
+document.getElementById('recalculate').addEventListener('click',recalc);document.getElementById('reset-all').addEventListener('click',()=>{{states.forEach((_,i)=>{{states[i]={{x:0,y:0,z:0}};preview(i)}});document.querySelectorAll('#mirror-panel input').forEach(v=>v.value='0');recalc()}});addEventListener('resize',()=>Plotly.Plots.resize(plot));Plotly.Plots.resize(plot)}}init()}})();
+</script>"""
+    html = path.read_text(encoding="utf-8")
+    path.write_text(html.replace("</body>", panel + "</body>", 1), encoding="utf-8")
+
+
+def _serve_interactive_plot(*, outdir: Path, backend: str, max_interactions: int) -> None:
+    script_path = Path(__file__).resolve()
+    allowed = {mirror.name for _, mirror in CONTROLLED_MIRRORS}
+
+    class Handler(SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(outdir.resolve()), **kwargs)
+
+        def do_POST(self) -> None:
+            if self.path != "/recalculate":
+                self.send_error(404)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                angles = json.loads(self.rfile.read(length).decode("utf-8"))["angles"]
+                if set(angles) != allowed:
+                    raise ValueError("Unexpected mirror set.")
+                command = [sys.executable, str(script_path), "--backend", backend, "--max-interactions", str(max_interactions), "--outdir", str(outdir.resolve()), "--no-open-plot", "--skip-csv"]
+                for name in sorted(angles):
+                    if set(angles[name]) != {"x", "y", "z"}:
+                        raise ValueError(f"Incomplete angles for {name}.")
+                    for axis in ("x", "y", "z"):
+                        value = float(angles[name][axis])
+                        if not math.isfinite(value) or abs(value) > 180.0:
+                            raise ValueError(f"Invalid {name}:{axis} angle: {value}")
+                        command.extend(("--mirror-angle", f"{name}:{axis}={value}"))
+                completed = subprocess.run(command, cwd=str(script_path.parent), capture_output=True, text=True, timeout=3600)
+                if completed.returncode:
+                    raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "Recalculation failed.")
+                response = json.dumps({"ok": True}).encode()
+                self.send_response(200)
+            except Exception as exc:
+                response = json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False).encode("utf-8")
+                self.send_response(400)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(response)))
+            self.end_headers()
+            self.wfile.write(response)
+
+        def log_message(self, fmt: str, *args: object) -> None:
+            print(f"Interactive plot: {fmt % args}")
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    host, port = server.server_address
+    url = f"http://{host}:{port}/scene_gaussian_35ns.html"
+    print(f"Interactive plot: {url}")
+    print("Keep this process running for recalculation; press Ctrl+C to stop.")
+    webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Interactive plot stopped.")
+    finally:
+        server.server_close()
+
 
 def write_bundle_plot(path: Path, result: object, bundle: MirrorArrayBundle) -> None:
     bundle_result = copy.copy(result)
@@ -901,10 +1193,21 @@ def main() -> None:
         help="Maximum number of ray interactions / secondary-ray generations",
     )
     parser.add_argument("--outdir", default="scene_gaussian_35ns_output", help="Directory for outputs")
+    parser.add_argument(
+        "--mirror-angle",
+        action="append",
+        default=[],
+        help="Mirror angle override, for example MC1:x=0.01 or MS4:z=-0.02.",
+    )
     parser.add_argument("--no-plot", dest="plot", action="store_false", help="Skip saving the Plotly trajectories plot")
     parser.add_argument("--no-open-plot", dest="open_plot", action="store_false", help="Do not open the saved plot in a browser")
+    parser.add_argument("--skip-csv", action="store_true", help=argparse.SUPPRESS)
     parser.set_defaults(plot=True, open_plot=True)
     args = parser.parse_args()
+
+    print(f"Loaded reconstructed mirror positions: {RECONSTRUCTED_MICROASSEMBLIES_PATH}")
+    controlled_mirror_angles = _parse_controlled_mirror_angles(args.mirror_angle)
+    _apply_controlled_mirror_angles(controlled_mirror_angles)
 
     source = build_initial_source(args.backend)
     rays = emit_initial_rays(source)
@@ -914,6 +1217,10 @@ def main() -> None:
         backend=args.backend,
         max_interactions=args.max_interactions,
         max_time_s=INTEGRATION_TIME_S,
+        bundle_clip_inner_radius_m=BUNDLE_RAY_INNER_CYLINDER_RADIUS_M,
+        bundle_clip_outer_radius_m=BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M,
+        bundle_clip_z_min_m=BUNDLE_RAY_Z_MIN_M,
+        bundle_clip_z_max_m=BUNDLE_RAY_Z_MAX_M,
     )
     result = tracer.trace(rays)
 
@@ -922,8 +1229,11 @@ def main() -> None:
 
     segments_path = outdir / "segments.csv"
     detector_hits_path = outdir / "detector_hits.csv"
-    wrote_segments = write_csv(segments_path, flatten_segment_blocks(result.segments))
-    wrote_detector_hits = write_csv(detector_hits_path, flatten_detector_hits(result.detector_hits))
+    wrote_segments = False
+    wrote_detector_hits = False
+    if not args.skip_csv:
+        wrote_segments = write_csv(segments_path, flatten_segment_blocks(result.segments))
+        wrote_detector_hits = write_csv(detector_hits_path, flatten_detector_hits(result.detector_hits))
 
     source_power = float(np.sum(to_numpy(rays.power)))
     power_summary = result.detector_power_summary()
@@ -1289,17 +1599,24 @@ def main() -> None:
         write_plotly_trajectories(
             plot_path,
             result,
-            title="Initial 35 ns scene",
+            title="35 ns scene with reconstructed mirror positions",
             overlays=overlays,
             detector_hit_exclude_prefixes=("Screen",),
             trim_end_surface_prefixes=("Screen",),
             trim_end_distance=5e-3,
             min_segment_power=20.0,
+            max_segments_per_block=150,
             always_include_surface_prefixes=("BUNDLE_", "Cylindrical Screen"),
+            always_include_child_segments_of_surface_prefixes=("BUNDLE_",),
         )
+        _add_mirror_angle_controls(plot_path, controlled_mirror_angles)
         print(f"Wrote: {plot_path}")
         if args.open_plot:
-            webbrowser.open(plot_path.resolve().as_uri())
+            _serve_interactive_plot(
+                outdir=outdir,
+                backend=args.backend,
+                max_interactions=args.max_interactions,
+            )
 
 if __name__ == "__main__":
     main()

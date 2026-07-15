@@ -103,6 +103,12 @@ _DETECTOR_HIT_MARKER_LINE_WIDTH = 0.2
 _DETECTOR_HIT_MARKER_OPACITY = 0.78
 _DETECTOR_SUPPORT_SMOOTH_PASSES = 4
 _DETECTOR_EDGE_FADE_PIXELS = 2.5
+_CYLINDRICAL_BUNDLE_MIN_SPLIT_GAP_M = 0.00075
+_CYLINDRICAL_BUNDLE_MAX_SPLIT_GAP_M = 0.0012
+_CYLINDRICAL_BUNDLE_GAP_PERCENTILE = 95.0
+_CYLINDRICAL_BUNDLE_GAP_FACTOR = 4.0
+_CYLINDRICAL_BUNDLE_MAX_DIAMETER_M = 0.003
+_CYLINDRICAL_BUNDLE_MIN_RAY_COUNT_FRACTION = 0.30
 
 
 def _normalize(v: Sequence[float]) -> np.ndarray:
@@ -743,6 +749,27 @@ def _spot_extent_metrics(u: np.ndarray, v: np.ndarray, intensity: np.ndarray) ->
     return mean_diameter, area
 
 
+def _spot_max_extent_m(u: np.ndarray, v: np.ndarray, intensity: np.ndarray) -> float:
+    if u.size < 2 or v.size < 2:
+        return float("nan")
+
+    weights = _finite_weights(intensity)
+    pts = np.column_stack((u, v))
+    center = np.average(pts, axis=0, weights=weights)
+    rel = pts - center
+    total_weight = float(np.sum(weights))
+    if total_weight <= 0.0:
+        return float("nan")
+
+    cov = (rel.T * weights) @ rel / total_weight
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    axes = eigvecs[:, np.argsort(eigvals)[::-1]]
+    diameters = np.ptp(rel @ axes, axis=0)
+    if diameters.size == 0 or not np.all(np.isfinite(diameters)):
+        return float("nan")
+    return float(np.max(diameters))
+
+
 def _screen_spot_metrics(data: Mapping[str, np.ndarray]) -> Dict[str, Any]:
     u = data["u"]
     v = data["v"]
@@ -844,7 +871,7 @@ def _detector_summary_table_html(
             elif metric == "mean_diameter":
                 value = _format_table_number(metrics["mean_diameter"])
             elif metric == "center":
-                value = _format_vector_m(metrics["center"])
+                value = _format_vector_m(reference_centers.get(name))
             elif metric == "shift":
                 center = metrics["center"]
                 reference = reference_centers.get(name)
@@ -869,7 +896,7 @@ def _detector_summary_table_html(
     <tr><td><i>I</i>, Вт/м<sup>2</sup></td>{cells_for("integral_intensity")}</tr>
     <tr><td>Степень эллиптичности, <i>e</i></td>{cells_for("ellipticity")}</tr>
     <tr><td><i>d</i>, м</td>{cells_for("mean_diameter")}</tr>
-    <tr><td>Координаты центра пятна, м</td>{cells_for("center")}</tr>
+    <tr><td>Координаты центра пятна при<br>идеальной юстировке, м</td>{cells_for("center")}</tr>
     <tr><td>Сдвиг центра пятна, м</td>{cells_for("shift")}</tr>
   </tbody>
 </table>
@@ -890,6 +917,62 @@ def _format_bundle_center_m(row: Mapping[str, Any]) -> str:
     return f"({_format_table_number(row.get('s_center'))}, {_format_table_number(row.get('z_center'))})"
 
 
+def _format_bundle_reference_center_m(row: Mapping[str, Any], reference_centers: Mapping[str, np.ndarray]) -> str:
+    reference = reference_centers.get(str(row.get("name", "")))
+    if reference is None:
+        return "н/д"
+    reference_arr = np.asarray(reference, dtype=float).reshape(-1)
+    if reference_arr.size != 2 or not np.all(np.isfinite(reference_arr)):
+        return "н/д"
+    return f"({_format_table_number(reference_arr[0])}, {_format_table_number(reference_arr[1])})"
+
+
+def _bundle_center_vector(row: Mapping[str, Any]) -> Optional[np.ndarray]:
+    try:
+        center = np.asarray([float(row["s_center"]), float(row["z_center"])], dtype=float)
+    except (KeyError, TypeError, ValueError):
+        return None
+    if center.size != 2 or not np.all(np.isfinite(center)):
+        return None
+    return center
+
+
+def _format_bundle_shift_m(row: Mapping[str, Any], reference_centers: Mapping[str, np.ndarray]) -> str:
+    center = _bundle_center_vector(row)
+    reference = reference_centers.get(str(row.get("name", "")))
+    if center is None or reference is None:
+        return "н/д"
+    reference_arr = np.asarray(reference, dtype=float).reshape(-1)
+    if reference_arr.size != 2 or not np.all(np.isfinite(reference_arr)):
+        return "н/д"
+    return f"({_format_table_number(center[0] - reference_arr[0])}, {_format_table_number(center[1] - reference_arr[1])})"
+
+
+def _load_bundle_reference_centers(path: Path) -> Dict[str, np.ndarray]:
+    if not path.exists():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {}
+
+    centers: Dict[str, np.ndarray] = {}
+    if isinstance(raw, dict):
+        for name, value in raw.items():
+            arr = np.asarray(value, dtype=float).reshape(-1)
+            if arr.size == 2 and np.all(np.isfinite(arr)):
+                centers[str(name)] = arr
+    return centers
+
+
+def _write_bundle_reference_centers(path: Path, centers: Mapping[str, np.ndarray]) -> None:
+    serializable = {
+        str(name): [float(coord) for coord in np.asarray(center, dtype=float).reshape(2)]
+        for name, center in centers.items()
+    }
+    path.write_text(json.dumps(serializable, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def _empty_bundle_metric_row(name: str) -> Dict[str, Any]:
     return {
         "name": name,
@@ -904,6 +987,22 @@ def _empty_bundle_metric_row(name: str) -> Dict[str, Any]:
         "z_min": float("nan"),
         "z_max": float("nan"),
     }
+
+
+def _periodic_arc_to_contiguous_window(arc: np.ndarray, period: float) -> np.ndarray:
+    arc = np.asarray(arc, dtype=float)
+    if arc.size < 2 or not np.isfinite(period) or float(period) <= 0.0:
+        return arc.copy()
+
+    wrapped = np.mod(arc, float(period))
+    order = np.argsort(wrapped)
+    ordered = wrapped[order]
+    gaps = np.diff(np.concatenate([ordered, ordered[:1] + float(period)]))
+    if gaps.size == 0:
+        return arc.copy()
+
+    start = ordered[(int(np.argmax(gaps)) + 1) % ordered.size]
+    return np.mod(wrapped - start, float(period))
 
 
 def _screen_b_bundle_rows(
@@ -929,6 +1028,7 @@ def _screen_b_bundle_rows(
             radius=float(surface["radius"]),
         )
         weights = _finite_weights(intensity)
+        arc = _periodic_arc_to_contiguous_window(arc, 2.0 * np.pi * float(surface["radius"]))
         arc = arc - float(np.average(arc, weights=weights))
         axial = axial - float(np.average(axial, weights=weights))
         for row in _cylindrical_bundle_metrics(
@@ -956,7 +1056,9 @@ def _gas_volume_bundle_table_html(
     surfaces: Sequence[Mapping[str, Any]],
     *,
     cluster_count: int = 7,
+    reference_centers: Optional[Mapping[str, np.ndarray]] = None,
 ) -> str:
+    reference_centers = reference_centers or {}
     ordered_surfaces = sorted(surfaces, key=lambda surface: _screen_b_indices(str(surface["name"])))
     surface_by_index: Dict[tuple[int, int], Mapping[str, Any]] = {
         _screen_b_indices(str(surface["name"])): surface
@@ -968,16 +1070,18 @@ def _gas_volume_bundle_table_html(
     <tr class="gas-volume-head-row">
       <th>Номер сборки</th>
       <th>Зеркало</th>
-      <th>Координаты центра, м</th>
+      <th>Координаты центра при<br>идеальной юстировке, м</th>
+      <th>Смещение, м</th>
       <th>Диаметр <i>d</i>, м</th>
       <th>Количество лучей <i>N</i></th>
       <th>Интенсивность <i>I</i>, Вт/м<sup>2</sup></th>
+      <th>Количество<br>пучков</th>
       <th></th>
     </tr>"""
     ]
 
     for rod in range(1, 5):
-        rows.append(f'    <tr class="rod-row"><td colspan="7">Стержень {rod}</td></tr>')
+        rows.append(f'    <tr class="rod-row"><td colspan="9">Стержень {rod}</td></tr>')
         for assembly in range(1, 5):
             surface = surface_by_index.get((rod, assembly))
             surface_name = f"screen_b_{rod}_{assembly}"
@@ -988,6 +1092,11 @@ def _gas_volume_bundle_table_html(
                 bundle_rows = _screen_b_bundle_rows(result, surface, cluster_count=cluster_count)
             screen_label = f"Screen_b_{rod}_{assembly}"
             unwrap_href = f"{surface_name}_unwrap.html"
+            bundle_count = sum(
+                1
+                for row in bundle_rows
+                if int(row.get("ray_count", 0)) > 0
+            )
 
             for mirror_idx, bundle_row in enumerate(bundle_rows, start=1):
                 cells: List[str] = []
@@ -996,13 +1105,17 @@ def _gas_volume_bundle_table_html(
                 cells.extend(
                     [
                         f'<td class="mirror-cell">{mirror_idx}</td>',
-                        f"<td>{_format_bundle_center_m(bundle_row)}</td>",
+                        f"<td>{_format_bundle_reference_center_m(bundle_row, reference_centers)}</td>",
+                        f"<td>{_format_bundle_shift_m(bundle_row, reference_centers)}</td>",
                         f"<td>{_format_table_number(bundle_row.get('mean_diameter'))}</td>",
                         f"<td>{int(bundle_row.get('ray_count', 0))}</td>",
                         f"<td>{_format_table_number(bundle_row.get('integral_intensity'))}</td>",
                     ]
                 )
                 if mirror_idx == 1:
+                    cells.append(
+                        f'<td class="bundle-count-cell" rowspan="{cluster_count}">{bundle_count}</td>'
+                    )
                     cells.append(
                         f'<td class="screen-cell" rowspan="{cluster_count}">'
                         f'<iframe class="gas-volume-screen-frame" '
@@ -1167,9 +1280,11 @@ def write_detector_screen_views(
     grid_size: int = _DETECTOR_SCREEN_GRID_SIZE,
     smooth_passes: int = _DETECTOR_SCREEN_SMOOTH_PASSES,
     remember_spot_centers: bool = False,
+    update_spot_reference_centers: bool = False,
     gas_volume_unwrap_href: Optional[str] = None,
     gas_volume_unwrap_hrefs: Optional[Sequence[str]] = None,
     gas_volume_surfaces: Optional[Sequence[Mapping[str, Any]]] = None,
+    remember_gas_volume_bundle_centers: bool = False,
 ) -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -1196,13 +1311,13 @@ def write_detector_screen_views(
         metrics_by_name[name] = _screen_spot_metrics(data)
 
     reference_centers_path = path.with_name(f"{path.stem}_spot_centers.json")
-    reference_centers = _load_spot_reference_centers(reference_centers_path) if remember_spot_centers else {}
-    if remember_spot_centers:
+    reference_centers = _load_spot_reference_centers(reference_centers_path) if (remember_spot_centers or update_spot_reference_centers) else {}
+    if update_spot_reference_centers:
         updated_reference_centers = dict(reference_centers)
         for screen in screens:
             name = str(screen["name"])
             center = metrics_by_name[name]["center"]
-            if name not in updated_reference_centers and center is not None:
+            if center is not None:
                 updated_reference_centers[name] = np.asarray(center, dtype=float)
         if updated_reference_centers:
             reference_centers_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1366,9 +1481,22 @@ def write_detector_screen_views(
     summary_table_html = _detector_summary_table_html(screens, metrics_by_name, reference_centers)
     gas_volume_section_html = ""
     if gas_volume_surfaces:
+        gas_volume_reference_centers_path = path.with_name(f"{path.stem}_gas_volume_bundle_centers.json")
+        gas_volume_reference_centers = _load_bundle_reference_centers(gas_volume_reference_centers_path)
+        if remember_gas_volume_bundle_centers:
+            updated_gas_volume_reference_centers = dict(gas_volume_reference_centers)
+            for surface in gas_volume_surfaces:
+                for row in _screen_b_bundle_rows(result, surface):
+                    center = _bundle_center_vector(row)
+                    if center is not None:
+                        updated_gas_volume_reference_centers[str(row["name"])] = center
+            if updated_gas_volume_reference_centers:
+                gas_volume_reference_centers_path.parent.mkdir(parents=True, exist_ok=True)
+                _write_bundle_reference_centers(gas_volume_reference_centers_path, updated_gas_volume_reference_centers)
+                gas_volume_reference_centers = updated_gas_volume_reference_centers
         gas_volume_section_html = f"""
   <h2 class="section-heading">Попадание лучей в рабочий газовый объем</h2>
-{_gas_volume_bundle_table_html(result, gas_volume_surfaces)}
+{_gas_volume_bundle_table_html(result, gas_volume_surfaces, reference_centers=gas_volume_reference_centers)}
 """
     unwrap_hrefs: List[str] = []
     if gas_volume_unwrap_href:
@@ -1526,6 +1654,9 @@ def write_detector_screen_views(
       color: #182c4d;
       font-weight: 700;
       font-size: 15px;
+      white-space: normal;
+      hyphens: auto;
+      overflow-wrap: anywhere;
     }}
     .gas-volume-bundle-table .rod-row td {{
       background: rgba(203, 216, 235, 0.92);
@@ -1535,10 +1666,15 @@ def write_detector_screen_views(
       letter-spacing: 0.01em;
     }}
     .gas-volume-bundle-table .assembly-cell,
-    .gas-volume-bundle-table .mirror-cell {{
+    .gas-volume-bundle-table .mirror-cell,
+    .gas-volume-bundle-table .bundle-count-cell {{
       background: rgba(230, 236, 246, 0.70);
       color: #20385d;
       font-weight: 650;
+    }}
+    .gas-volume-bundle-table .bundle-count-cell {{
+      font-size: 20px;
+      min-width: 96px;
     }}
     .gas-volume-bundle-table .screen-cell {{
       background: rgba(238, 243, 250, 0.82);
@@ -1737,6 +1873,39 @@ def _cylindrical_unwrap_coordinates(
     return arc, axial
 
 
+def _cylindrical_bundle_split_points(
+    ordered_arc: np.ndarray,
+    *,
+    max_group_count: int,
+) -> np.ndarray:
+    gaps = np.diff(np.asarray(ordered_arc, dtype=float).reshape(-1))
+    if gaps.size == 0 or int(max_group_count) <= 1:
+        return np.zeros((0,), dtype=int)
+
+    finite_positive_gaps = gaps[np.isfinite(gaps) & (gaps > 0.0)]
+    if finite_positive_gaps.size == 0:
+        return np.zeros((0,), dtype=int)
+
+    typical_large_gap = float(
+        np.percentile(finite_positive_gaps, _CYLINDRICAL_BUNDLE_GAP_PERCENTILE)
+    )
+    split_gap = min(
+        _CYLINDRICAL_BUNDLE_MAX_SPLIT_GAP_M,
+        max(
+            _CYLINDRICAL_BUNDLE_MIN_SPLIT_GAP_M,
+            _CYLINDRICAL_BUNDLE_GAP_FACTOR * typical_large_gap,
+        ),
+    )
+    candidate_positions = np.flatnonzero(gaps > split_gap) + 1
+    max_split_count = max(0, int(max_group_count) - 1)
+    if candidate_positions.size <= max_split_count:
+        return np.sort(candidate_positions.astype(int))
+
+    candidate_gaps = gaps[candidate_positions - 1]
+    strongest = np.argsort(candidate_gaps)[-max_split_count:]
+    return np.sort(candidate_positions[strongest].astype(int))
+
+
 def _cylindrical_bundle_metrics(
     arc: np.ndarray,
     axial: np.ndarray,
@@ -1759,22 +1928,35 @@ def _cylindrical_bundle_metrics(
 
     count = min(count, int(valid_indices.size))
     ordered_indices = valid_indices[np.argsort(arc[valid_indices])]
-    if count == 1:
-        groups = [ordered_indices]
-    else:
-        ordered_arc = arc[ordered_indices]
-        gaps = np.diff(ordered_arc)
-        split_points = np.sort(np.argsort(gaps)[-(count - 1):] + 1)
-        groups = [group for group in np.split(ordered_indices, split_points) if group.size > 0]
+    ordered_arc = arc[ordered_indices]
+    split_points = _cylindrical_bundle_split_points(
+        ordered_arc,
+        max_group_count=count,
+    )
+    groups = [group for group in np.split(ordered_indices, split_points) if group.size > 0]
+    group_sizes = np.asarray([group.size for group in groups], dtype=float)
+    min_ray_count = (
+        max(1.0, _CYLINDRICAL_BUNDLE_MIN_RAY_COUNT_FRACTION * float(np.median(group_sizes)))
+        if group_sizes.size > 0
+        else 1.0
+    )
 
     rows: List[Dict[str, Any]] = []
     for idx, group in enumerate(groups, start=1):
+        if float(group.size) < min_ray_count:
+            continue
         group_arc = arc[group]
         group_axial = axial[group]
         group_intensity = intensity[group]
         group_power = power[group]
         weights = _finite_weights(group_intensity)
         mean_diameter, spot_area = _spot_extent_metrics(group_arc, group_axial, group_intensity)
+        max_extent = _spot_max_extent_m(group_arc, group_axial, group_intensity)
+        if (
+            np.isfinite(max_extent)
+            and float(max_extent) > _CYLINDRICAL_BUNDLE_MAX_DIAMETER_M
+        ):
+            continue
         total_power = float(np.sum(np.clip(group_power, 0.0, None)))
         integral_intensity = (
             total_power / spot_area
@@ -1879,6 +2061,7 @@ def write_cylindrical_unwrap_view(
     bundle_cluster_count: Optional[int] = None,
     bundle_name_prefix: Optional[str] = None,
     bundle_metrics_csv_path: Optional[Path] = None,
+    max_marker_points: int = 20000,
 ) -> None:
     import plotly.graph_objects as go
 
@@ -1983,14 +2166,23 @@ def write_cylindrical_unwrap_view(
             hovertemplate="s-s_c=%{x:.5f} m<br>z-z_c=%{y:.5f} m<br>I=%{z:.3e} W/m^2<extra></extra>",
         )
     )
+    marker_arc = arc
+    marker_axial = axial
+    marker_intensity = intensity
+    if arc.size > int(max_marker_points) > 0:
+        sample_idx = np.linspace(0, arc.size - 1, int(max_marker_points), dtype=int)
+        marker_arc = arc[sample_idx]
+        marker_axial = axial[sample_idx]
+        marker_intensity = intensity[sample_idx]
+
     fig.add_trace(
         go.Scatter(
-            x=arc.tolist(),
-            y=axial.tolist(),
+            x=marker_arc.tolist(),
+            y=marker_axial.tolist(),
             mode="markers",
             marker={
                 "size": _DETECTOR_HIT_MARKER_SIZE,
-                "color": intensity.tolist(),
+                "color": marker_intensity.tolist(),
                 "colorscale": _RAY_INTENSITY_COLORSCALE,
                 "cmin": 0.0,
                 "cmax": max_intensity,
@@ -2290,7 +2482,7 @@ def _beam_cross_section_html(
     return fig.to_html(include_plotlyjs=True, full_html=False, config={"displayModeBar": False, "responsive": True})
 
 
-def _format_angle_deg(value: Any, *, precision: int = 3) -> str:
+def _format_angle_deg(value: Any, *, precision: int = 5) -> str:
     angle = float(value)
     if abs(angle) < 0.5 * 10 ** (-precision):
         angle = 0.0
@@ -2313,12 +2505,19 @@ def _adjustable_mirror_angles_table_html(mirror_angles: Optional[Sequence[Dict[s
     for item in mirror_angles:
         mirror_name = escape(str(item.get("mirror", item.get("name", ""))))
         x_angle = _format_angle_deg(item.get("x", 0.0))
+        y_angle = _format_angle_deg(item.get("y", 0.0))
         z_angle = _format_angle_deg(item.get("z", 0.0))
         rows.append(
             "<tr>"
-            f"<td rowspan=\"2\" class=\"mirror-name\">{mirror_name}</td>"
+            f"<td rowspan=\"3\" class=\"mirror-name\">{mirror_name}</td>"
             "<td class=\"axis-name\"><i>x</i></td>"
             f"<td>{x_angle}</td>"
+            "</tr>"
+        )
+        rows.append(
+            "<tr>"
+            "<td class=\"axis-name\"><i>y</i></td>"
+            f"<td>{y_angle}</td>"
             "</tr>"
         )
         rows.append(
@@ -2498,11 +2697,13 @@ def write_plotly_trajectories(
     hide_end_surface_prefixes: Optional[Sequence[str]] = None,
     min_segment_power: float = 0.0,
     always_include_surface_prefixes: Optional[Sequence[str]] = None,
+    always_include_child_segments_of_surface_prefixes: Optional[Sequence[str]] = None,
 ) -> None:
     import plotly.graph_objects as go
 
     fig = go.Figure()
     sampled_segments: List[Dict[str, float]] = []
+    forced_parent_ray_ids: set[int] = set()
     for block in result.segments:
         x0 = to_numpy(block["x0"])
         y0 = to_numpy(block["y0"])
@@ -2513,11 +2714,14 @@ def write_plotly_trajectories(
         powers = to_numpy(block["power"])
         intensities = to_numpy(block["intensity"])
         surfaces = np.asarray(block["surface"], dtype=object)
+        ray_ids = to_numpy(block["ray_id"])
+        parent_ids = to_numpy(block["parent_id"])
         n = len(x0)
         stride = max(1, (n + max_segments_per_block - 1) // max_segments_per_block)
         for i in range(n):
             surface = str(surfaces[i])
-            include = (i % stride == 0)
+            is_forced_child = int(parent_ids[i]) in forced_parent_ray_ids
+            include = (i % stride == 0) or is_forced_child
             if always_include_surface_prefixes and any(surface.startswith(prefix) for prefix in always_include_surface_prefixes):
                 include = True
             if not include:
@@ -2551,6 +2755,16 @@ def write_plotly_trajectories(
                     "z1": end_z,
                     "intensity": float(intensities[i]),
                 }
+            )
+
+        if always_include_child_segments_of_surface_prefixes:
+            forced_parent_ray_ids.update(
+                int(ray_ids[i])
+                for i in range(n)
+                if any(
+                    str(surfaces[i]).startswith(prefix)
+                    for prefix in always_include_child_segments_of_surface_prefixes
+                )
             )
 
     if sampled_segments:

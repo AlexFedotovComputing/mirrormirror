@@ -229,6 +229,7 @@ class RayBundle:
     ray_id: Optional[Any] = None
     parent_id: Optional[Any] = None
     depth: Optional[Any] = None
+    bundle_reflected: Optional[Any] = None
 
     def __post_init__(self) -> None:
         xp = get_array_module(self.position, self.direction, self.power, self.wavelength_m, self.refractive_index)
@@ -281,6 +282,12 @@ class RayBundle:
             self.depth = xp.zeros(n, dtype=np.int64)
         else:
             self.depth = xp.asarray(self.depth, dtype=np.int64).reshape(-1)
+        if self.bundle_reflected is None:
+            self.bundle_reflected = xp.zeros(n, dtype=bool)
+        else:
+            self.bundle_reflected = xp.asarray(self.bundle_reflected, dtype=bool).reshape(-1)
+        if self.bundle_reflected.shape != (n,):
+            raise ValueError(f"bundle_reflected must have shape (N,), got {self.bundle_reflected.shape}")
 
     @property
     def xp(self):
@@ -303,6 +310,7 @@ class RayBundle:
             ray_id=self.ray_id[mask],
             parent_id=self.parent_id[mask],
             depth=self.depth[mask],
+            bundle_reflected=self.bundle_reflected[mask],
         )
 
     def replace_ids(self, ray_id: Any, parent_id: Any) -> "RayBundle":
@@ -318,6 +326,7 @@ class RayBundle:
             ray_id=ray_id,
             parent_id=parent_id,
             depth=self.depth,
+            bundle_reflected=self.bundle_reflected,
         )
 
     def propagate(self, new_position: Any, delta_time_s: Any) -> "RayBundle":
@@ -333,6 +342,24 @@ class RayBundle:
             ray_id=self.ray_id,
             parent_id=self.parent_id,
             depth=self.depth,
+            bundle_reflected=self.bundle_reflected,
+        )
+
+    def with_bundle_reflected(self) -> "RayBundle":
+        xp = self.xp
+        return RayBundle(
+            position=self.position,
+            direction=self.direction,
+            power=self.power,
+            wavelength_m=self.wavelength_m,
+            refractive_index=self.refractive_index,
+            polarization=self.polarization,
+            intensity=self.intensity,
+            time_s=self.time_s,
+            ray_id=self.ray_id,
+            parent_id=self.parent_id,
+            depth=self.depth,
+            bundle_reflected=xp.ones(self.n_rays, dtype=bool),
         )
 
     @classmethod
@@ -355,6 +382,7 @@ class RayBundle:
                 ray_id=empty_i,
                 parent_id=empty_i,
                 depth=empty_i,
+                bundle_reflected=xp.zeros((0,), dtype=bool),
             )
         xp = chunks[0].xp
         return RayBundle(
@@ -369,6 +397,7 @@ class RayBundle:
             ray_id=xp.concatenate([c.ray_id for c in chunks], axis=0),
             parent_id=xp.concatenate([c.parent_id for c in chunks], axis=0),
             depth=xp.concatenate([c.depth for c in chunks], axis=0),
+            bundle_reflected=xp.concatenate([c.bundle_reflected for c in chunks], axis=0),
         )
 
 
@@ -482,6 +511,7 @@ class Surface:
             ray_id=xp.zeros(parent.n_rays, dtype=np.int64),
             parent_id=parent.ray_id.copy(),
             depth=parent.depth + 1,
+            bundle_reflected=parent.bundle_reflected,
         )
 
     def _mirror(self, rays: RayBundle, hit: NearestHit, tracer: "RayTracer") -> List[RayBundle]:
@@ -489,6 +519,8 @@ class Surface:
         n_geo = hit.normals
         d = rays.direction
         cos_proj = dot(d, n_geo)
+        going_plus = cos_proj > 0.0
+        reflect_allowed = xp.where(going_plus, self.optics.reflect_from_minus_side, self.optics.reflect_from_plus_side)
         d_ref = normalize(d - 2.0 * cos_proj[:, None] * n_geo)
         new_pos = hit.points + tracer.surface_epsilon * d_ref
         refl = 1.0 if self.optics.reflectance is None else float(self.optics.reflectance)
@@ -505,7 +537,7 @@ class Surface:
             new_pol,
             rays.time_s,
         )
-        keep = child.power > tracer.min_power
+        keep = (child.power > tracer.min_power) & reflect_allowed
         return [child.subset(keep)] if count_nonzero(keep) > 0 else []
 
     def _transparent(self, rays: RayBundle, hit: NearestHit, tracer: "RayTracer") -> List[RayBundle]:
@@ -841,6 +873,8 @@ class PlaneMirror(OpticalElement):
     radius: Optional[float] = None
     in_plane_reference: Optional[Sequence[float]] = None
     reflectance: float = 1.0
+    reflect_from_minus_side: bool = True
+    reflect_from_plus_side: bool = True
 
     def build_surfaces(self) -> List[Surface]:
         optics = SurfaceOptics(
@@ -851,6 +885,8 @@ class PlaneMirror(OpticalElement):
             release_reflected=True,
             release_transmitted=False,
             use_fresnel=False,
+            reflect_from_minus_side=self.reflect_from_minus_side,
+            reflect_from_plus_side=self.reflect_from_plus_side,
         )
         return [
             PlaneSurface(
@@ -877,22 +913,42 @@ class MirrorArrayBundle(OpticalElement):
     reflect_from_minus_side: bool = True
     reflect_from_plus_side: bool = False
 
-    def _parse_config(self, config: Any, idx: int) -> tuple[str, tuple[float, float, float], float, float]:
+    def _parse_config(
+        self,
+        config: Any,
+        idx: int,
+    ) -> tuple[
+        str,
+        tuple[float, float, float],
+        float,
+        float,
+        Optional[tuple[float, float, float]],
+        Optional[tuple[float, float, float]],
+    ]:
         if isinstance(config, dict):
             center = tuple(float(v) for v in config["center"])
             phi_deg = float(config.get("phi_deg", config.get("phi")))
             radius = float(config["radius"])
             name = str(config.get("name", f"{self.name} Mirror {idx}"))
-            return name, center, phi_deg, radius
+            normal = config.get("normal")
+            in_plane_reference = config.get("in_plane_reference")
+            return (
+                name,
+                center,
+                phi_deg,
+                radius,
+                None if normal is None else tuple(float(v) for v in normal),
+                None if in_plane_reference is None else tuple(float(v) for v in in_plane_reference),
+            )
 
         if len(config) == 3:
             center, phi_deg, radius = config
             name = f"{self.name} Mirror {idx}"
-            return name, tuple(float(v) for v in center), float(phi_deg), float(radius)
+            return name, tuple(float(v) for v in center), float(phi_deg), float(radius), None, None
 
         if len(config) == 4:
             name, center, phi_deg, radius = config
-            return str(name), tuple(float(v) for v in center), float(phi_deg), float(radius)
+            return str(name), tuple(float(v) for v in center), float(phi_deg), float(radius), None, None
 
         raise ValueError(f"Unsupported mirror bundle config at index {idx}: {config!r}")
 
@@ -903,28 +959,35 @@ class MirrorArrayBundle(OpticalElement):
         mirrors: List[OpticalElement] = []
 
         for idx, config in enumerate(self.configs, start=1):
-            name, center, phi_deg, radius = self._parse_config(config, idx)
+            name, center, phi_deg, radius, normal_override, in_plane_reference_override = self._parse_config(config, idx)
             phi_rad = math.radians(phi_deg)
-            normal = normalize(
-                np.array(
-                    [
-                        sin_tilt * math.sin(phi_rad),
-                        -sin_tilt * math.cos(phi_rad),
-                        cos_tilt,
-                    ],
-                    dtype=float,
+            if normal_override is None:
+                normal = normalize(
+                    np.array(
+                        [
+                            sin_tilt * math.sin(phi_rad),
+                            -sin_tilt * math.cos(phi_rad),
+                            cos_tilt,
+                        ],
+                        dtype=float,
+                    )
                 )
-            )
-            in_plane_reference = normalize(
-                np.array(
-                    [
-                        math.cos(phi_rad),
-                        math.sin(phi_rad),
-                        0.0,
-                    ],
-                    dtype=float,
+            else:
+                normal = normalize(np.asarray(normal_override, dtype=float))
+
+            if in_plane_reference_override is None:
+                in_plane_reference = normalize(
+                    np.array(
+                        [
+                            math.cos(phi_rad),
+                            math.sin(phi_rad),
+                            0.0,
+                        ],
+                        dtype=float,
+                    )
                 )
-            )
+            else:
+                in_plane_reference = normalize(np.asarray(in_plane_reference_override, dtype=float))
             mirrors.append(
                 SemiTransparentMirror(
                     name=name,
@@ -1443,7 +1506,12 @@ class SphericalLens(OpticalElement):
 class CompiledScene:
     surfaces: List[Surface]
 
-    def find_nearest(self, rays: RayBundle) -> NearestHit:
+    def find_nearest(
+        self,
+        rays: RayBundle,
+        *,
+        skip_repeated_bundle_reflections: bool = False,
+    ) -> NearestHit:
         xp = rays.xp
         n = rays.n_rays
         best_t = xp.full(n, xp.inf, dtype=float)
@@ -1455,7 +1523,10 @@ class CompiledScene:
 
         for i, surface in enumerate(self.surfaces):
             hit = surface.intersect(rays)
-            better = hit.valid & (hit.distance < best_t)
+            valid = hit.valid
+            if skip_repeated_bundle_reflections and surface.name.startswith("BUNDLE_"):
+                valid = valid & ~rays.bundle_reflected
+            better = valid & (hit.distance < best_t)
             if count_nonzero(better) == 0:
                 continue
             best_t = xp.where(better, hit.distance, best_t)
@@ -1609,6 +1680,12 @@ class RayTracer:
     surface_epsilon: float = 1e-7
     record_segments: bool = True
     max_active_rays: Optional[int] = None
+    bundle_clip_inner_radius_m: Optional[float] = None
+    bundle_clip_outer_radius_m: Optional[float] = None
+    bundle_clip_z_min_m: Optional[float] = None
+    bundle_clip_z_max_m: Optional[float] = None
+    bundle_clip_epsilon_m: float = 1e-9
+    skip_repeated_bundle_reflections: bool = False
     compiled_scene: CompiledScene = field(init=False)
 
     def __post_init__(self) -> None:
@@ -1636,6 +1713,7 @@ class RayTracer:
             "z1": to_numpy(end_points[:, 2]),
             "power": to_numpy(rays.power),
             "intensity": to_numpy(rays.intensity),
+            "bundle_reflected": to_numpy(rays.bundle_reflected),
             "t0_s": to_numpy(rays.time_s),
             "t1_s": to_numpy(end_time_s),
         }
@@ -1644,6 +1722,140 @@ class RayTracer:
         end_distance = self._time_to_distance(delta_time_s, rays.refractive_index)
         end_points = rays.position + end_distance[:, None] * rays.direction
         return rays.propagate(end_points, delta_time_s)
+
+    def _bundle_clip_surface_name(self, kind: int) -> str:
+        if kind == 1 and self.bundle_clip_inner_radius_m is not None:
+            return f"<bundle_inner_cylinder_{float(self.bundle_clip_inner_radius_m):g}m>"
+        if kind == 2 and self.bundle_clip_outer_radius_m is not None:
+            return f"<bundle_outer_cylinder_{float(self.bundle_clip_outer_radius_m):g}m>"
+        if kind == 3 and self.bundle_clip_z_min_m is not None:
+            return f"<bundle_z_min_{float(self.bundle_clip_z_min_m):g}m>"
+        if kind == 4 and self.bundle_clip_z_max_m is not None:
+            return f"<bundle_z_max_{float(self.bundle_clip_z_max_m):g}m>"
+        return "<bundle_system_boundary>"
+
+    def _nearest_bundle_cylinder_clip(self, rays: RayBundle) -> tuple[Any, Any, Any, np.ndarray]:
+        xp = rays.xp
+        n = rays.n_rays
+        clip_mask = xp.zeros(n, dtype=bool)
+        clip_distance = xp.full(n, xp.inf, dtype=float)
+        clip_points = rays.position.copy()
+        clip_kind = xp.zeros(n, dtype=np.int64)
+
+        if (
+            self.bundle_clip_inner_radius_m is None
+            and self.bundle_clip_outer_radius_m is None
+            and self.bundle_clip_z_min_m is None
+            and self.bundle_clip_z_max_m is None
+        ):
+            return clip_mask, clip_distance, clip_points, np.full(n, "", dtype=object)
+
+        bundle_mask = xp.asarray(rays.bundle_reflected, dtype=bool)
+        if count_nonzero(bundle_mask) == 0:
+            return clip_mask, clip_distance, clip_points, np.full(n, "", dtype=object)
+
+        pxy = rays.position[:, :2]
+        dxy = rays.direction[:, :2]
+        r0_sq = xp.sum(pxy * pxy, axis=1)
+        r0 = xp.sqrt(r0_sq)
+        radial_dot = xp.sum(pxy * dxy, axis=1)
+        a = xp.sum(dxy * dxy, axis=1)
+        eps = float(self.bundle_clip_epsilon_m)
+        inf = xp.full(n, xp.inf, dtype=float)
+
+        def update_candidate(candidate_mask: Any, candidate_t: Any, kind_value: int) -> None:
+            nonlocal clip_mask, clip_distance, clip_kind
+            better = candidate_mask & (candidate_t < clip_distance)
+            if count_nonzero(better) == 0:
+                return
+            clip_mask = clip_mask | better
+            clip_distance = xp.where(better, candidate_t, clip_distance)
+            clip_kind = xp.where(better, kind_value, clip_kind)
+
+        def consider_boundary(radius_m: Optional[float], is_inner: bool) -> None:
+            if radius_m is None:
+                return
+            radius = float(radius_m)
+            kind_value = 1 if is_inner else 2
+            if is_inner:
+                immediate = bundle_mask & (r0 <= radius + eps) & (radial_dot < 0.0)
+            else:
+                immediate = bundle_mask & (r0 >= radius - eps) & (radial_dot > 0.0)
+            update_candidate(immediate, xp.zeros(n, dtype=float), kind_value)
+
+            c = r0_sq - radius * radius
+            disc = radial_dot * radial_dot - a * c
+            valid_quad = bundle_mask & (a > 1e-20) & (disc >= 0.0)
+            sqrt_disc = xp.sqrt(xp.maximum(disc, 0.0))
+            for candidate_t in ((-radial_dot - sqrt_disc) / a, (-radial_dot + sqrt_disc) / a):
+                candidate_t = xp.where(candidate_t > eps, candidate_t, inf)
+                candidate_xy = pxy + candidate_t[:, None] * dxy
+                candidate_radial_dot = xp.sum(candidate_xy * dxy, axis=1)
+                if is_inner:
+                    crossing = (r0 >= radius - eps) & (candidate_radial_dot < 0.0)
+                else:
+                    crossing = (r0 <= radius + eps) & (candidate_radial_dot > 0.0)
+                update_candidate(valid_quad & crossing, candidate_t, kind_value)
+
+        consider_boundary(self.bundle_clip_inner_radius_m, is_inner=True)
+        consider_boundary(self.bundle_clip_outer_radius_m, is_inner=False)
+
+        z0 = rays.position[:, 2]
+        dz = rays.direction[:, 2]
+
+        def consider_z_boundary(z_m: Optional[float], is_min: bool) -> None:
+            if z_m is None:
+                return
+            z_boundary = float(z_m)
+            kind_value = 3 if is_min else 4
+            if is_min:
+                immediate = bundle_mask & (z0 <= z_boundary + eps) & (dz < 0.0)
+                crossing = z0 >= z_boundary - eps
+            else:
+                immediate = bundle_mask & (z0 >= z_boundary - eps) & (dz > 0.0)
+                crossing = z0 <= z_boundary + eps
+            update_candidate(immediate, xp.zeros(n, dtype=float), kind_value)
+
+            valid_linear = bundle_mask & (xp.abs(dz) > 1e-20)
+            candidate_t = (z_boundary - z0) / dz
+            candidate_t = xp.where(candidate_t > eps, candidate_t, inf)
+            update_candidate(valid_linear & crossing, candidate_t, kind_value)
+
+        consider_z_boundary(self.bundle_clip_z_min_m, is_min=True)
+        consider_z_boundary(self.bundle_clip_z_max_m, is_min=False)
+
+        if count_nonzero(clip_mask) > 0:
+            safe_distance = xp.where(clip_mask, clip_distance, 0.0)
+            clip_points = rays.position + safe_distance[:, None] * rays.direction
+
+        kind_host = to_numpy(clip_kind).astype(int)
+        names = np.full(n, "", dtype=object)
+        for kind_value in (1, 2, 3, 4):
+            names[kind_host == kind_value] = self._bundle_clip_surface_name(kind_value)
+        return clip_mask, clip_distance, clip_points, names
+
+    def _append_bundle_clip_segments(
+        self,
+        segments: List[Dict[str, Any]],
+        rays: RayBundle,
+        clip_mask: Any,
+        clip_distance: Any,
+        clip_points: Any,
+        clip_surface_names: np.ndarray,
+    ) -> None:
+        if not self.record_segments or count_nonzero(clip_mask) == 0:
+            return
+        clipped_rays = rays.subset(clip_mask)
+        clip_time = self._distance_to_time(clip_distance[clip_mask], clipped_rays.refractive_index)
+        mask_host = to_numpy(clip_mask).astype(bool)
+        segments.append(
+            self._make_segment_block(
+                clipped_rays,
+                clip_points[clip_mask],
+                clip_surface_names[mask_host],
+                clipped_rays.time_s + clip_time,
+            )
+        )
 
     def trace(self, rays: RayBundle) -> TraceResult:
         xp = get_backend(self.backend)
@@ -1672,12 +1884,31 @@ class RayTracer:
                 active = active.subset(within_time_mask)
                 remaining_time = float(self.max_time_s) - active.time_s
 
-            nearest = self.compiled_scene.find_nearest(active)
-            hit_mask = nearest.surface_index >= 0
+            nearest = self.compiled_scene.find_nearest(
+                active,
+                skip_repeated_bundle_reflections=self.skip_repeated_bundle_reflections,
+            )
+            surface_hit_mask = nearest.surface_index >= 0
             hit_time = self._distance_to_time(nearest.distance, active.refractive_index)
             if self.max_time_s is not None:
-                hit_mask = hit_mask & (hit_time <= remaining_time + 1e-15)
-            miss_mask = ~hit_mask
+                surface_hit_mask = surface_hit_mask & (hit_time <= remaining_time + 1e-15)
+
+            clip_mask, clip_distance, clip_points, clip_surface_names = self._nearest_bundle_cylinder_clip(active)
+            clip_time = self._distance_to_time(clip_distance, active.refractive_index)
+            if self.max_time_s is not None:
+                clip_mask = clip_mask & (clip_time <= remaining_time + 1e-15)
+            clip_before_surface = clip_mask & (~surface_hit_mask | (clip_distance <= nearest.distance + self.surface_epsilon))
+            surface_hit_mask = surface_hit_mask & ~clip_before_surface
+            miss_mask = ~(surface_hit_mask | clip_before_surface)
+
+            self._append_bundle_clip_segments(
+                segments,
+                active,
+                clip_before_surface,
+                clip_distance,
+                clip_points,
+                clip_surface_names,
+            )
 
             if count_nonzero(miss_mask) > 0:
                 missed = active.subset(miss_mask)
@@ -1698,19 +1929,19 @@ class RayTracer:
                 else:
                     finished.append(missed)
 
-            if count_nonzero(hit_mask) == 0:
+            if count_nonzero(surface_hit_mask) == 0:
                 active = RayBundle.concat([], backend=self.backend)
                 break
 
             if self.record_segments:
-                idx_host = to_numpy(nearest.surface_index[hit_mask]).astype(int)
-                hit_rays = active.subset(hit_mask)
-                hit_end_time = active.time_s[hit_mask] + hit_time[hit_mask]
+                idx_host = to_numpy(nearest.surface_index[surface_hit_mask]).astype(int)
+                hit_rays = active.subset(surface_hit_mask)
+                hit_end_time = active.time_s[surface_hit_mask] + hit_time[surface_hit_mask]
                 surface_names = np.asarray([self.compiled_scene.surfaces[i].name for i in idx_host], dtype=object)
                 segments.append(
                     self._make_segment_block(
                         hit_rays,
-                        nearest.points[hit_mask],
+                        nearest.points[surface_hit_mask],
                         surface_names,
                         hit_end_time,
                     )
@@ -1718,12 +1949,14 @@ class RayTracer:
 
             children: List[RayBundle] = []
             for i, surface in enumerate(self.compiled_scene.surfaces):
-                surf_mask = hit_mask & (nearest.surface_index == i)
+                surf_mask = surface_hit_mask & (nearest.surface_index == i)
                 if count_nonzero(surf_mask) == 0:
                     continue
                 rays_sub = active.subset(surf_mask).propagate(nearest.points[surf_mask], hit_time[surf_mask])
                 hit_sub = nearest.subset(surf_mask)
                 new_children, new_hits = surface.interact(rays_sub, hit_sub, self)
+                if surface.name.startswith("BUNDLE_"):
+                    new_children = [child.with_bundle_reflected() for child in new_children]
 
                 for record in new_hits:
                     detector_hits.append(record)
@@ -1746,18 +1979,34 @@ class RayTracer:
                 positive_time_mask = remaining_time > 0.0
                 if count_nonzero(positive_time_mask) > 0:
                     active_to_limit = active.subset(positive_time_mask)
-                    propagated = self._propagate_to_time_limit(active_to_limit, remaining_time[positive_time_mask])
-                    if self.record_segments:
-                        surface_names = np.full(propagated.n_rays, "<time_limit>", dtype=object)
-                        segments.append(
-                            self._make_segment_block(
-                                active_to_limit,
-                                propagated.position,
-                                surface_names,
-                                propagated.time_s,
+                    active_remaining_time = remaining_time[positive_time_mask]
+                    clip_mask, clip_distance, clip_points, clip_surface_names = self._nearest_bundle_cylinder_clip(active_to_limit)
+                    clip_time = self._distance_to_time(clip_distance, active_to_limit.refractive_index)
+                    clip_mask = clip_mask & (clip_time <= active_remaining_time + 1e-15)
+                    self._append_bundle_clip_segments(
+                        segments,
+                        active_to_limit,
+                        clip_mask,
+                        clip_distance,
+                        clip_points,
+                        clip_surface_names,
+                    )
+
+                    no_clip_mask = ~clip_mask
+                    if count_nonzero(no_clip_mask) > 0:
+                        active_without_clip = active_to_limit.subset(no_clip_mask)
+                        propagated = self._propagate_to_time_limit(active_without_clip, active_remaining_time[no_clip_mask])
+                        if self.record_segments:
+                            surface_names = np.full(propagated.n_rays, "<time_limit>", dtype=object)
+                            segments.append(
+                                self._make_segment_block(
+                                    active_without_clip,
+                                    propagated.position,
+                                    surface_names,
+                                    propagated.time_s,
+                                )
                             )
-                        )
-                    finished.append(propagated)
+                        finished.append(propagated)
                 if count_nonzero(~positive_time_mask) > 0:
                     finished.append(active.subset(~positive_time_mask))
             else:

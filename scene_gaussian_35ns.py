@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import csv
 import math
@@ -26,7 +27,7 @@ from vizual import (
 
 INTEGRATION_TIME_S = 50e-9
 BEAM_RADIAL_POSITIONS = 55
-INITIAL_RAY_COUNT = 10000
+INITIAL_RAY_COUNT = 30000
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 20
@@ -107,6 +108,10 @@ CYLINDRICAL_SCREEN_1 = CylindricalScreen(
     length=3.33,
     detector=True,
 )
+BUNDLE_RAY_INNER_CYLINDER_RADIUS_M = 0.35
+BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M = 1.35
+BUNDLE_RAY_Z_MIN_M = float(CYLINDRICAL_SCREEN_1.center[2]) - 0.5 * float(CYLINDRICAL_SCREEN_1.length)
+BUNDLE_RAY_Z_MAX_M = float(CYLINDRICAL_SCREEN_1.center[2]) + 0.5 * float(CYLINDRICAL_SCREEN_1.length)
 
 class TransparentCylindricalScreen:
     def __init__(
@@ -367,7 +372,7 @@ def make_bundle(name: str, data: List[Dict[str, object]]) -> MirrorArrayBundle:
         name=name,
         reflectance=1.0,
         transmittance=0.0,
-        reflect_from_minus_side=False,
+        reflect_from_minus_side=True,
         reflect_from_plus_side=True,
     )
 
@@ -584,6 +589,174 @@ BUNDLE_4_4_DATA = _recenter_bundle_data(
 def make_bundle_4_4() -> MirrorArrayBundle:
     return make_bundle("BUNDLE_4_4", BUNDLE_4_4_DATA)
 
+RECONSTRUCTED_MICROASSEMBLIES_PATH = Path(__file__).with_name("Восстановленные_микросборки.txt")
+BUNDLE_GROUP_SHIFTS_M: Dict[int, tuple[float, float, float]] = {
+    1: (-0.019784, -0.002643, 0.0),
+    2: (0.005439, -0.017650, 0.0),
+    3: (0.017564, 0.002277, 0.0),
+    4: (-0.003776, 0.017730, 0.0),
+}
+
+def _mean_point(points: List[tuple[float, float, float]]) -> tuple[float, float, float]:
+    return tuple(float(sum(point[axis] for point in points) / len(points)) for axis in range(3))
+
+def _phi_from_reconstructed_points(points: List[tuple[float, float, float]]) -> float:
+    dx = points[1][0] - points[3][0]
+    dy = points[1][1] - points[3][1]
+    return math.degrees(math.atan2(dy, dx))
+
+def _normalize_vector(vector: np.ndarray) -> tuple[float, float, float]:
+    length = float(np.linalg.norm(vector))
+    if length <= 1e-15:
+        raise ValueError("Cannot normalize a zero-length reconstructed geometry vector.")
+    return tuple(float(v) for v in vector / length)
+
+def _plane_normal_from_reconstructed_points(points: List[tuple[float, float, float]]) -> tuple[float, float, float]:
+    p0, p1, _, p3 = (np.asarray(point, dtype=float) for point in points)
+    return _normalize_vector(np.cross(p1 - p0, p3 - p0))
+
+def _in_plane_reference_from_reconstructed_points(points: List[tuple[float, float, float]]) -> tuple[float, float, float]:
+    p0, p1, _, _ = (np.asarray(point, dtype=float) for point in points)
+    return _normalize_vector(p1 - p0)
+
+def _scene_bundle_key_from_reconstructed_key(reconstructed_bundle_key: str) -> str:
+    return reconstructed_bundle_key
+
+def _load_reconstructed_microassembly_geometry(path: Path) -> Dict[str, List[Dict[str, object]]]:
+    reconstructed_by_bundle: Dict[str, Dict[int, Dict[str, object]]] = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle, delimiter="\t")
+        for row in reader:
+            if not row or not any(cell.strip() for cell in row):
+                continue
+            if len(row) < 5:
+                raise ValueError(f"Unexpected reconstructed row: {row!r}")
+            ellipse_key = row[0].strip()
+            if ellipse_key.count(".") != 2:
+                # Allows the file to contain an optional header row.
+                continue
+            sector_str, layer_str, ellipse_idx_str = ellipse_key.split(".")
+            scene_bundle_key = _scene_bundle_key_from_reconstructed_key(f"{sector_str}.{layer_str}")
+            points = [tuple(float(v) for v in ast.literal_eval(cell)) for cell in row[1:5]]
+            reconstructed_by_bundle.setdefault(scene_bundle_key, {})[int(ellipse_idx_str)] = {
+                "center": _mean_point(points),
+                "phi": _phi_from_reconstructed_points(points),
+                "normal": _plane_normal_from_reconstructed_points(points),
+                "in_plane_reference": _in_plane_reference_from_reconstructed_points(points),
+                "reconstructed_points": points,
+            }
+
+    # If an older file omits sector 4, recover it from sector 1 by symmetry.
+    for layer in range(1, 5):
+        source_bundle_key = f"1.{layer}"
+        target_bundle_key = f"4.{layer}"
+        if target_bundle_key in reconstructed_by_bundle or source_bundle_key not in reconstructed_by_bundle:
+            continue
+        reconstructed_by_bundle[target_bundle_key] = {
+            ellipse_idx: {
+                "center": _rotate_xy_point(item["center"], (0.0, 0.0, item["center"][2]), -90.0),
+                "phi": float(item["phi"]) - 90.0,
+                "normal": _rotate_xy_point(item["normal"], (0.0, 0.0, 0.0), -90.0),
+                "in_plane_reference": _rotate_xy_point(
+                    item["in_plane_reference"],
+                    (0.0, 0.0, 0.0),
+                    -90.0,
+                ),
+                "reconstructed_points": [
+                    _rotate_xy_point(point, (0.0, 0.0, point[2]), -90.0)
+                    for point in item["reconstructed_points"]
+                ],
+            }
+            for ellipse_idx, item in reconstructed_by_bundle[source_bundle_key].items()
+        }
+
+    reconstructed_geometry: Dict[str, List[Dict[str, object]]] = {}
+    for bundle_key, items_by_idx in reconstructed_by_bundle.items():
+        reconstructed_geometry[bundle_key] = [
+            items_by_idx[ellipse_idx]
+            for ellipse_idx in sorted(items_by_idx)
+        ]
+    return reconstructed_geometry
+
+def _apply_reconstructed_geometry_to_bundle(
+    bundle_data: List[Dict[str, object]],
+    reconstructed_data: List[Dict[str, object]],
+) -> List[Dict[str, object]]:
+    if len(bundle_data) != len(reconstructed_data):
+        raise ValueError("Reconstructed bundle geometry size does not match scene bundle size.")
+
+    updated_bundle: List[Dict[str, object]] = []
+    for bundle_item, reconstructed_item in zip(bundle_data, reconstructed_data):
+        updated_bundle.append(
+            {
+                **bundle_item,
+                "center": reconstructed_item["center"],
+                "phi": float(reconstructed_item["phi"]),
+                "normal": reconstructed_item["normal"],
+                "in_plane_reference": reconstructed_item["in_plane_reference"],
+                "reconstructed_points": reconstructed_item["reconstructed_points"],
+            }
+        )
+    return updated_bundle
+
+def _shift_bundle_data(
+    bundle_data: List[Dict[str, object]],
+    shift: tuple[float, float, float],
+) -> List[Dict[str, object]]:
+    shifted_bundle: List[Dict[str, object]] = []
+    shift_array = np.asarray(shift, dtype=float)
+    for item in bundle_data:
+        center = np.asarray(item["center"], dtype=float) + shift_array
+        shifted_item = {
+            **item,
+            "center": tuple(float(v) for v in center),
+        }
+        if "reconstructed_points" in item:
+            shifted_item["reconstructed_points"] = [
+                tuple(float(v) for v in (np.asarray(point, dtype=float) + shift_array))
+                for point in item["reconstructed_points"]
+            ]
+        shifted_bundle.append(shifted_item)
+    return shifted_bundle
+
+def _apply_bundle_group_shifts() -> None:
+    for sector, shift in BUNDLE_GROUP_SHIFTS_M.items():
+        for layer in range(1, 5):
+            bundle_var_name = f"BUNDLE_{sector}_{layer}_DATA"
+            globals()[bundle_var_name] = _shift_bundle_data(
+                globals()[bundle_var_name],
+                shift,
+            )
+
+def _sync_cylindrical_surfaces_to_bundle_centers() -> None:
+    for sector in range(1, 5):
+        for layer in range(1, 5):
+            surface_idx = (sector - 1) * 4 + layer
+            surface = globals()[f"CYLINDRICAL_SURFACE_{surface_idx}"]
+            bundle_data = globals()[f"BUNDLE_{sector}_{layer}_DATA"]
+            surface.center = _center_of_bundle_data(bundle_data)
+
+def _apply_reconstructed_microassembly_geometry() -> None:
+    if not RECONSTRUCTED_MICROASSEMBLIES_PATH.exists():
+        return
+
+    reconstructed_geometry = _load_reconstructed_microassembly_geometry(RECONSTRUCTED_MICROASSEMBLIES_PATH)
+    for sector in range(1, 5):
+        for layer in range(1, 5):
+            bundle_key = f"{sector}.{layer}"
+            reconstructed_bundle = reconstructed_geometry.get(bundle_key)
+            if reconstructed_bundle is None:
+                continue
+            bundle_var_name = f"BUNDLE_{sector}_{layer}_DATA"
+            globals()[bundle_var_name] = _apply_reconstructed_geometry_to_bundle(
+                globals()[bundle_var_name],
+                reconstructed_bundle,
+            )
+    _apply_bundle_group_shifts()
+    _sync_cylindrical_surfaces_to_bundle_centers()
+
+_apply_reconstructed_microassembly_geometry()
+
 SOURCE_TEMPLATE = GaussianBeamSource(
     waist_position=(-0.3444840871, -0.8032109003, 3.31987),
     axis=(0.0, 0.0, -1.0),
@@ -666,41 +839,49 @@ ON_ENTER_BEAMSPLITTER = PlaneMirror(
 SMALL_REFLECTIVE_MIRROR = PlaneMirror(
     name="MC1",
     center=(-0.7661097252, 1.017574008, 0.02510104076),
-    normal=(-0.62259151, -0.33523098, -0.70710678),
+    normal=(-0.6225935353187654, -0.3352272211192351, -0.7071067811865169),
     shape="disk",
     radius=0.025,
     in_plane_reference=(0.47408821, -0.88047735, 0.0),
     reflectance=1.0,
+    reflect_from_minus_side=False,
+    reflect_from_plus_side=True,
 )
 
 TURNING_ROUND_MIRROR_2 = PlaneMirror(
     name="MC2",
     center=(-1.017574008, -0.7661097252, 0.02510104076),
-    normal=(0.33523098, -0.62259151, -0.70710678),
+    normal=(0.3352610066553734, -0.6225753427629879, -0.7071067811865289),
     shape="disk",
     radius=0.025,
     in_plane_reference=(0.88047735, 0.47408821, 0.0),
     reflectance=1.0,
+    reflect_from_minus_side=False,
+    reflect_from_plus_side=True,
 )
 
 TURNING_ROUND_MIRROR_3 = PlaneMirror(
     name="MC3",
     center=(0.7661097252, -1.017574008, 0.02510104076),
-    normal=(0.62259151, 0.33523098, -0.70710678),
+    normal=(0.6224649489692013, 0.3354659256982467, -0.7071067811866806),
     shape="disk",
     radius=0.025,
     in_plane_reference=(-0.47408821, 0.88047735, 0.0),
     reflectance=1.0,
+    reflect_from_minus_side=False,
+    reflect_from_plus_side=True,
 )
 
 TURNING_ROUND_MIRROR_4 = PlaneMirror(
     name="MC4",
     center=(1.017574008, 0.7661097252, 0.02510104076),
-    normal=(-0.33523098, 0.62259151, -0.70710678),
+    normal=(-0.3354368738503708, 0.622480605048482, -0.7071067811865237),
     shape="disk",
     radius=0.025,
     in_plane_reference=(-0.88047735, -0.47408821, 0.0),
     reflectance=1.0,
+    reflect_from_minus_side=False,
+    reflect_from_plus_side=True,
 )
 
 TURNING_SQUARE_MIRROR_1 = PlaneMirror(
@@ -902,14 +1083,30 @@ ADJUSTABLE_MIRROR_ZERO_NORMALS: Dict[str, tuple[float, float, float]] = {
     "MS4": (-0.1452196698, -0.9893994401, 0.0),
 }
 
-ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = {
-    "MP1": {"x": 0.0, "z": 0.0},
-    "MP2": {"x": 0.0, "z": 0.0},
-    "MS1": {"x": 0.0, "z": 0.0},
-    "MS2": {"x": 0.0, "z": 0.0},
-    "MS3": {"x": 0.0, "z": 0.0},
-    "MS4": {"x": 0.0, "z": 0.0},
+ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES: Dict[str, tuple[float, float, float]] = {
+    "MP1": (0.8660254037844387, -0.5, 0.0),
+    "MP2": (0.8660254037844387, -0.5, 0.0),
+    "MS1": (0.1452196698, 0.9893994401, 0.0),
+    "MS2": (-0.9893994401, 0.1452196698, 0.0),
+    "MS3": (-0.1452196698, -0.9893994401, 0.0),
+    "MS4": (0.9893994401, -0.1452196698, 0.0),
 }
+
+DEFAULT_ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = {
+    # Latest accepted mirror-position optimization result.  Keep the optimized
+    # position as the model baseline; angle-search utilities apply overrides to
+    # a copy of these values instead of resetting the model to mechanical zero.
+    "MP1": {"x": 0.011, "y": 0.0, "z": 0.0},
+    "MP2": {"x": 0.0, "y": 0.0, "z": 0.0},
+    "MS1": {"x": 0.0, "y": 0.0, "z": 0.0},
+    "MS2": {"x": 0.0, "y": 0.0, "z": 0.0},
+    "MS3": {"x": 0.0, "y": 0.0, "z": 0.0},
+    "MS4": {"x": 0.0, "y": 0.0, "z": 0.0},
+}
+
+ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = copy.deepcopy(
+    DEFAULT_ADJUSTABLE_MIRROR_ROTATIONS_DEG
+)
 
 ADJUSTABLE_MIRRORS = [
     ("MP1", PERISCOPE_MIRROR_1),
@@ -927,6 +1124,37 @@ def _normalized_vector(vector: Iterable[float]) -> np.ndarray:
     if norm <= 1e-15:
         return arr
     return arr / norm
+
+
+def _rotate_vector_about_axis(vector: Iterable[float], axis: Iterable[float], angle_deg: float) -> np.ndarray:
+    vec = np.asarray(tuple(vector), dtype=float)
+    axis_vec = _normalized_vector(axis)
+    angle_rad = math.radians(float(angle_deg))
+    return (
+        vec * math.cos(angle_rad)
+        + np.cross(axis_vec, vec) * math.sin(angle_rad)
+        + axis_vec * float(np.dot(axis_vec, vec)) * (1.0 - math.cos(angle_rad))
+    )
+
+
+def _adjusted_plane_mirror(mirror_name: str, mirror: PlaneMirror) -> PlaneMirror:
+    adjusted = copy.deepcopy(mirror)
+    normal = np.asarray(ADJUSTABLE_MIRROR_ZERO_NORMALS[mirror_name], dtype=float)
+    in_plane_reference = np.asarray(ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES[mirror_name], dtype=float)
+    rotations = ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror_name]
+    for axis_name, axis in (
+        ("x", (1.0, 0.0, 0.0)),
+        ("y", (0.0, 1.0, 0.0)),
+        ("z", (0.0, 0.0, 1.0)),
+    ):
+        angle_deg = float(rotations.get(axis_name, 0.0))
+        if abs(angle_deg) <= 1e-15:
+            continue
+        normal = _rotate_vector_about_axis(normal, axis, angle_deg)
+        in_plane_reference = _rotate_vector_about_axis(in_plane_reference, axis, angle_deg)
+    adjusted.normal = tuple(float(value) for value in _normalized_vector(normal))
+    adjusted.in_plane_reference = tuple(float(value) for value in _normalized_vector(in_plane_reference))
+    return adjusted
 
 
 def _signed_rotation_about_axis_deg(
@@ -960,11 +1188,20 @@ def adjustable_mirror_angle_rows() -> List[Dict[str, object]]:
         rows.append(
             {
                 "mirror": mirror_name,
-                "x": float(rotations["x"]),
-                "z": float(rotations["z"]),
+                "x": float(rotations.get("x", 0.0)),
+                "y": float(rotations.get("y", 0.0)),
+                "z": float(rotations.get("z", 0.0)),
             }
         )
     return rows
+
+
+def adjustable_mirrors_are_at_zero(tolerance_deg: float = 1e-12) -> bool:
+    return all(
+        abs(float(angle_deg)) <= float(tolerance_deg)
+        for rotations in ADJUSTABLE_MIRROR_ROTATIONS_DEG.values()
+        for angle_deg in rotations.values()
+    )
 
 
 def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
@@ -1004,8 +1241,8 @@ def build_initial_scene() -> Scene:
     bundle_4_3 = make_bundle_4_3()
     bundle_4_4 = make_bundle_4_4()
     scene.add(
-        copy.deepcopy(PERISCOPE_MIRROR_1),
-        copy.deepcopy(PERISCOPE_MIRROR_2),
+        _adjusted_plane_mirror("MP1", PERISCOPE_MIRROR_1),
+        _adjusted_plane_mirror("MP2", PERISCOPE_MIRROR_2),
         copy.deepcopy(ONE_OF_MANY_MIRRORS),
         copy.deepcopy(BLOCK_MIRROR_1),
         copy.deepcopy(BLOCK_MIRROR_2),
@@ -1014,10 +1251,10 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(TURNING_ROUND_MIRROR_2),
         copy.deepcopy(TURNING_ROUND_MIRROR_3),
         copy.deepcopy(TURNING_ROUND_MIRROR_4),
-        copy.deepcopy(TURNING_SQUARE_MIRROR_1),
-        copy.deepcopy(TURNING_SQUARE_MIRROR_2),
-        copy.deepcopy(TURNING_SQUARE_MIRROR_3),
-        copy.deepcopy(TURNING_SQUARE_MIRROR_4),
+        _adjusted_plane_mirror("MS1", TURNING_SQUARE_MIRROR_1),
+        _adjusted_plane_mirror("MS2", TURNING_SQUARE_MIRROR_2),
+        _adjusted_plane_mirror("MS3", TURNING_SQUARE_MIRROR_3),
+        _adjusted_plane_mirror("MS4", TURNING_SQUARE_MIRROR_4),
         copy.deepcopy(SEMI_MIRROR_LEFT_1),
         copy.deepcopy(SEMI_MIRROR_NEW),
         copy.deepcopy(PRISM_1),
@@ -1066,9 +1303,78 @@ def build_initial_scene() -> Scene:
     scene.add(*bundle_4_4.build_surfaces())
     return scene
 
+def make_reconstructed_mirror_outline(
+    *,
+    name: str,
+    points: Sequence[Sequence[float]],
+    color: str,
+) -> Dict[str, object]:
+    closed_points = [tuple(float(v) for v in point) for point in points]
+    closed_points.append(closed_points[0])
+    return {
+        "x": [point[0] for point in closed_points],
+        "y": [point[1] for point in closed_points],
+        "z": [point[2] for point in closed_points],
+        "mode": "lines+markers",
+        "name": name,
+        "line": {"color": color, "width": 5},
+        "marker": {"size": 3, "color": color},
+        "hovertemplate": f"{name}<br>x=%{{x:.6f}}<br>y=%{{y:.6f}}<br>z=%{{z:.6f}}<extra></extra>",
+        "showlegend": False,
+    }
+
+def iter_screen_b_surfaces() -> List[TransparentCylindricalScreen]:
+    return [globals()[f"CYLINDRICAL_SURFACE_{idx}"] for idx in range(1, 17)]
+
+def build_screen_b_overlays() -> List[Dict[str, object]]:
+    overlays: List[Dict[str, object]] = []
+    for surface in iter_screen_b_surfaces():
+        overlays.extend(
+            make_cylindrical_surface_overlays(
+                name=surface.name,
+                center=surface.center,
+                axis=surface.axis,
+                radius=float(surface.radius),
+                length=float(surface.length),
+                color=CYLINDRICAL_SCREEN_COLOR,
+                line_width=2,
+                opacity=0.12,
+            )
+        )
+    return overlays
+
+def build_bundle_ray_clip_overlays() -> List[Dict[str, object]]:
+    overlays: List[Dict[str, object]] = []
+    for name, radius, opacity in (
+        ("BUNDLE reflected ray inner limit r=0.35 m", BUNDLE_RAY_INNER_CYLINDER_RADIUS_M, 0.055),
+        ("BUNDLE reflected ray outer limit r=1.35 m", BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M, 0.035),
+    ):
+        overlays.extend(
+            make_cylindrical_surface_overlays(
+                name=name,
+                center=CYLINDRICAL_SCREEN_1.center,
+                axis=(0.0, 0.0, 1.0),
+                radius=float(radius),
+                length=float(CYLINDRICAL_SCREEN_1.length),
+                color=CYLINDRICAL_SCREEN_COLOR,
+                line_width=2,
+                opacity=opacity,
+            )
+        )
+    return overlays
+
 def build_bundle_overlays(bundle: MirrorArrayBundle) -> List[Dict[str, object]]:
     overlays: List[Dict[str, object]] = []
-    for mirror in bundle.build_surfaces():
+    for config, mirror in zip(bundle.configs, bundle.build_surfaces()):
+        if isinstance(config, dict) and "reconstructed_points" in config:
+            overlays.append(
+                make_reconstructed_mirror_outline(
+                    name=mirror.name,
+                    points=config["reconstructed_points"],
+                    color=SEMI_TRANSPARENT_MIRROR_COLOR,
+                )
+            )
+            continue
         overlays.append(
             make_circle_outline(
                 name=mirror.name,
@@ -1114,6 +1420,8 @@ def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict
                 row["t0_s"] = float(block["t0_s"][i])
             if "t1_s" in block:
                 row["t1_s"] = float(block["t1_s"][i])
+            if "bundle_reflected" in block:
+                row["bundle_reflected"] = bool(block["bundle_reflected"][i])
             yield row
 
 def flatten_detector_hits(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:
@@ -1140,15 +1448,17 @@ def flatten_detector_hits(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[
             }
 
 def write_csv(path: Path, rows: Iterable[Dict[str, object]]) -> bool:
-    rows = list(rows)
-    if not rows:
+    iterator = iter(rows)
+    first_row = next(iterator, None)
+    if first_row is None:
         if path.exists():
             path.unlink()
         return False
     with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=list(first_row.keys()))
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerow(first_row)
+        writer.writerows(iterator)
     return True
 
 def detector_energy_summary(result: object, integration_time_s: float) -> Dict[str, float]:
@@ -1182,6 +1492,11 @@ def main() -> None:
         backend=args.backend,
         max_interactions=args.max_interactions,
         max_time_s=INTEGRATION_TIME_S,
+        bundle_clip_inner_radius_m=BUNDLE_RAY_INNER_CYLINDER_RADIUS_M,
+        bundle_clip_outer_radius_m=BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M,
+        bundle_clip_z_min_m=BUNDLE_RAY_Z_MIN_M,
+        bundle_clip_z_max_m=BUNDLE_RAY_Z_MAX_M,
+        skip_repeated_bundle_reflections=True,
     )
     result = tracer.trace(rays)
 
@@ -1284,6 +1599,7 @@ def main() -> None:
 
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
+        fresh_plot_path = outdir / "scene_gaussian_35ns_reconstructed_from_file.html"
         screens_path = outdir / "screens_1_4.html"
         screen_b_1_1_unwrap_path = outdir / "screen_b_1_1_unwrap.html"
         screen_b_1_2_unwrap_path = outdir / "screen_b_1_2_unwrap.html"
@@ -1346,6 +1662,10 @@ def main() -> None:
         bundle_4_2 = make_bundle_4_2()
         bundle_4_3 = make_bundle_4_3()
         bundle_4_4 = make_bundle_4_4()
+        adjusted_mirrors = {
+            mirror_name: _adjusted_plane_mirror(mirror_name, mirror)
+            for mirror_name, mirror in ADJUSTABLE_MIRRORS
+        }
         overlays = [
             make_circle_outline(
                 name="Source waist",
@@ -1356,22 +1676,22 @@ def main() -> None:
                 in_plane_reference=SOURCE_TEMPLATE.polarization_reference,
             ),
             make_rectangle_outline(
-                name=PERISCOPE_MIRROR_1.name,
-                center=PERISCOPE_MIRROR_1.center,
-                normal=PERISCOPE_MIRROR_1.normal,
-                width=float(PERISCOPE_MIRROR_1.width),
-                height=float(PERISCOPE_MIRROR_1.height),
+                name=adjusted_mirrors["MP1"].name,
+                center=adjusted_mirrors["MP1"].center,
+                normal=adjusted_mirrors["MP1"].normal,
+                width=float(adjusted_mirrors["MP1"].width),
+                height=float(adjusted_mirrors["MP1"].height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=PERISCOPE_MIRROR_1.in_plane_reference,
+                in_plane_reference=adjusted_mirrors["MP1"].in_plane_reference,
             ),
             make_rectangle_outline(
-                name=PERISCOPE_MIRROR_2.name,
-                center=PERISCOPE_MIRROR_2.center,
-                normal=PERISCOPE_MIRROR_2.normal,
-                width=float(PERISCOPE_MIRROR_2.width),
-                height=float(PERISCOPE_MIRROR_2.height),
+                name=adjusted_mirrors["MP2"].name,
+                center=adjusted_mirrors["MP2"].center,
+                normal=adjusted_mirrors["MP2"].normal,
+                width=float(adjusted_mirrors["MP2"].width),
+                height=float(adjusted_mirrors["MP2"].height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=PERISCOPE_MIRROR_2.in_plane_reference,
+                in_plane_reference=adjusted_mirrors["MP2"].in_plane_reference,
             ),
             make_rectangle_outline(
                 name=ONE_OF_MANY_MIRRORS.name,
@@ -1504,41 +1824,43 @@ def main() -> None:
                 color=CYLINDRICAL_SCREEN_COLOR,
                 opacity=0.0,
             ),
+            *build_bundle_ray_clip_overlays(),
+            *build_screen_b_overlays(),
             make_rectangle_outline(
-                name=TURNING_SQUARE_MIRROR_1.name,
-                center=TURNING_SQUARE_MIRROR_1.center,
-                normal=TURNING_SQUARE_MIRROR_1.normal,
-                width=float(TURNING_SQUARE_MIRROR_1.width),
-                height=float(TURNING_SQUARE_MIRROR_1.height),
+                name=adjusted_mirrors["MS1"].name,
+                center=adjusted_mirrors["MS1"].center,
+                normal=adjusted_mirrors["MS1"].normal,
+                width=float(adjusted_mirrors["MS1"].width),
+                height=float(adjusted_mirrors["MS1"].height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=TURNING_SQUARE_MIRROR_1.in_plane_reference,
+                in_plane_reference=adjusted_mirrors["MS1"].in_plane_reference,
             ),
             make_rectangle_outline(
-                name=TURNING_SQUARE_MIRROR_2.name,
-                center=TURNING_SQUARE_MIRROR_2.center,
-                normal=TURNING_SQUARE_MIRROR_2.normal,
-                width=float(TURNING_SQUARE_MIRROR_2.width),
-                height=float(TURNING_SQUARE_MIRROR_2.height),
+                name=adjusted_mirrors["MS2"].name,
+                center=adjusted_mirrors["MS2"].center,
+                normal=adjusted_mirrors["MS2"].normal,
+                width=float(adjusted_mirrors["MS2"].width),
+                height=float(adjusted_mirrors["MS2"].height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=TURNING_SQUARE_MIRROR_2.in_plane_reference,
+                in_plane_reference=adjusted_mirrors["MS2"].in_plane_reference,
             ),
             make_rectangle_outline(
-                name=TURNING_SQUARE_MIRROR_3.name,
-                center=TURNING_SQUARE_MIRROR_3.center,
-                normal=TURNING_SQUARE_MIRROR_3.normal,
-                width=float(TURNING_SQUARE_MIRROR_3.width),
-                height=float(TURNING_SQUARE_MIRROR_3.height),
+                name=adjusted_mirrors["MS3"].name,
+                center=adjusted_mirrors["MS3"].center,
+                normal=adjusted_mirrors["MS3"].normal,
+                width=float(adjusted_mirrors["MS3"].width),
+                height=float(adjusted_mirrors["MS3"].height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=TURNING_SQUARE_MIRROR_3.in_plane_reference,
+                in_plane_reference=adjusted_mirrors["MS3"].in_plane_reference,
             ),
             make_rectangle_outline(
-                name=TURNING_SQUARE_MIRROR_4.name,
-                center=TURNING_SQUARE_MIRROR_4.center,
-                normal=TURNING_SQUARE_MIRROR_4.normal,
-                width=float(TURNING_SQUARE_MIRROR_4.width),
-                height=float(TURNING_SQUARE_MIRROR_4.height),
+                name=adjusted_mirrors["MS4"].name,
+                center=adjusted_mirrors["MS4"].center,
+                normal=adjusted_mirrors["MS4"].normal,
+                width=float(adjusted_mirrors["MS4"].width),
+                height=float(adjusted_mirrors["MS4"].height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=TURNING_SQUARE_MIRROR_4.in_plane_reference,
+                in_plane_reference=adjusted_mirrors["MS4"].in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
                 name=SEMI_MIRROR_LEFT_1.name,
@@ -1619,14 +1941,15 @@ def main() -> None:
         write_plotly_trajectories(
             plot_path,
             result,
-            title="Initial 35 ns scene",
+            title="35 ns scene - DIRECT BUNDLE geometry from Восстановленные_микросборки.txt",
             overlays=overlays,
             detector_hit_exclude_prefixes=("Screen", "Cylindrical Screen", "screen_b_"),
             trim_end_surface_prefixes=("Screen",),
             trim_end_distance=5e-3,
             min_segment_power=20.0,
-            always_include_surface_prefixes=("BUNDLE_", "Cylindrical Screen"),
+            always_include_surface_prefixes=("Cylindrical Screen",),
         )
+        fresh_plot_path.write_bytes(plot_path.read_bytes())
         write_cylindrical_unwrap_view(
             screen_b_1_1_unwrap_path,
             result,
@@ -1835,7 +2158,9 @@ def main() -> None:
                 },
             ],
             remember_spot_centers=True,
+            update_spot_reference_centers=adjustable_mirrors_are_at_zero(),
             gas_volume_surfaces=screen_b_surface_specs,
+            remember_gas_volume_bundle_centers=adjustable_mirrors_are_at_zero(),
         )
         write_beam_characteristics_window(
             beam_characteristics_path,
@@ -1844,6 +2169,7 @@ def main() -> None:
             mirror_angles=adjustable_mirror_angle_rows(),
         )
         print(f"Wrote: {plot_path}")
+        print(f"Wrote: {fresh_plot_path}")
         print(f"Wrote: {screens_path}")
         print(f"Wrote: {screen_b_1_1_unwrap_path}")
         print(f"Wrote: {screen_b_1_2_unwrap_path}")
@@ -1863,7 +2189,7 @@ def main() -> None:
         print(f"Wrote: {screen_b_4_4_unwrap_path}")
         print(f"Wrote: {beam_characteristics_path}")
         if args.open_plot:
-            webbrowser.open(plot_path.resolve().as_uri())
+            webbrowser.open(fresh_plot_path.resolve().as_uri())
             webbrowser.open(screens_path.resolve().as_uri())
             webbrowser.open(beam_characteristics_path.resolve().as_uri())
 
