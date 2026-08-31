@@ -30,16 +30,18 @@ AngleKey = Tuple[str, str]
 
 
 TARGET_RANGES_DEG: Dict[AngleKey, Tuple[float, float]] = {
-    ("MP1", "x"): (-0.03000, 0.03000),
-    ("MP1", "z"): (-0.05000, 0.03000),
-    ("MP2", "x"): (-0.04000, 0.04000),
-    ("MP2", "z"): (-0.04000, 0.05000),
+    ("MP1", "x"): (-0.30000, 0.30000),
+    ("MP1", "z"): (-0.30000, 0.30000),
+    ("MP2", "x"): (-0.30000, 0.30000),
+    ("MP2", "z"): (-0.30000, 0.30000),
     ("MS1", "x"): (-0.50000, 0.50000),
     ("MS1", "z"): (-0.07000, 0.07000),
 }
 
 TARGET_MIRRORS = ("MP1", "MP2", "MS1")
 TARGET_AXES = ("x", "z")
+SIMULTANEOUS_MS_MIRRORS = ("MS1", "MS2", "MS3", "MS4")
+SIMULTANEOUS_MS_RANGE_DEG = (-0.30000, 0.30000)
 DEFAULT_OUTDIR = Path("scene_gaussian_35ns_output") / "screen_b1_angle_search_current"
 
 
@@ -232,7 +234,10 @@ class ScreenB1AngleEvaluator:
         for mirror, rotations in self.default_angles_deg.items():
             self.scene_module.ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror].update(rotations)
         for (mirror, axis), angle_deg in angles_deg.items():
-            self.scene_module.ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror][axis] = float(angle_deg)
+            baseline_angle = float(self.default_angles_deg.get(mirror, {}).get(axis, 0.0))
+            self.scene_module.ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror][axis] = (
+                baseline_angle + float(angle_deg)
+            )
 
         tracer = RayTracer(
             scene=self.scene_module.build_initial_scene(),
@@ -317,11 +322,22 @@ class ScreenB1AngleEvaluator:
                 if np.isfinite(max_extent) and float(max_extent) > _CYLINDRICAL_BUNDLE_MAX_DIAMETER_M:
                     continue
                 ray_counts[mirror_idx - 1] = int(positions.shape[0])
-            visible_count = sum(1 for count in ray_counts if count > 0)
+            positive_counts = [count for count in ray_counts if count > 0]
+            bundle_ray_threshold = max(
+                2,
+                int(
+                    math.ceil(
+                        _CYLINDRICAL_BUNDLE_MIN_RAY_COUNT_FRACTION
+                        * float(np.median(positive_counts))
+                    )
+                ) if positive_counts else 2,
+            )
+            visible_count = sum(1 for count in ray_counts if count >= bundle_ray_threshold)
             all_visible = all_visible and visible_count == 7
             screen_min = min(ray_counts) if ray_counts else 0
             min_ray_count = screen_min if min_ray_count is None else min(min_ray_count, screen_min)
             row[f"{screen_name}_visible_bundles"] = visible_count
+            row[f"{screen_name}_bundle_ray_threshold"] = bundle_ray_threshold
             row[f"{screen_name}_min_ray_count"] = screen_min
             row[f"{screen_name}_ray_counts"] = " ".join(str(count) for count in ray_counts)
 
@@ -706,6 +722,77 @@ def run_individual(args: argparse.Namespace) -> None:
     print(f"Elapsed: {time.perf_counter() - start:.1f} s")
 
 
+def run_simultaneous_ms(args: argparse.Namespace) -> None:
+    evaluator = ScreenB1AngleEvaluator(
+        target_count=args.target_count,
+        backend=args.backend,
+        max_interactions=args.max_interactions,
+        screen_rods=args.screen_rods,
+    )
+    outdir = Path(args.outdir)
+    all_rows: List[Dict[str, object]] = []
+    summary_rows: List[Dict[str, object]] = []
+    step = float(args.step_deg)
+    lo, hi = SIMULTANEOUS_MS_RANGE_DEG
+    axes = tuple(args.group_axis or TARGET_AXES)
+    start = time.perf_counter()
+
+    for axis in axes:
+        lo_tick = _tick(lo, step)
+        hi_tick = _tick(hi, step)
+        ticks = list(range(lo_tick, hi_tick + 1))
+        axis_rows: List[Dict[str, object]] = []
+        ok_by_tick: Dict[int, bool] = {}
+
+        for index, tick in enumerate(ticks, start=1):
+            angle_deg = _angle(tick, step)
+            angles = {(mirror, axis): angle_deg for mirror in SIMULTANEOUS_MS_MIRRORS}
+            metrics = evaluator.evaluate(angles)
+            ok_by_tick[tick] = bool(metrics["ok"])
+            row: Dict[str, object] = {
+                "mirror_group": "MS1-MS4",
+                "axis": axis,
+                "angle_deg": f"{angle_deg:.6f}",
+                "angle_tick": tick,
+            }
+            row.update(metrics)
+            axis_rows.append(row)
+            all_rows.append(row)
+            if args.progress:
+                print(
+                    f"MS1-MS4:{axis} {index}/{len(ticks)} "
+                    f"angle={angle_deg:.6f} ok={metrics['ok']} "
+                    f"min_ray_count={metrics['min_ray_count']}",
+                    flush=True,
+                )
+
+        low_tick, high_tick = _contiguous_limits(ok_by_tick, lo_tick, hi_tick)
+        pass_ticks = [tick for tick, ok in ok_by_tick.items() if ok]
+        summary_rows.append(
+            {
+                "mirror_group": "MS1-MS4",
+                "axis": axis,
+                "range_min_deg": f"{lo:.6f}",
+                "range_max_deg": f"{hi:.6f}",
+                "contiguous_min_deg": f"{_angle(low_tick, step):.6f}",
+                "contiguous_max_deg": f"{_angle(high_tick, step):.6f}",
+                "any_pass_min_deg": f"{_angle(min(pass_ticks), step):.6f}" if pass_ticks else "",
+                "any_pass_max_deg": f"{_angle(max(pass_ticks), step):.6f}" if pass_ticks else "",
+                "failed_inside_contiguous_rule": int(
+                    any(not ok_by_tick.get(tick, False) for tick in range(low_tick, high_tick + 1))
+                ),
+                "target_count": int(args.target_count),
+                "step_deg": f"{step:.6f}",
+            }
+        )
+        _write_csv(outdir / f"ms1_ms4_{axis}_simultaneous.csv", axis_rows)
+
+    _write_csv(outdir / "simultaneous_ms_sweep.csv", all_rows)
+    _write_csv(outdir / "simultaneous_ms_summary.csv", summary_rows)
+    print(f"Wrote {outdir / 'simultaneous_ms_summary.csv'}")
+    print(f"Elapsed: {time.perf_counter() - start:.1f} s")
+
+
 def _read_individual_limits(path: Path) -> Dict[AngleKey, Tuple[float, float]]:
     with path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
@@ -879,18 +966,19 @@ def run_check(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Find MP1/MP2/MS1 x/z angle limits that keep 7 bundles visible on screen_b_1_i."
+        description="Find MP1/MP2/MS1 x/z angle-deviation limits that keep 7 bundles visible on every selected cylindrical screen."
     )
-    parser.add_argument("--mode", choices=("limits", "individual", "corners", "bounds", "sections", "check"), default="bounds")
+    parser.add_argument("--mode", choices=("limits", "individual", "simultaneous-ms", "corners", "bounds", "sections", "check"), default="bounds")
     parser.add_argument("--backend", choices=("numpy", "cupy"), default="numpy")
     parser.add_argument("--target-count", type=int, default=2000)
     parser.add_argument("--max-interactions", type=int, default=None)
-    parser.add_argument("--step-deg", type=float, default=0.0005)
+    parser.add_argument("--step-deg", type=float, default=0.005)
     parser.add_argument("--outdir", default=str(DEFAULT_OUTDIR))
-    parser.add_argument("--screen-rods", default="1", help='Screen rods to check: "1", "1,2", or "all".')
+    parser.add_argument("--screen-rods", default="all", help='Screen rods to check: "1", "1,2", or "all".')
     parser.add_argument("--limits-csv", default="")
     parser.add_argument("--only", action="append", help="Limit individual sweep to MIRROR:axis, for example MP1:x.")
-    parser.add_argument("--angle", action="append", default=[], help="For check mode: MIRROR:axis=value_deg.")
+    parser.add_argument("--group-axis", action="append", choices=TARGET_AXES, help="Limit simultaneous MS1-MS4 sweep to x or z.")
+    parser.add_argument("--angle", action="append", default=[], help="For check mode: MIRROR:axis=deviation_deg relative to the current position.")
     parser.add_argument("--progress", action="store_true")
     return parser
 
@@ -901,6 +989,8 @@ def main() -> None:
         run_limits(args)
     elif args.mode == "individual":
         run_individual(args)
+    elif args.mode == "simultaneous-ms":
+        run_simultaneous_ms(args)
     elif args.mode == "corners":
         run_corners(args)
     elif args.mode == "bounds":

@@ -1,0 +1,3 @@
+case,MP1_x_deg,MP1_z_deg,MP2_x_deg,MP2_z_deg,MS1_MS4_x_deg,MS1_MS4_z_deg,result,reason
+rejected_corner_1,-0.010,0.010,0.010,-0.010,-0.008,0.004,rejected,at_least_one_screen_has_fewer_than_7_bundles
+rejected_corner_2,0.000,-0.002,0.000,0.004,-0.008,0.004,rejected,at_least_one_screen_has_fewer_than_7_bundles

@@ -1443,6 +1443,23 @@ def write_detector_screen_views(
             col=col,
         )
 
+        footer = screen.get("footer")
+        if footer:
+            axis_suffix = "" if idx == 0 else str(idx + 1)
+            fig.add_annotation(
+                x=0.5,
+                y=-0.18,
+                xref=f"x{axis_suffix} domain",
+                yref=f"y{axis_suffix} domain",
+                text=str(footer),
+                showarrow=False,
+                xanchor="center",
+                yanchor="top",
+                align="center",
+                font={"size": 12, "color": "#183052"},
+                bgcolor="rgba(255,255,255,0.88)",
+            )
+
         axis_suffix = "" if idx == 0 else str(idx + 1)
         fig.add_annotation(
             x=1.06,
@@ -1463,7 +1480,7 @@ def write_detector_screen_views(
     fig.update_layout(
         title=None,
         width=1120,
-        height=820,
+        height=920 if any(screen.get("footer") for screen in screens) else 820,
         coloraxis={
             "colorscale": _RAY_INTENSITY_COLORSCALE,
             "cmin": 0.0,
@@ -1474,7 +1491,7 @@ def write_detector_screen_views(
                 "tickformat": ".2e",
             },
         },
-        margin={"l": 60, "r": 135, "t": 45, "b": 70},
+        margin={"l": 60, "r": 135, "t": 45, "b": 115 if any(screen.get("footer") for screen in screens) else 70},
         showlegend=False,
     )
     plot_html = fig.to_html(include_plotlyjs=True, full_html=False, config={"responsive": True})

@@ -4,14 +4,18 @@ import argparse
 import ast
 import copy
 import csv
+import json
 import math
+import subprocess
+import sys
 import webbrowser
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence
 
 import numpy as np
 
-from raytrace import AIR, BlockMirror, CylinderSurface, CylindricalScreen, Detector, GaussianBeamSource, InteractionMode, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, SurfaceOptics, TriangularPrism, to_numpy
+from raytrace import AIR, BlockMirror, CylindricalScreen, Detector, GaussianBeamSource, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, TriangularPrism, to_numpy
 from vizual import (
     make_circle_outline,
     make_cylindrical_surface_overlays,
@@ -19,15 +23,13 @@ from vizual import (
     make_rectangle_outline,
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
-    write_beam_characteristics_window,
-    write_cylindrical_unwrap_view,
     write_detector_screen_views,
     write_plotly_trajectories,
 )
 
 INTEGRATION_TIME_S = 50e-9
 BEAM_RADIAL_POSITIONS = 55
-INITIAL_RAY_COUNT = 30000
+INITIAL_RAY_COUNT = 10000
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 20
@@ -66,7 +68,7 @@ BUNDLE_4_DY = BUNDLE_4_CENTER_Y - BUNDLE_1_1_ROTATION_CENTER[1]
 
 SCREEN_1 = Detector(
     name="Screen 1",
-    center=(-0.7658855413, 1.01917119, -3.4495),
+    center=(-0.7658855413, 1.01917119, -3.4505),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -75,7 +77,7 @@ SCREEN_1 = Detector(
 
 SCREEN_2 = Detector(
     name="Screen 2",
-    center=(-1.01917119, -0.7658855413, -3.4495),
+    center=(-1.01917119, -0.7658855413, -3.4505),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -84,7 +86,7 @@ SCREEN_2 = Detector(
 
 SCREEN_3 = Detector(
     name="Screen 3",
-    center=(0.7658855413, -1.01917119, -3.4495),
+    center=(0.7658855413, -1.01917119, -3.4505),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -93,7 +95,7 @@ SCREEN_3 = Detector(
 
 SCREEN_4 = Detector(
     name="Screen 4",
-    center=(1.01917119, 0.7658855413, -3.4495),
+    center=(1.01917119, 0.7658855413, -3.4505),
     normal=(0.0, 0.0, 1.0),
     shape="disk",
     radius=0.025,
@@ -108,175 +110,11 @@ CYLINDRICAL_SCREEN_1 = CylindricalScreen(
     length=3.33,
     detector=True,
 )
+
 BUNDLE_RAY_INNER_CYLINDER_RADIUS_M = 0.35
 BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M = 1.35
 BUNDLE_RAY_Z_MIN_M = float(CYLINDRICAL_SCREEN_1.center[2]) - 0.5 * float(CYLINDRICAL_SCREEN_1.length)
 BUNDLE_RAY_Z_MAX_M = float(CYLINDRICAL_SCREEN_1.center[2]) + 0.5 * float(CYLINDRICAL_SCREEN_1.length)
-
-class TransparentCylindricalScreen:
-    def __init__(
-        self,
-        *,
-        name: str,
-        center: Sequence[float],
-        axis: Sequence[float],
-        radius: float,
-        length: float,
-    ) -> None:
-        self.name = name
-        self.center = center
-        self.axis = axis
-        self.radius = radius
-        self.length = length
-
-    def build_surfaces(self) -> List[CylinderSurface]:
-        optics = SurfaceOptics(
-            mode=InteractionMode.TRANSPARENT,
-            label=self.name,
-            detector=True,
-            transmittance=1.0,
-            release_reflected=False,
-            release_transmitted=True,
-        )
-        return [
-            CylinderSurface(
-                name=self.name,
-                optics=optics,
-                center=self.center,
-                axis=self.axis,
-                radius=self.radius,
-                length=self.length,
-            )
-        ]
-
-
-CYLINDRICAL_SURFACE_1 = TransparentCylindricalScreen(
-    name="screen_b_1_1",
-    center=(-0.7649020959, 1.026102123, -2.12285),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_2 = TransparentCylindricalScreen(
-    name="screen_b_1_2",
-    center=(-0.7728622624, 1.020197473, -2.451290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_3 = TransparentCylindricalScreen(
-    name="screen_b_1_3",
-    center=(-0.759000396, 1.018230582, -2.781290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_4 = TransparentCylindricalScreen(
-    name="screen_b_1_4",
-    center=(-0.7669147747, 1.012283094, -3.111290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_5 = TransparentCylindricalScreen(
-    name="screen_b_2_1",
-    center=(-1.02615802, -0.7649305048, -2.121290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_6 = TransparentCylindricalScreen(
-    name="screen_b_2_2",
-    center=(-1.020210533, -0.7728448835, -2.451290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_7 = TransparentCylindricalScreen(
-    name="screen_b_2_3",
-    center=(-1.018243642, -0.7589830171, -2.781290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_8 = TransparentCylindricalScreen(
-    name="screen_b_2_4",
-    center=(-1.012296154, -0.7668973957, -3.111290616),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_9 = TransparentCylindricalScreen(
-    name="screen_b_3_1",
-    center=(0.7649292531, -1.026156355, -2.121291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_10 = TransparentCylindricalScreen(
-    name="screen_b_3_2",
-    center=(0.7728436317, -1.020208867, -2.451291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_11 = TransparentCylindricalScreen(
-    name="screen_b_3_3",
-    center=(0.7589817653, -1.018241976, -2.781291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_12 = TransparentCylindricalScreen(
-    name="screen_b_3_4",
-    center=(0.766896144, -1.012294488, -3.111291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_13 = TransparentCylindricalScreen(
-    name="screen_b_4_1",
-    center=(1.026143295, 0.764946632, -2.121291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_14 = TransparentCylindricalScreen(
-    name="screen_b_4_2",
-    center=(1.020195807, 0.7728610107, -2.451291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_15 = TransparentCylindricalScreen(
-    name="screen_b_4_3",
-    center=(1.018228916, 0.7589991443, -2.781291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
-
-CYLINDRICAL_SURFACE_16 = TransparentCylindricalScreen(
-    name="screen_b_4_4",
-    center=(1.012281428, 0.7669135229, -3.111291658),
-    axis=(0.0, 0.0, 1.0),
-    radius=0.03,
-    length=0.094,
-)
 
 _BUNDLE_1_1_BASE_DATA = [
     {"name": "BUNDLE_1_1 Mirror 1", "phi": 31.424112270736885, "center": (-0.7647815417, 1.0251094165, -2.1122), "radius": BUNDLE_1_1_RADIUS_M},
@@ -590,204 +428,114 @@ def make_bundle_4_4() -> MirrorArrayBundle:
     return make_bundle("BUNDLE_4_4", BUNDLE_4_4_DATA)
 
 RECONSTRUCTED_MICROASSEMBLIES_PATH = Path(__file__).with_name("Восстановленные_микросборки.txt")
-BUNDLE_GROUP_SHIFTS_M: Dict[int, tuple[float, float, float]] = {
+
+
+def _normalized_reconstructed_vector(vector: np.ndarray) -> tuple[float, float, float]:
+    length = float(np.linalg.norm(vector))
+    if length <= 1e-15:
+        raise ValueError("Cannot normalize a zero-length reconstructed geometry vector.")
+    return tuple(float(value) for value in vector / length)
+
+
+def _reconstructed_mirror_config(
+    points: Sequence[Sequence[float]],
+) -> Dict[str, object]:
+    point_arrays = [np.asarray(point, dtype=float) for point in points]
+    if len(point_arrays) != 4:
+        raise ValueError(f"A reconstructed mirror must have four points, got {len(point_arrays)}.")
+    p0, p1, _, p3 = point_arrays
+    center = np.mean(np.stack(point_arrays, axis=0), axis=0)
+    in_plane_reference = _normalized_reconstructed_vector(p1 - p0)
+    normal_vector = np.cross(p1 - p0, p3 - p0)
+    # Point order is not consistent for every reconstructed mirror. Orient all
+    # normals toward -z, so rays arriving from +z meet the same reflective side.
+    # Reversing a plane normal does not change its position or reflection path.
+    if normal_vector[2] > 0.0:
+        normal_vector = -normal_vector
+    normal = _normalized_reconstructed_vector(normal_vector)
+    return {
+        "center": tuple(float(value) for value in center),
+        "phi": math.degrees(math.atan2(p1[1] - p3[1], p1[0] - p3[0])),
+        "normal": normal,
+        "in_plane_reference": in_plane_reference,
+        "reconstructed_points": [tuple(float(value) for value in point) for point in point_arrays],
+    }
+
+
+def _load_reconstructed_microassemblies(path: Path) -> None:
+    if not path.is_file():
+        raise FileNotFoundError(f"Reconstructed mirror positions file not found: {path}")
+
+    loaded: Dict[str, Dict[int, Dict[str, object]]] = {}
+    with path.open(encoding="utf-8", newline="") as handle:
+        for row_number, row in enumerate(csv.reader(handle, delimiter="\t"), start=1):
+            if not row or not any(cell.strip() for cell in row):
+                continue
+            if len(row) != 5:
+                raise ValueError(f"Unexpected row {row_number} in {path.name}: {row!r}")
+            key_parts = row[0].strip().split(".")
+            if len(key_parts) != 3:
+                raise ValueError(f"Invalid mirror key at row {row_number}: {row[0]!r}")
+            sector, layer, mirror_index = (int(value) for value in key_parts)
+            bundle_key = f"{sector}.{layer}"
+            points = [ast.literal_eval(cell.strip()) for cell in row[1:]]
+            loaded.setdefault(bundle_key, {})[mirror_index] = _reconstructed_mirror_config(points)
+
+    expected_bundle_keys = {f"{sector}.{layer}" for sector in range(1, 5) for layer in range(1, 5)}
+    if set(loaded) != expected_bundle_keys:
+        missing = sorted(expected_bundle_keys - set(loaded))
+        extra = sorted(set(loaded) - expected_bundle_keys)
+        raise ValueError(f"Unexpected reconstructed bundle set; missing={missing}, extra={extra}")
+
+    for sector in range(1, 5):
+        for layer in range(1, 5):
+            bundle_key = f"{sector}.{layer}"
+            items = loaded[bundle_key]
+            if set(items) != set(range(1, 8)):
+                raise ValueError(f"Bundle {bundle_key} must contain mirror indices 1..7.")
+            bundle_variable = f"BUNDLE_{sector}_{layer}_DATA"
+            original_items = globals()[bundle_variable]
+            globals()[bundle_variable] = [
+                {
+                    **original_items[mirror_index - 1],
+                    **items[mirror_index],
+                    "name": f"BUNDLE_{sector}_{layer} Mirror {mirror_index}",
+                }
+                for mirror_index in range(1, 8)
+            ]
+
+
+_load_reconstructed_microassemblies(RECONSTRUCTED_MICROASSEMBLIES_PATH)
+
+# Rigid translations of the four reconstructed sectors.  Every translation is
+# applied equally to all 28 mirrors in BUNDLE_<sector>_1..4, preserving the
+# recovered internal geometry while centering each sector on its incoming beam.
+BUNDLE_SECTOR_TRANSLATIONS_M = {
     1: (-0.0198703276795, -0.0026805251862, 0.0),
     2: (0.0025362321414, -0.0193196587392, 0.0),
     3: (0.0160000000000, 0.0040000000000, 0.0),
     4: (-0.0032595754172, 0.0181154172432, 0.0),
 }
 
-# Individual translations compensate the MP1 baseline change from +0.011 to
-# -0.011 degrees while keeping the accepted six-dimensional angle box intact.
-# They are applied after the sector-wide shifts above; the cylindrical screens
-# are synchronized to the resulting bundle centers below.
-BUNDLE_INDIVIDUAL_SHIFTS_M: Dict[tuple[int, int], tuple[float, float, float]] = {
-    (1, 1): (-0.0015, 0.0000, 0.0),
-    (1, 2): (-0.0030, 0.0000, 0.0),
-    (1, 3): (0.0045, 0.0015, 0.0),
-    (1, 4): (0.0000, -0.0030, 0.0),
-    (2, 1): (0.0050, -0.0020, 0.0),
-    (2, 2): (0.0015, 0.0015, 0.0),
-    (2, 3): (0.0015, 0.0030, 0.0),
-    (2, 4): (0.0015, 0.0030, 0.0),
-    (3, 1): (0.00475, -0.00250, 0.0),
-    (3, 2): (0.0030, 0.0030, 0.0),
-    (3, 3): (-0.0015, -0.0030, 0.0),
-    (3, 4): (-0.0015, -0.0015, 0.0),
-    (4, 1): (0.0030, -0.0015, 0.0),
-    (4, 2): (-0.0015, 0.0015, 0.0),
-    (4, 3): (0.0000, -0.0015, 0.0),
-    (4, 4): (0.0015, 0.0015, 0.0),
-}
 
-def _mean_point(points: List[tuple[float, float, float]]) -> tuple[float, float, float]:
-    return tuple(float(sum(point[axis] for point in points) / len(points)) for axis in range(3))
-
-def _phi_from_reconstructed_points(points: List[tuple[float, float, float]]) -> float:
-    dx = points[1][0] - points[3][0]
-    dy = points[1][1] - points[3][1]
-    return math.degrees(math.atan2(dy, dx))
-
-def _normalize_vector(vector: np.ndarray) -> tuple[float, float, float]:
-    length = float(np.linalg.norm(vector))
-    if length <= 1e-15:
-        raise ValueError("Cannot normalize a zero-length reconstructed geometry vector.")
-    return tuple(float(v) for v in vector / length)
-
-def _plane_normal_from_reconstructed_points(points: List[tuple[float, float, float]]) -> tuple[float, float, float]:
-    p0, p1, _, p3 = (np.asarray(point, dtype=float) for point in points)
-    normal = np.cross(p1 - p0, p3 - p0)
-    if normal[2] > 0.0:
-        normal = -normal
-    return _normalize_vector(normal)
-
-def _in_plane_reference_from_reconstructed_points(points: List[tuple[float, float, float]]) -> tuple[float, float, float]:
-    p0, p1, _, _ = (np.asarray(point, dtype=float) for point in points)
-    return _normalize_vector(p1 - p0)
-
-def _scene_bundle_key_from_reconstructed_key(reconstructed_bundle_key: str) -> str:
-    return reconstructed_bundle_key
-
-def _load_reconstructed_microassembly_geometry(path: Path) -> Dict[str, List[Dict[str, object]]]:
-    reconstructed_by_bundle: Dict[str, Dict[int, Dict[str, object]]] = {}
-    with path.open(encoding="utf-8", newline="") as handle:
-        reader = csv.reader(handle, delimiter="\t")
-        for row in reader:
-            if not row or not any(cell.strip() for cell in row):
-                continue
-            if len(row) < 5:
-                raise ValueError(f"Unexpected reconstructed row: {row!r}")
-            ellipse_key = row[0].strip()
-            if ellipse_key.count(".") != 2:
-                # Allows the file to contain an optional header row.
-                continue
-            sector_str, layer_str, ellipse_idx_str = ellipse_key.split(".")
-            scene_bundle_key = _scene_bundle_key_from_reconstructed_key(f"{sector_str}.{layer_str}")
-            points = [tuple(float(v) for v in ast.literal_eval(cell)) for cell in row[1:5]]
-            reconstructed_by_bundle.setdefault(scene_bundle_key, {})[int(ellipse_idx_str)] = {
-                "center": _mean_point(points),
-                "phi": _phi_from_reconstructed_points(points),
-                "normal": _plane_normal_from_reconstructed_points(points),
-                "in_plane_reference": _in_plane_reference_from_reconstructed_points(points),
-                "reconstructed_points": points,
-            }
-
-    # If an older file omits sector 4, recover it from sector 1 by symmetry.
-    for layer in range(1, 5):
-        source_bundle_key = f"1.{layer}"
-        target_bundle_key = f"4.{layer}"
-        if target_bundle_key in reconstructed_by_bundle or source_bundle_key not in reconstructed_by_bundle:
-            continue
-        reconstructed_by_bundle[target_bundle_key] = {
-            ellipse_idx: {
-                "center": _rotate_xy_point(item["center"], (0.0, 0.0, item["center"][2]), -90.0),
-                "phi": float(item["phi"]) - 90.0,
-                "normal": _rotate_xy_point(item["normal"], (0.0, 0.0, 0.0), -90.0),
-                "in_plane_reference": _rotate_xy_point(
-                    item["in_plane_reference"],
-                    (0.0, 0.0, 0.0),
-                    -90.0,
-                ),
-                "reconstructed_points": [
-                    _rotate_xy_point(point, (0.0, 0.0, point[2]), -90.0)
-                    for point in item["reconstructed_points"]
-                ],
-            }
-            for ellipse_idx, item in reconstructed_by_bundle[source_bundle_key].items()
-        }
-
-    reconstructed_geometry: Dict[str, List[Dict[str, object]]] = {}
-    for bundle_key, items_by_idx in reconstructed_by_bundle.items():
-        reconstructed_geometry[bundle_key] = [
-            items_by_idx[ellipse_idx]
-            for ellipse_idx in sorted(items_by_idx)
-        ]
-    return reconstructed_geometry
-
-def _apply_reconstructed_geometry_to_bundle(
-    bundle_data: List[Dict[str, object]],
-    reconstructed_data: List[Dict[str, object]],
-) -> List[Dict[str, object]]:
-    if len(bundle_data) != len(reconstructed_data):
-        raise ValueError("Reconstructed bundle geometry size does not match scene bundle size.")
-
-    updated_bundle: List[Dict[str, object]] = []
-    for bundle_item, reconstructed_item in zip(bundle_data, reconstructed_data):
-        updated_bundle.append(
-            {
-                **bundle_item,
-                "center": reconstructed_item["center"],
-                "phi": float(reconstructed_item["phi"]),
-                "normal": reconstructed_item["normal"],
-                "in_plane_reference": reconstructed_item["in_plane_reference"],
-                "reconstructed_points": reconstructed_item["reconstructed_points"],
-            }
-        )
-    return updated_bundle
-
-def _shift_bundle_data(
-    bundle_data: List[Dict[str, object]],
-    shift: tuple[float, float, float],
-) -> List[Dict[str, object]]:
-    shifted_bundle: List[Dict[str, object]] = []
-    shift_array = np.asarray(shift, dtype=float)
-    for item in bundle_data:
-        center = np.asarray(item["center"], dtype=float) + shift_array
-        shifted_item = {
-            **item,
-            "center": tuple(float(v) for v in center),
-        }
-        if "reconstructed_points" in item:
-            shifted_item["reconstructed_points"] = [
-                tuple(float(v) for v in (np.asarray(point, dtype=float) + shift_array))
-                for point in item["reconstructed_points"]
-            ]
-        shifted_bundle.append(shifted_item)
-    return shifted_bundle
-
-def _apply_bundle_group_shifts() -> None:
-    for sector, shift in BUNDLE_GROUP_SHIFTS_M.items():
+def _apply_bundle_sector_translations() -> None:
+    for sector, translation in BUNDLE_SECTOR_TRANSLATIONS_M.items():
+        offset = np.asarray(translation, dtype=float)
         for layer in range(1, 5):
-            bundle_var_name = f"BUNDLE_{sector}_{layer}_DATA"
-            globals()[bundle_var_name] = _shift_bundle_data(
-                globals()[bundle_var_name],
-                shift,
-            )
-    for (sector, layer), shift in BUNDLE_INDIVIDUAL_SHIFTS_M.items():
-        bundle_var_name = f"BUNDLE_{sector}_{layer}_DATA"
-        globals()[bundle_var_name] = _shift_bundle_data(
-            globals()[bundle_var_name],
-            shift,
-        )
-
-def _sync_cylindrical_surfaces_to_bundle_centers() -> None:
-    for sector in range(1, 5):
-        for layer in range(1, 5):
-            surface_idx = (sector - 1) * 4 + layer
-            surface = globals()[f"CYLINDRICAL_SURFACE_{surface_idx}"]
             bundle_data = globals()[f"BUNDLE_{sector}_{layer}_DATA"]
-            surface.center = _center_of_bundle_data(bundle_data)
+            for mirror in bundle_data:
+                mirror["center"] = tuple(
+                    float(value) for value in np.asarray(mirror["center"], dtype=float) + offset
+                )
+                reconstructed_points = mirror.get("reconstructed_points")
+                if reconstructed_points is not None:
+                    mirror["reconstructed_points"] = [
+                        tuple(float(value) for value in np.asarray(point, dtype=float) + offset)
+                        for point in reconstructed_points
+                    ]
 
-def _apply_reconstructed_microassembly_geometry() -> None:
-    if not RECONSTRUCTED_MICROASSEMBLIES_PATH.exists():
-        return
 
-    reconstructed_geometry = _load_reconstructed_microassembly_geometry(RECONSTRUCTED_MICROASSEMBLIES_PATH)
-    for sector in range(1, 5):
-        for layer in range(1, 5):
-            bundle_key = f"{sector}.{layer}"
-            reconstructed_bundle = reconstructed_geometry.get(bundle_key)
-            if reconstructed_bundle is None:
-                continue
-            bundle_var_name = f"BUNDLE_{sector}_{layer}_DATA"
-            globals()[bundle_var_name] = _apply_reconstructed_geometry_to_bundle(
-                globals()[bundle_var_name],
-                reconstructed_bundle,
-            )
-    _apply_bundle_group_shifts()
-    _sync_cylindrical_surfaces_to_bundle_centers()
-
-_apply_reconstructed_microassembly_geometry()
+_apply_bundle_sector_translations()
 
 SOURCE_TEMPLATE = GaussianBeamSource(
     waist_position=(-0.3444840871, -0.8032109003, 3.31987),
@@ -803,7 +551,7 @@ SOURCE_TEMPLATE = GaussianBeamSource(
 )
 
 PERISCOPE_MIRROR_2 = PlaneMirror(
-    name="MP2",
+    name="Periscope Mirror 2",
     center=(-0.06948408707129516, -0.32689692816523785, 0.436),
     normal=(-0.35355339059327373, -0.6123724356957946, -0.7071067811865476),
     shape="rectangle",
@@ -814,7 +562,7 @@ PERISCOPE_MIRROR_2 = PlaneMirror(
 )
 
 PERISCOPE_MIRROR_1 = PlaneMirror(
-    name="MP1",
+    name="Periscope Mirror 1",
     center=(-0.3444820035901876, -0.8032092682588535, 0.436),
     normal=(0.35355339059327373, 0.6123724356957946, 0.7071067811865476),
     shape="rectangle",
@@ -836,18 +584,18 @@ ONE_OF_MANY_MIRRORS = PlaneMirror(
 )
 
 BLOCK_MIRROR_1 = BlockMirror(
-    name="MR2",
-    center=(0.21695209700473822, 0.2219971873026807, 0.025),
+    name="BlockMirror_44_9deg",
+    center=(0.216890, 0.221857, 0.025),
     normal=(0.0, 0.0, 1.0),
     width=0.044,
     height=0.0081,
     thickness=0.05,
-    in_plane_reference=(-0.03994065888088185, -0.9992026298570081, 0.0),
+    in_plane_reference=(-0.03917316153986984, -0.9992330134457985, 0.0),
     reflectance=1.0,
 )
 
 BLOCK_MIRROR_2 = BlockMirror(
-    name="ML3",
+    name="BlockMirror_315_4deg",
     center=(-0.215102, 0.222493, 0.025),
     normal=(0.0, 0.0, 1.0),
     width=0.044,
@@ -858,8 +606,8 @@ BLOCK_MIRROR_2 = BlockMirror(
 )
 
 ON_ENTER_BEAMSPLITTER = PlaneMirror(
-    name="MP3",
-    center=(-0.069232, -0.326711, 0.025),
+    name="On enter beamsplitter",
+    center=(-0.06948408707129516, -0.32689692816523785, 0.025),
     normal=(-0.566592014759144, 0.42305258397884055, 0.7071067811865476),
     shape="rectangle",
     width=0.03,
@@ -869,55 +617,47 @@ ON_ENTER_BEAMSPLITTER = PlaneMirror(
 )
 
 SMALL_REFLECTIVE_MIRROR = PlaneMirror(
-    name="MC1",
+    name="Turning round mirror 1",
     center=(-0.7661097252, 1.017574008, 0.02510104076),
-    normal=(-0.6225935353187654, -0.3352272211192351, -0.7071067811865169),
+    normal=(-0.62259151, -0.33523098, -0.70710678),
     shape="disk",
     radius=0.025,
     in_plane_reference=(0.47408821, -0.88047735, 0.0),
     reflectance=1.0,
-    reflect_from_minus_side=False,
-    reflect_from_plus_side=True,
 )
 
 TURNING_ROUND_MIRROR_2 = PlaneMirror(
-    name="MC2",
+    name="Turning round mirror 2",
     center=(-1.017574008, -0.7661097252, 0.02510104076),
-    normal=(0.3352610066553734, -0.6225753427629879, -0.7071067811865289),
+    normal=(0.33523098, -0.62259151, -0.70710678),
     shape="disk",
     radius=0.025,
     in_plane_reference=(0.88047735, 0.47408821, 0.0),
     reflectance=1.0,
-    reflect_from_minus_side=False,
-    reflect_from_plus_side=True,
 )
 
 TURNING_ROUND_MIRROR_3 = PlaneMirror(
-    name="MC3",
+    name="Turning round mirror 3",
     center=(0.7661097252, -1.017574008, 0.02510104076),
-    normal=(0.6224649489692013, 0.3354659256982467, -0.7071067811866806),
+    normal=(0.62259151, 0.33523098, -0.70710678),
     shape="disk",
     radius=0.025,
     in_plane_reference=(-0.47408821, 0.88047735, 0.0),
     reflectance=1.0,
-    reflect_from_minus_side=False,
-    reflect_from_plus_side=True,
 )
 
 TURNING_ROUND_MIRROR_4 = PlaneMirror(
-    name="MC4",
+    name="Turning round mirror 4",
     center=(1.017574008, 0.7661097252, 0.02510104076),
-    normal=(-0.3354368738503708, 0.622480605048482, -0.7071067811865237),
+    normal=(-0.33523098, 0.62259151, -0.70710678),
     shape="disk",
     radius=0.025,
     in_plane_reference=(-0.88047735, -0.47408821, 0.0),
     reflectance=1.0,
-    reflect_from_minus_side=False,
-    reflect_from_plus_side=True,
 )
 
 TURNING_SQUARE_MIRROR_1 = PlaneMirror(
-    name="MS1",
+    name="Turning square mirror 1",
     center=(-0.9305, 0.9305, 0.02425),
     normal=(0.9893994401, -0.1452196698, 0.0),
     shape="rectangle",
@@ -928,7 +668,7 @@ TURNING_SQUARE_MIRROR_1 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_2 = PlaneMirror(
-    name="MS2",
+    name="Turning square mirror 2",
     center=(-0.9305, -0.9305, 0.02425),
     normal=(0.1452196698, 0.9893994401, 0.0),
     shape="rectangle",
@@ -939,7 +679,7 @@ TURNING_SQUARE_MIRROR_2 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_3 = PlaneMirror(
-    name="MS3",
+    name="Turning square mirror 3",
     center=(0.9305, -0.9305, 0.02425),
     normal=(-0.9893994401, 0.1452196698, 0.0),
     shape="rectangle",
@@ -950,7 +690,7 @@ TURNING_SQUARE_MIRROR_3 = PlaneMirror(
 )
 
 TURNING_SQUARE_MIRROR_4 = PlaneMirror(
-    name="MS4",
+    name="Turning square mirror 4",
     center=(0.9305, 0.9305, 0.02425),
     normal=(-0.1452196698, -0.9893994401, 0.0),
     shape="rectangle",
@@ -961,7 +701,7 @@ TURNING_SQUARE_MIRROR_4 = PlaneMirror(
 )
 
 SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
-    name="ML1",
+    name="SemiMirror_Left_1",
     center=(-0.1388869881677073, -0.2755569348737447, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
@@ -978,7 +718,7 @@ SEMI_MIRROR_LEFT_1 = SemiTransparentMirror(
 )
 
 SEMI_MIRROR_NEW = SemiTransparentMirror(
-    name="ML2",
+    name="SemiMirror_New_225deg",
     center=(-0.218148, -0.213819, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
@@ -991,14 +731,14 @@ SEMI_MIRROR_NEW = SemiTransparentMirror(
     shape="rectangle",
     width=0.044,
     height=0.0081,
-    in_plane_reference=(-0.997409708600264, -0.07193220891879001, 0.0),
+    in_plane_reference=(-0.997441, -0.071497, 0.0),
 )
 
 PRISM_1 = TriangularPrism(
-    name="PR3",
-    center=(0.3117431697355989, 0.10132352550066877, 0.025),
+    name="Prism_72_5deg",
+    center=(0.3112809928, 0.09698887063, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(0.24854724824431537, -0.9686197728010311, 0.0),
+    in_plane_reference=(0.3007058, -0.95371695, 0.0),
     vertices_2d=[
         (-0.026644999988928504, -0.013362922497475945),
         (0.02664499999877028, -0.013362922497475945),
@@ -1007,17 +747,15 @@ PRISM_1 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    reflectance=0.0,
-    transmittance=1.0,
-    side_reflectances=[0.0, 0.0, 0.0],
-    side_transmittances=[1.0, 1.0, 1.0],
+    side_reflectances=[0.5, 0.0, 0.5],
+    side_transmittances=[0.5, 1.0, 0.5],
 )
 
 PRISM_2 = TriangularPrism(
-    name="PR1",
-    center=(0.110033, -0.289357, 0.025),
+    name="Prism_158deg",
+    center=(0.117201, -0.290082, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(-0.9577702162844763, -0.28753304904653577, 0.0),
+    in_plane_reference=(-0.9242132772115091, -0.3818774574794407, 0.0),
     vertices_2d=[
         (-0.026645, -0.013363),
         (0.026645, -0.013363),
@@ -1026,17 +764,15 @@ PRISM_2 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    reflectance=0.0,
-    transmittance=1.0,
-    side_reflectances=[0.0, 0.0, 0.0],
-    side_transmittances=[1.0, 1.0, 1.0],
+    side_reflectances=[0.5, 0.0, 0.5],
+    side_transmittances=[0.5, 1.0, 0.5],
 )
 
 PRISM_3 = TriangularPrism(
-    name="PR2",
-    center=(0.2918629328448666, -0.1353909216229391, 0.025),
+    name="Prism_114_5deg",
+    center=(0.29286935123333335, -0.13470485113333333, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(0.5415050193894492, -0.8406975217048175, 0.0),
+    in_plane_reference=(0.5253231491917432, -0.8509028134563072, 0.0),
     vertices_2d=[
         (0.003620019968861894, -0.029587483460877778),
         (0.022257942427050502, 0.014793741799430887),
@@ -1045,14 +781,12 @@ PRISM_3 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    reflectance=0.0,
-    transmittance=1.0,
-    side_reflectances=[0.0, 0.0, 0.0],
-    side_transmittances=[1.0, 1.0, 1.0],
+    side_reflectances=[0.0, 0.5, 0.5],
+    side_transmittances=[1.0, 0.5, 0.5],
 )
 
 PRISM_4 = TriangularPrism(
-    name="PL1",
+    name="Prism_240deg",
     center=(-0.275797, -0.159231, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(-0.5, 0.866025, 0.0),
@@ -1064,14 +798,12 @@ PRISM_4 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    reflectance=0.0,
-    transmittance=1.0,
-    side_reflectances=[0.0, 0.0, 0.0],
-    side_transmittances=[1.0, 1.0, 1.0],
+    side_reflectances=[0.5, 0.5, 0.0],
+    side_transmittances=[0.5, 0.5, 1.0],
 )
 
 PRISM_5 = TriangularPrism(
-    name="PL2",
+    name="Prism_285_1deg",
     center=(-0.309301, 0.083456, 0.025),
     normal=(0.0, 0.0, 1.0),
     in_plane_reference=(0.260505, 0.965471, 0.0),
@@ -1083,15 +815,13 @@ PRISM_5 = TriangularPrism(
     thickness=0.05,
     n_glass=1.5,
     n_outside=AIR,
-    reflectance=0.0,
-    transmittance=1.0,
-    side_reflectances=[0.0, 0.0, 0.0],
-    side_transmittances=[1.0, 1.0, 1.0],
+    side_reflectances=[0.5, 0.5, 0.0],
+    side_transmittances=[0.5, 0.5, 1.0],
 )
 
 SEMI_MIRROR_3 = SemiTransparentMirror(
-    name="MR1",
-    center=(0.222767, -0.210723, 0.025),
+    name="SemiMirror_134_5deg",
+    center=(0.221274, -0.213235, 0.025),
     normal=(0.0, 0.0, 1.0),
     thickness=0.05,
     n_glass=1.5,
@@ -1103,138 +833,8 @@ SEMI_MIRROR_3 = SemiTransparentMirror(
     shape="rectangle",
     width=0.044,
     height=0.0081,
-    in_plane_reference=(-0.9989601392462023, 0.045592106742375134, 0.0),
+    in_plane_reference=(-0.999159, 0.041003, 0.0),
 )
-
-ADJUSTABLE_MIRROR_ZERO_NORMALS: Dict[str, tuple[float, float, float]] = {
-    "MP1": (0.35355339059327373, 0.6123724356957946, 0.7071067811865476),
-    "MP2": (-0.35355339059327373, -0.6123724356957946, -0.7071067811865476),
-    "MS1": (0.9893994401, -0.1452196698, 0.0),
-    "MS2": (0.1452196698, 0.9893994401, 0.0),
-    "MS3": (-0.9893994401, 0.1452196698, 0.0),
-    "MS4": (-0.1452196698, -0.9893994401, 0.0),
-}
-
-ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES: Dict[str, tuple[float, float, float]] = {
-    "MP1": (0.8660254037844387, -0.5, 0.0),
-    "MP2": (0.8660254037844387, -0.5, 0.0),
-    "MS1": (0.1452196698, 0.9893994401, 0.0),
-    "MS2": (-0.9893994401, 0.1452196698, 0.0),
-    "MS3": (-0.1452196698, -0.9893994401, 0.0),
-    "MS4": (0.9893994401, -0.1452196698, 0.0),
-}
-
-DEFAULT_ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = {
-    # Latest accepted mirror-position optimization result.  Keep the optimized
-    # position as the model baseline; angle-search utilities apply overrides to
-    # a copy of these values instead of resetting the model to mechanical zero.
-    "MP1": {"x": -0.011, "y": 0.0, "z": 0.0},
-    "MP2": {"x": 0.0, "y": 0.0, "z": 0.0},
-    "MS1": {"x": 0.0, "y": 0.0, "z": 0.0},
-    "MS2": {"x": 0.0, "y": 0.0, "z": 0.0},
-    "MS3": {"x": 0.0, "y": 0.0, "z": 0.0},
-    "MS4": {"x": 0.0, "y": 0.0, "z": 0.0},
-}
-
-ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = copy.deepcopy(
-    DEFAULT_ADJUSTABLE_MIRROR_ROTATIONS_DEG
-)
-
-ADJUSTABLE_MIRRORS = [
-    ("MP1", PERISCOPE_MIRROR_1),
-    ("MP2", PERISCOPE_MIRROR_2),
-    ("MS1", TURNING_SQUARE_MIRROR_1),
-    ("MS2", TURNING_SQUARE_MIRROR_2),
-    ("MS3", TURNING_SQUARE_MIRROR_3),
-    ("MS4", TURNING_SQUARE_MIRROR_4),
-]
-
-
-def _normalized_vector(vector: Iterable[float]) -> np.ndarray:
-    arr = np.asarray(tuple(vector), dtype=float)
-    norm = float(np.linalg.norm(arr))
-    if norm <= 1e-15:
-        return arr
-    return arr / norm
-
-
-def _rotate_vector_about_axis(vector: Iterable[float], axis: Iterable[float], angle_deg: float) -> np.ndarray:
-    vec = np.asarray(tuple(vector), dtype=float)
-    axis_vec = _normalized_vector(axis)
-    angle_rad = math.radians(float(angle_deg))
-    return (
-        vec * math.cos(angle_rad)
-        + np.cross(axis_vec, vec) * math.sin(angle_rad)
-        + axis_vec * float(np.dot(axis_vec, vec)) * (1.0 - math.cos(angle_rad))
-    )
-
-
-def _adjusted_plane_mirror(mirror_name: str, mirror: PlaneMirror) -> PlaneMirror:
-    adjusted = copy.deepcopy(mirror)
-    normal = np.asarray(ADJUSTABLE_MIRROR_ZERO_NORMALS[mirror_name], dtype=float)
-    in_plane_reference = np.asarray(ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES[mirror_name], dtype=float)
-    rotations = ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror_name]
-    for axis_name, axis in (
-        ("x", (1.0, 0.0, 0.0)),
-        ("y", (0.0, 1.0, 0.0)),
-        ("z", (0.0, 0.0, 1.0)),
-    ):
-        angle_deg = float(rotations.get(axis_name, 0.0))
-        if abs(angle_deg) <= 1e-15:
-            continue
-        normal = _rotate_vector_about_axis(normal, axis, angle_deg)
-        in_plane_reference = _rotate_vector_about_axis(in_plane_reference, axis, angle_deg)
-    adjusted.normal = tuple(float(value) for value in _normalized_vector(normal))
-    adjusted.in_plane_reference = tuple(float(value) for value in _normalized_vector(in_plane_reference))
-    return adjusted
-
-
-def _signed_rotation_about_axis_deg(
-    zero_normal: Iterable[float],
-    current_normal: Iterable[float],
-    axis: Iterable[float],
-) -> float:
-    axis_vec = _normalized_vector(axis)
-    start_vec = _normalized_vector(zero_normal)
-    current_vec = _normalized_vector(current_normal)
-    start_proj = start_vec - float(np.dot(start_vec, axis_vec)) * axis_vec
-    current_proj = current_vec - float(np.dot(current_vec, axis_vec)) * axis_vec
-    start_norm = float(np.linalg.norm(start_proj))
-    current_norm = float(np.linalg.norm(current_proj))
-    if start_norm <= 1e-12 or current_norm <= 1e-12:
-        return 0.0
-    start_proj /= start_norm
-    current_proj /= current_norm
-    sin_angle = float(np.dot(axis_vec, np.cross(start_proj, current_proj)))
-    cos_angle = float(np.dot(start_proj, current_proj))
-    angle = math.degrees(math.atan2(sin_angle, cos_angle))
-    if abs(angle) < 1e-9:
-        return 0.0
-    return angle
-
-
-def adjustable_mirror_angle_rows() -> List[Dict[str, object]]:
-    rows: List[Dict[str, object]] = []
-    for mirror_name, mirror in ADJUSTABLE_MIRRORS:
-        rotations = ADJUSTABLE_MIRROR_ROTATIONS_DEG[mirror_name]
-        rows.append(
-            {
-                "mirror": mirror_name,
-                "x": float(rotations.get("x", 0.0)),
-                "y": float(rotations.get("y", 0.0)),
-                "z": float(rotations.get("z", 0.0)),
-            }
-        )
-    return rows
-
-
-def adjustable_mirrors_are_at_zero(tolerance_deg: float = 1e-12) -> bool:
-    return all(
-        abs(float(angle_deg)) <= float(tolerance_deg)
-        for rotations in ADJUSTABLE_MIRROR_ROTATIONS_DEG.values()
-        for angle_deg in rotations.values()
-    )
-
 
 def build_initial_source(backend: str = "numpy") -> GaussianBeamSource:
     source = copy.deepcopy(SOURCE_TEMPLATE)
@@ -1273,8 +873,8 @@ def build_initial_scene() -> Scene:
     bundle_4_3 = make_bundle_4_3()
     bundle_4_4 = make_bundle_4_4()
     scene.add(
-        _adjusted_plane_mirror("MP1", PERISCOPE_MIRROR_1),
-        _adjusted_plane_mirror("MP2", PERISCOPE_MIRROR_2),
+        copy.deepcopy(PERISCOPE_MIRROR_1),
+        copy.deepcopy(PERISCOPE_MIRROR_2),
         copy.deepcopy(ONE_OF_MANY_MIRRORS),
         copy.deepcopy(BLOCK_MIRROR_1),
         copy.deepcopy(BLOCK_MIRROR_2),
@@ -1283,10 +883,10 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(TURNING_ROUND_MIRROR_2),
         copy.deepcopy(TURNING_ROUND_MIRROR_3),
         copy.deepcopy(TURNING_ROUND_MIRROR_4),
-        _adjusted_plane_mirror("MS1", TURNING_SQUARE_MIRROR_1),
-        _adjusted_plane_mirror("MS2", TURNING_SQUARE_MIRROR_2),
-        _adjusted_plane_mirror("MS3", TURNING_SQUARE_MIRROR_3),
-        _adjusted_plane_mirror("MS4", TURNING_SQUARE_MIRROR_4),
+        copy.deepcopy(TURNING_SQUARE_MIRROR_1),
+        copy.deepcopy(TURNING_SQUARE_MIRROR_2),
+        copy.deepcopy(TURNING_SQUARE_MIRROR_3),
+        copy.deepcopy(TURNING_SQUARE_MIRROR_4),
         copy.deepcopy(SEMI_MIRROR_LEFT_1),
         copy.deepcopy(SEMI_MIRROR_NEW),
         copy.deepcopy(PRISM_1),
@@ -1300,22 +900,6 @@ def build_initial_scene() -> Scene:
         copy.deepcopy(SCREEN_3),
         copy.deepcopy(SCREEN_4),
         copy.deepcopy(CYLINDRICAL_SCREEN_1),
-        copy.deepcopy(CYLINDRICAL_SURFACE_1),
-        copy.deepcopy(CYLINDRICAL_SURFACE_2),
-        copy.deepcopy(CYLINDRICAL_SURFACE_3),
-        copy.deepcopy(CYLINDRICAL_SURFACE_4),
-        copy.deepcopy(CYLINDRICAL_SURFACE_5),
-        copy.deepcopy(CYLINDRICAL_SURFACE_6),
-        copy.deepcopy(CYLINDRICAL_SURFACE_7),
-        copy.deepcopy(CYLINDRICAL_SURFACE_8),
-        copy.deepcopy(CYLINDRICAL_SURFACE_9),
-        copy.deepcopy(CYLINDRICAL_SURFACE_10),
-        copy.deepcopy(CYLINDRICAL_SURFACE_11),
-        copy.deepcopy(CYLINDRICAL_SURFACE_12),
-        copy.deepcopy(CYLINDRICAL_SURFACE_13),
-        copy.deepcopy(CYLINDRICAL_SURFACE_14),
-        copy.deepcopy(CYLINDRICAL_SURFACE_15),
-        copy.deepcopy(CYLINDRICAL_SURFACE_16),
     )
     scene.add(*bundle_1_1.build_surfaces())
     scene.add(*bundle_1_2.build_surfaces())
@@ -1335,76 +919,26 @@ def build_initial_scene() -> Scene:
     scene.add(*bundle_4_4.build_surfaces())
     return scene
 
-def make_reconstructed_mirror_outline(
-    *,
-    name: str,
-    points: Sequence[Sequence[float]],
-    color: str,
-) -> Dict[str, object]:
-    closed_points = [tuple(float(v) for v in point) for point in points]
-    closed_points.append(closed_points[0])
-    return {
-        "x": [point[0] for point in closed_points],
-        "y": [point[1] for point in closed_points],
-        "z": [point[2] for point in closed_points],
-        "mode": "lines+markers",
-        "name": name,
-        "line": {"color": color, "width": 5},
-        "marker": {"size": 3, "color": color},
-        "hovertemplate": f"{name}<br>x=%{{x:.6f}}<br>y=%{{y:.6f}}<br>z=%{{z:.6f}}<extra></extra>",
-        "showlegend": False,
-    }
-
-def iter_screen_b_surfaces() -> List[TransparentCylindricalScreen]:
-    return [globals()[f"CYLINDRICAL_SURFACE_{idx}"] for idx in range(1, 17)]
-
-def build_screen_b_overlays() -> List[Dict[str, object]]:
-    overlays: List[Dict[str, object]] = []
-    for surface in iter_screen_b_surfaces():
-        overlays.extend(
-            make_cylindrical_surface_overlays(
-                name=surface.name,
-                center=surface.center,
-                axis=surface.axis,
-                radius=float(surface.radius),
-                length=float(surface.length),
-                color=CYLINDRICAL_SCREEN_COLOR,
-                line_width=2,
-                opacity=0.12,
-            )
-        )
-    return overlays
-
-def build_bundle_ray_clip_overlays() -> List[Dict[str, object]]:
-    overlays: List[Dict[str, object]] = []
-    for name, radius, opacity in (
-        ("BUNDLE reflected ray inner limit r=0.35 m", BUNDLE_RAY_INNER_CYLINDER_RADIUS_M, 0.055),
-        ("BUNDLE reflected ray outer limit r=1.35 m", BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M, 0.035),
-    ):
-        overlays.extend(
-            make_cylindrical_surface_overlays(
-                name=name,
-                center=CYLINDRICAL_SCREEN_1.center,
-                axis=(0.0, 0.0, 1.0),
-                radius=float(radius),
-                length=float(CYLINDRICAL_SCREEN_1.length),
-                color=CYLINDRICAL_SCREEN_COLOR,
-                line_width=2,
-                opacity=opacity,
-            )
-        )
-    return overlays
-
 def build_bundle_overlays(bundle: MirrorArrayBundle) -> List[Dict[str, object]]:
     overlays: List[Dict[str, object]] = []
     for config, mirror in zip(bundle.configs, bundle.build_surfaces()):
         if isinstance(config, dict) and "reconstructed_points" in config:
+            points = [tuple(float(value) for value in point) for point in config["reconstructed_points"]]
+            points.append(points[0])
             overlays.append(
-                make_reconstructed_mirror_outline(
-                    name=mirror.name,
-                    points=config["reconstructed_points"],
-                    color=SEMI_TRANSPARENT_MIRROR_COLOR,
-                )
+                {
+                    "x": [point[0] for point in points],
+                    "y": [point[1] for point in points],
+                    "z": [point[2] for point in points],
+                    "mode": "lines+markers",
+                    "name": mirror.name,
+                    "line": {"color": SEMI_TRANSPARENT_MIRROR_COLOR, "width": 5},
+                    "marker": {"color": SEMI_TRANSPARENT_MIRROR_COLOR, "size": 3},
+                    "hovertemplate": (
+                        f"{mirror.name}<br>x=%{{x:.6f}}<br>y=%{{y:.6f}}<br>z=%{{z:.6f}}<extra></extra>"
+                    ),
+                    "showlegend": False,
+                }
             )
             continue
         overlays.append(
@@ -1418,6 +952,162 @@ def build_bundle_overlays(bundle: MirrorArrayBundle) -> List[Dict[str, object]]:
             )
         )
     return overlays
+
+
+
+
+
+
+CONTROLLED_MIRRORS = [
+    ("Круглое MC1", SMALL_REFLECTIVE_MIRROR),
+    ("Круглое MC2", TURNING_ROUND_MIRROR_2),
+    ("Круглое MC3", TURNING_ROUND_MIRROR_3),
+    ("Круглое MC4", TURNING_ROUND_MIRROR_4),
+    ("Квадратное MS1", TURNING_SQUARE_MIRROR_1),
+    ("Квадратное MS2", TURNING_SQUARE_MIRROR_2),
+    ("Квадратное MS3", TURNING_SQUARE_MIRROR_3),
+    ("Квадратное MS4", TURNING_SQUARE_MIRROR_4),
+]
+
+
+def _empty_controlled_mirror_angles() -> Dict[str, Dict[str, float]]:
+    return {mirror.name: {"x": 0.0, "y": 0.0, "z": 0.0} for _, mirror in CONTROLLED_MIRRORS}
+
+
+def _parse_controlled_mirror_angles(items: Sequence[str]) -> Dict[str, Dict[str, float]]:
+    angles = _empty_controlled_mirror_angles()
+    aliases = {f"MC{i + 1}": mirror.name for i, (_, mirror) in enumerate(CONTROLLED_MIRRORS[:4])}
+    aliases.update({f"MS{i + 1}": mirror.name for i, (_, mirror) in enumerate(CONTROLLED_MIRRORS[4:])})
+    aliases.update({mirror.name: mirror.name for _, mirror in CONTROLLED_MIRRORS})
+    for item in items:
+        key, value_text = item.rsplit("=", 1)
+        mirror_key, axis = key.rsplit(":", 1)
+        mirror_name = aliases.get(mirror_key)
+        axis = axis.lower()
+        value = float(value_text)
+        if mirror_name is None or axis not in ("x", "y", "z") or not math.isfinite(value) or abs(value) > 180.0:
+            raise ValueError(f"Invalid mirror angle override: {item!r}")
+        angles[mirror_name][axis] = value
+    return angles
+
+
+def _rotate_mirror_vector(vector: Sequence[float], axis: Sequence[float], angle_deg: float) -> tuple[float, float, float]:
+    value = np.asarray(vector, dtype=float)
+    axis_value = np.asarray(axis, dtype=float)
+    axis_value /= np.linalg.norm(axis_value)
+    angle = math.radians(float(angle_deg))
+    result = value * math.cos(angle) + np.cross(axis_value, value) * math.sin(angle) + axis_value * float(np.dot(axis_value, value)) * (1.0 - math.cos(angle))
+    return tuple(float(component) for component in result / np.linalg.norm(result))
+
+
+def _apply_controlled_mirror_angles(angles: Dict[str, Dict[str, float]]) -> None:
+    axes = {"x": (1.0, 0.0, 0.0), "y": (0.0, 1.0, 0.0), "z": (0.0, 0.0, 1.0)}
+    for _, mirror in CONTROLLED_MIRRORS:
+        normal = tuple(mirror.normal)
+        reference = tuple(mirror.in_plane_reference)
+        for axis in ("x", "y", "z"):
+            angle = angles[mirror.name][axis]
+            if abs(angle) > 1e-15:
+                normal = _rotate_mirror_vector(normal, axes[axis], angle)
+                reference = _rotate_mirror_vector(reference, axes[axis], angle)
+        mirror.normal = normal
+        mirror.in_plane_reference = reference
+
+
+def _add_mirror_angle_controls(path: Path, angles: Dict[str, Dict[str, float]]) -> None:
+    config = {mirror.name: {"label": label, "center": list(mirror.center)} for label, mirror in CONTROLLED_MIRRORS}
+    sections = []
+    for index, (label, mirror) in enumerate(CONTROLLED_MIRRORS):
+        rows = "".join(
+            f'<label><i>{axis}</i><button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="-0.005">−</button>'
+            f'<input type="number" value="{angles[mirror.name][axis]:.6f}" step="0.005" data-mirror="{index}" data-axis="{axis}">'
+            f'<button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="0.005">+</button></label>'
+            for axis in ("x", "y", "z")
+        )
+        sections.append(f'<details><summary>{label}</summary><div class="axis-rows">{rows}</div><button class="reset-one" data-mirror="{index}">Сбросить</button></details>')
+    panel = f"""
+<style>
+body{{margin:0;overflow:hidden;font-family:Arial,sans-serif}}.plotly-graph-div{{width:calc(100vw - 286px)!important;height:100vh!important}}
+#mirror-panel{{position:fixed;right:0;top:0;z-index:1000;box-sizing:border-box;width:286px;height:100vh;overflow-y:auto;padding:10px;background:#f8fafcf7;border-left:1px solid #cbd5e1;box-shadow:-3px 0 12px #0f17221f;font-size:12px;color:#1f2937}}
+#mirror-panel h3{{margin:0 0 4px;font-size:14px}}#mirror-panel>p{{margin:0 0 8px;color:#64748b}}#mirror-panel details{{margin-bottom:5px;border:1px solid #d7dee8;border-radius:5px;background:white}}#mirror-panel summary{{padding:6px 7px;cursor:pointer;font-weight:700}}
+.axis-rows{{display:grid;gap:4px;padding:0 7px 5px}}.axis-rows label{{display:grid;grid-template-columns:12px 26px 1fr 26px;align-items:center;gap:4px}}.axis-rows input{{box-sizing:border-box;min-width:0;width:100%;padding:3px;border:1px solid #cbd5e1;border-radius:3px;font-size:11px}}
+.angle-step{{height:24px;padding:0;border:1px solid #94a3b8;border-radius:4px;background:white;font-size:16px;cursor:pointer}}.angle-step:active{{background:#e2e8f0}}.reset-one{{margin:0 7px 7px;padding:3px 7px;border:1px solid #94a3b8;border-radius:4px;background:#f8fafc;cursor:pointer}}
+#reset-all,#recalculate{{width:100%;margin-top:6px;padding:7px;border-radius:4px;font-weight:700;cursor:pointer}}#reset-all{{border:1px solid #94a3b8;background:#f8fafc}}#recalculate{{border:0;background:#2563eb;color:white}}#recalculate:disabled{{background:#94a3b8;cursor:wait}}#status{{min-height:16px;margin:6px 0 0}}
+</style>
+<aside id="mirror-panel"><h3>Отклонение зеркал, °</h3><p>Относительно текущего положения по осям x, y, z.</p>{''.join(sections)}<button id="reset-all">Сбросить все</button><button id="recalculate">Пересчитать и показать</button><p id="status"></p></aside>
+<script>
+(()=>{{const config={json.dumps(config, ensure_ascii=False)},names=Object.keys(config),rendered={json.dumps(angles, ensure_ascii=False)},states=names.map(n=>({{...rendered[n]}}));
+function rotate(p,c,a){{let x=p[0]-c[0],y=p[1]-c[1],z=p[2]-c[2],r=a.x*Math.PI/180,ny=y*Math.cos(r)-z*Math.sin(r),nz=y*Math.sin(r)+z*Math.cos(r);y=ny;z=nz;r=a.y*Math.PI/180;let nx=x*Math.cos(r)+z*Math.sin(r);nz=-x*Math.sin(r)+z*Math.cos(r);x=nx;z=nz;r=a.z*Math.PI/180;return[x*Math.cos(r)-y*Math.sin(r)+c[0],x*Math.sin(r)+y*Math.cos(r)+c[1],z+c[2]]}}
+function init(){{const plot=document.querySelector('.plotly-graph-div');if(!plot||!plot.data){{setTimeout(init,50);return}}names.forEach(n=>{{const i=plot.data.findIndex(t=>t.name===n),t=i>=0?plot.data[i]:null;if(t){{config[n].i=i;config[n].points=t.x.map((x,j)=>[Number(x),Number(t.y[j]),Number(t.z[j])])}}}});
+function preview(i){{const n=names[i],c=config[n];if(c.i===undefined)return;const a={{x:states[i].x-rendered[n].x,y:states[i].y-rendered[n].y,z:states[i].z-rendered[n].z}},p=c.points.map(v=>rotate(v,c.center,a));Plotly.restyle(plot,{{x:[p.map(v=>v[0])],y:[p.map(v=>v[1])],z:[p.map(v=>v[2])]}},[c.i])}}
+document.querySelectorAll('#mirror-panel input').forEach(input=>input.addEventListener('input',()=>{{const i=Number(input.dataset.mirror);states[i][input.dataset.axis]=Number(input.value)||0;preview(i)}}));
+document.querySelectorAll('.angle-step').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror),axis=button.dataset.axis;states[i][axis]=Math.round((states[i][axis]+Number(button.dataset.delta))*1000)/1000;const input=document.querySelector(`input[data-mirror="${{i}}"][data-axis="${{axis}}"]`);input.value=states[i][axis].toFixed(3);preview(i)}}));
+document.querySelectorAll('.reset-one').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror);states[i]={{x:0,y:0,z:0}};document.querySelectorAll(`input[data-mirror="${{i}}"]`).forEach(v=>v.value='0');preview(i)}}));
+async function recalc(){{const b=document.getElementById('recalculate'),s=document.getElementById('status'),payload={{}};names.forEach((n,i)=>payload[n]=states[i]);b.disabled=true;s.textContent='Выполняется трассировка лучей…';try{{const r=await fetch('/recalculate',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{angles:payload}})}}),v=await r.json();if(!r.ok)throw new Error(v.error||'Ошибка пересчёта');s.textContent='Готово. Обновляю визуализацию…';location.href='/scene_gaussian_35ns.html?v='+Date.now()}}catch(e){{s.textContent=e.message;b.disabled=false}}}}
+document.getElementById('recalculate').addEventListener('click',recalc);document.getElementById('reset-all').addEventListener('click',()=>{{states.forEach((_,i)=>{{states[i]={{x:0,y:0,z:0}};preview(i)}});document.querySelectorAll('#mirror-panel input').forEach(v=>v.value='0');recalc()}});addEventListener('resize',()=>Plotly.Plots.resize(plot));Plotly.Plots.resize(plot)}}init()}})();
+</script>"""
+    html = path.read_text(encoding="utf-8")
+    path.write_text(html.replace("</body>", panel + "</body>", 1), encoding="utf-8")
+
+
+def _serve_interactive_plot(*, outdir: Path, backend: str, max_interactions: int) -> None:
+    script_path = Path(__file__).resolve()
+    allowed = {mirror.name for _, mirror in CONTROLLED_MIRRORS}
+
+    class Handler(SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(outdir.resolve()), **kwargs)
+
+        def do_POST(self) -> None:
+            if self.path != "/recalculate":
+                self.send_error(404)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                angles = json.loads(self.rfile.read(length).decode("utf-8"))["angles"]
+                if set(angles) != allowed:
+                    raise ValueError("Unexpected mirror set.")
+                command = [sys.executable, str(script_path), "--backend", backend, "--max-interactions", str(max_interactions), "--outdir", str(outdir.resolve()), "--no-open-plot", "--skip-csv"]
+                for name in sorted(angles):
+                    if set(angles[name]) != {"x", "y", "z"}:
+                        raise ValueError(f"Incomplete angles for {name}.")
+                    for axis in ("x", "y", "z"):
+                        value = float(angles[name][axis])
+                        if not math.isfinite(value) or abs(value) > 180.0:
+                            raise ValueError(f"Invalid {name}:{axis} angle: {value}")
+                        command.extend(("--mirror-angle", f"{name}:{axis}={value}"))
+                completed = subprocess.run(command, cwd=str(script_path.parent), capture_output=True, text=True, timeout=3600)
+                if completed.returncode:
+                    raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "Recalculation failed.")
+                response = json.dumps({"ok": True}).encode()
+                self.send_response(200)
+            except Exception as exc:
+                response = json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False).encode("utf-8")
+                self.send_response(400)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(response)))
+            self.end_headers()
+            self.wfile.write(response)
+
+        def log_message(self, fmt: str, *args: object) -> None:
+            print(f"Interactive plot: {fmt % args}")
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    host, port = server.server_address
+    url = f"http://{host}:{port}/scene_gaussian_35ns.html"
+    screens_url = f"http://{host}:{port}/screen_spots.html"
+    print(f"Interactive plot: {url}")
+    print(f"Screen spots: {screens_url}")
+    print("Keep this process running for recalculation; press Ctrl+C to stop.")
+    webbrowser.open(url)
+    webbrowser.open(screens_url, new=1)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Interactive plot stopped.")
+    finally:
+        server.server_close()
+
 
 def write_bundle_plot(path: Path, result: object, bundle: MirrorArrayBundle) -> None:
     bundle_result = copy.copy(result)
@@ -1452,8 +1142,6 @@ def flatten_segment_blocks(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict
                 row["t0_s"] = float(block["t0_s"][i])
             if "t1_s" in block:
                 row["t1_s"] = float(block["t1_s"][i])
-            if "bundle_reflected" in block:
-                row["bundle_reflected"] = bool(block["bundle_reflected"][i])
             yield row
 
 def flatten_detector_hits(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[str, object]]:
@@ -1479,18 +1167,158 @@ def flatten_detector_hits(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[
                 "v": float(block["local_v"][i]),
             }
 
+
+def calculate_screen_spots(result: object, histogram_bins: int = 96) -> Dict[str, Dict[str, object]]:
+    """Calculate power-weighted spot centroids and legacy display histograms for Screen 1..4."""
+    screens = (SCREEN_1, SCREEN_2, SCREEN_3, SCREEN_4)
+    hit_blocks: Dict[str, List[Dict[str, np.ndarray]]] = {screen.name: [] for screen in screens}
+    for block in result.detector_hits:
+        name = str(block["surface"])
+        if name in hit_blocks:
+            hit_blocks[name].append(block)
+
+    spots: Dict[str, Dict[str, object]] = {}
+    for screen in screens:
+        blocks = hit_blocks[screen.name]
+        radius = float(screen.radius)
+        if blocks:
+            u = np.concatenate([np.asarray(to_numpy(block["local_u"]), dtype=float) for block in blocks])
+            v = np.concatenate([np.asarray(to_numpy(block["local_v"]), dtype=float) for block in blocks])
+            power = np.concatenate([np.asarray(to_numpy(block["power"]), dtype=float) for block in blocks])
+            positions = np.concatenate(
+                [np.asarray(to_numpy(block["position"]), dtype=float) for block in blocks], axis=0
+            )
+            valid = np.isfinite(u) & np.isfinite(v) & np.isfinite(power) & (power > 0.0)
+            u, v, power, positions = u[valid], v[valid], power[valid], positions[valid]
+        else:
+            u = np.empty(0, dtype=float)
+            v = np.empty(0, dtype=float)
+            power = np.empty(0, dtype=float)
+            positions = np.empty((0, 3), dtype=float)
+
+        total_power = float(np.sum(power))
+        if total_power > 0.0:
+            local_center = [
+                float(np.sum(power * u) / total_power),
+                float(np.sum(power * v) / total_power),
+            ]
+            global_center = [
+                float(np.sum(power * positions[:, axis]) / total_power) for axis in range(3)
+            ]
+        else:
+            local_center = None
+            global_center = None
+
+        histogram, _, _ = np.histogram2d(
+            v,
+            u,
+            bins=histogram_bins,
+            range=((-radius, radius), (-radius, radius)),
+            weights=power,
+        )
+        spots[screen.name] = {
+            "radius_m": radius,
+            "hit_count": int(len(power)),
+            "total_power_w": total_power,
+            "local_center_m": local_center,
+            "global_center_m": global_center,
+            "histogram": histogram.tolist(),
+        }
+    return spots
+
+
+def write_screen_spots_html(path: Path, spots: Dict[str, Dict[str, object]]) -> None:
+    data = json.dumps(spots, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    version = path.stat().st_mtime_ns if path.exists() else 0
+    html = f"""<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="screen-data-version" content="{version}"><title>Лазерные пятна на экранах</title>
+<style>
+*{{box-sizing:border-box}} body{{margin:0;padding:14px;background:#eef2f7;color:#172033;font-family:Arial,sans-serif}}
+h1{{margin:0 0 10px;text-align:center;font-size:20px}} .grid{{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:'s1 s4' 's2 s3';gap:12px;max-width:1100px;margin:auto}}
+.screen{{min-width:0;padding:10px;background:white;border:1px solid #ccd5e1;border-radius:10px;box-shadow:0 2px 8px #10204018;text-align:center}}
+.screen h2{{margin:0 0 5px;font-size:16px}} canvas{{display:block;width:min(100%,390px);aspect-ratio:1;margin:auto;background:white}}
+.center{{min-height:38px;margin:5px 0 0;font:13px/1.45 Consolas,monospace}} .s1{{grid-area:s1}}.s2{{grid-area:s2}}.s3{{grid-area:s3}}.s4{{grid-area:s4}}
+@media(max-width:650px){{.grid{{grid-template-columns:1fr;grid-template-areas:'s1' 's4' 's2' 's3'}}}}
+</style></head><body><h1>Лазерные пятна на Screen 1–4</h1><main class="grid">
+<section class="screen s1"><h2>Screen 1</h2><canvas></canvas><p class="center"></p></section>
+<section class="screen s2"><h2>Screen 2</h2><canvas></canvas><p class="center"></p></section>
+<section class="screen s3"><h2>Screen 3</h2><canvas></canvas><p class="center"></p></section>
+<section class="screen s4"><h2>Screen 4</h2><canvas></canvas><p class="center"></p></section>
+</main><script>
+const spots={data};
+function color(t){{t=Math.max(0,Math.min(1,t));const hue=270-215*t,light=98-48*t;return `hsl(${{hue}} 95% ${{light}}%)`}}
+function draw(section,name){{const d=spots[name],canvas=section.querySelector('canvas'),box=canvas.getBoundingClientRect(),scale=devicePixelRatio||1,n=Math.max(250,Math.floor(box.width*scale));canvas.width=n;canvas.height=n;const c=canvas.getContext('2d'),pad=n*.075,size=n-2*pad,h=d.histogram,max=Math.max(0,...h.flat());c.clearRect(0,0,n,n);c.save();c.beginPath();c.arc(n/2,n/2,size/2,0,2*Math.PI);c.clip();c.fillStyle='#fff';c.fillRect(pad,pad,size,size);if(max>0){{const denom=Math.log1p(max);for(let row=0;row<h.length;row++)for(let col=0;col<h[row].length;col++){{const value=h[row][col];if(value<=0)continue;c.fillStyle=color(Math.log1p(value)/denom);const cell=size/h.length;c.fillRect(pad+col*cell,pad+(h.length-1-row)*cell,cell+1,cell+1)}}}}c.restore();c.strokeStyle='#26364d';c.lineWidth=Math.max(1,scale);c.beginPath();c.arc(n/2,n/2,size/2,0,2*Math.PI);c.stroke();c.strokeStyle='#9aa8b9';c.beginPath();c.moveTo(n/2,pad);c.lineTo(n/2,n-pad);c.moveTo(pad,n/2);c.lineTo(n-pad,n/2);c.stroke();if(d.local_center_m){{const u=d.local_center_m[0],v=d.local_center_m[1],x=n/2+u/(2*d.radius_m)*size,y=n/2-v/(2*d.radius_m)*size;c.strokeStyle='#00d8ff';c.lineWidth=Math.max(2,2*scale);c.beginPath();c.moveTo(x-7*scale,y);c.lineTo(x+7*scale,y);c.moveTo(x,y-7*scale);c.lineTo(x,y+7*scale);c.stroke();c.fillStyle='#102030';c.font=`${{11*scale}}px Arial`;c.fillText('+v',n/2+4*scale,pad+12*scale);c.fillText('+u',n-pad-18*scale,n/2-4*scale);const g=d.global_center_m;section.querySelector('.center').innerHTML=`центр: u=${{(u*1e3).toFixed(4)}} мм, v=${{(v*1e3).toFixed(4)}} мм<br>x=${{g[0].toFixed(7)}} м, y=${{g[1].toFixed(7)}} м, z=${{g[2].toFixed(7)}} м`}}else{{section.querySelector('.center').textContent='центр не определён: попаданий нет'}}}}
+function drawAll(){{document.querySelectorAll('.screen').forEach((s,i)=>draw(s,s.querySelector('h2').textContent))}}drawAll();addEventListener('resize',drawAll);
+let current=document.querySelector('meta[name="screen-data-version"]').content;setInterval(async()=>{{try{{const text=await (await fetch('/screen_spots.html?v='+Date.now())).text(),m=text.match(/name="screen-data-version" content="(\\d+)"/);if(m&&m[1]!==current)location.reload()}}catch(_e){{}}}},1500);
+</script></body></html>"""
+    path.write_text(html, encoding="utf-8")
+
+
+def write_high_quality_screen_spots_html(
+    path: Path,
+    result: object,
+    spots: Dict[str, Dict[str, object]],
+) -> None:
+    screen_by_name = {screen.name: screen for screen in (SCREEN_1, SCREEN_2, SCREEN_3, SCREEN_4)}
+    # Row-major Plotly order gives the requested physical arrangement:
+    # Screen 1 | Screen 4
+    # Screen 2 | Screen 3
+    ordered_names = ("Screen 1", "Screen 4", "Screen 2", "Screen 3")
+    screen_configs = []
+    for name in ordered_names:
+        screen = screen_by_name[name]
+        spot = spots[name]
+        local_center = spot["local_center_m"]
+        global_center = spot["global_center_m"]
+        if local_center is None or global_center is None:
+            footer = "центр не определён: попаданий нет"
+        else:
+            footer = (
+                f"центр: u={local_center[0] * 1e3:.4f} мм, v={local_center[1] * 1e3:.4f} мм"
+                f"<br>x={global_center[0]:.7f} м, y={global_center[1]:.7f} м, "
+                f"z={global_center[2]:.7f} м"
+            )
+        screen_configs.append(
+            {
+                "name": name,
+                "label": name,
+                "radius": float(screen.radius),
+                "footer": footer,
+            }
+        )
+
+    write_detector_screen_views(
+        path,
+        result,
+        screens=screen_configs,
+        title="Лазерные пятна на Screen 1–4",
+        grid_size=320,
+        smooth_passes=5,
+    )
+
+    # Keep this second browser view in sync after an interactive mirror recalculation.
+    html = path.read_text(encoding="utf-8")
+    version = path.stat().st_mtime_ns
+    auto_reload = f"""
+<meta name="screen-data-version" content="{version}">
+<script>
+(()=>{{const current='{version}';setInterval(async()=>{{try{{const text=await (await fetch('/screen_spots.html?v='+Date.now())).text();const match=text.match(/name="screen-data-version" content="(\\d+)"/);if(match&&match[1]!==current)location.reload()}}catch(_error){{}}}},1500)}})();
+</script>
+"""
+    path.write_text(html.replace("</body>", auto_reload + "</body>", 1), encoding="utf-8")
+
+
 def write_csv(path: Path, rows: Iterable[Dict[str, object]]) -> bool:
-    iterator = iter(rows)
-    first_row = next(iterator, None)
-    if first_row is None:
+    rows = list(rows)
+    if not rows:
         if path.exists():
             path.unlink()
         return False
     with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(first_row.keys()))
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
-        writer.writerow(first_row)
-        writer.writerows(iterator)
+        writer.writerows(rows)
     return True
 
 def detector_energy_summary(result: object, integration_time_s: float) -> Dict[str, float]:
@@ -1511,10 +1339,21 @@ def main() -> None:
         help="Maximum number of ray interactions / secondary-ray generations",
     )
     parser.add_argument("--outdir", default="scene_gaussian_35ns_output", help="Directory for outputs")
+    parser.add_argument(
+        "--mirror-angle",
+        action="append",
+        default=[],
+        help="Mirror angle override, for example MC1:x=0.01 or MS4:z=-0.02.",
+    )
     parser.add_argument("--no-plot", dest="plot", action="store_false", help="Skip saving the Plotly trajectories plot")
-    parser.add_argument("--no-open-plot", dest="open_plot", action="store_false", help="Do not open the saved plots in a browser")
+    parser.add_argument("--no-open-plot", dest="open_plot", action="store_false", help="Do not open the saved plot in a browser")
+    parser.add_argument("--skip-csv", action="store_true", help=argparse.SUPPRESS)
     parser.set_defaults(plot=True, open_plot=True)
     args = parser.parse_args()
+
+    print(f"Loaded reconstructed mirror positions: {RECONSTRUCTED_MICROASSEMBLIES_PATH}")
+    controlled_mirror_angles = _parse_controlled_mirror_angles(args.mirror_angle)
+    _apply_controlled_mirror_angles(controlled_mirror_angles)
 
     source = build_initial_source(args.backend)
     rays = emit_initial_rays(source)
@@ -1528,7 +1367,6 @@ def main() -> None:
         bundle_clip_outer_radius_m=BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M,
         bundle_clip_z_min_m=BUNDLE_RAY_Z_MIN_M,
         bundle_clip_z_max_m=BUNDLE_RAY_Z_MAX_M,
-        skip_repeated_bundle_reflections=True,
     )
     result = tracer.trace(rays)
 
@@ -1537,12 +1375,18 @@ def main() -> None:
 
     segments_path = outdir / "segments.csv"
     detector_hits_path = outdir / "detector_hits.csv"
-    wrote_segments = write_csv(segments_path, flatten_segment_blocks(result.segments))
-    wrote_detector_hits = write_csv(detector_hits_path, flatten_detector_hits(result.detector_hits))
+    screen_spots_path = outdir / "screen_spots.html"
+    wrote_segments = False
+    wrote_detector_hits = False
+    if not args.skip_csv:
+        wrote_segments = write_csv(segments_path, flatten_segment_blocks(result.segments))
+        wrote_detector_hits = write_csv(detector_hits_path, flatten_detector_hits(result.detector_hits))
 
     source_power = float(np.sum(to_numpy(rays.power)))
     power_summary = result.detector_power_summary()
     energy_summary = detector_energy_summary(result, INTEGRATION_TIME_S)
+    screen_spots = calculate_screen_spots(result)
+    write_high_quality_screen_spots_html(screen_spots_path, result, screen_spots)
 
     print("Initial scene: Gaussian source with scene scaffold")
     print(f"Integration time: {INTEGRATION_TIME_S * 1e9:.3f} ns")
@@ -1575,22 +1419,6 @@ def main() -> None:
     print(f"  - {SCREEN_3.name}")
     print(f"  - {SCREEN_4.name}")
     print(f"  - {CYLINDRICAL_SCREEN_1.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_1.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_2.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_3.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_4.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_5.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_6.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_7.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_8.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_9.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_10.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_11.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_12.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_13.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_14.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_15.name}")
-    print(f"  - {CYLINDRICAL_SURFACE_16.name}")
     print("  - BUNDLE_1_1 (7 disk mirrors)")
     print("  - BUNDLE_1_2 (7 disk mirrors)")
     print("  - BUNDLE_1_3 (7 disk mirrors)")
@@ -1619,6 +1447,21 @@ def main() -> None:
     else:
         for name, energy in energy_summary.items():
             print(f"  {name}: {energy:.6e} J")
+    print("Power-weighted laser spot centers:")
+    for screen in (SCREEN_1, SCREEN_2, SCREEN_3, SCREEN_4):
+        spot = screen_spots[screen.name]
+        local_center = spot["local_center_m"]
+        global_center = spot["global_center_m"]
+        if local_center is None or global_center is None:
+            print(f"  {screen.name}: <no detector hits>")
+        else:
+            print(
+                f"  {screen.name}: u={local_center[0] * 1e3:.6f} mm, "
+                f"v={local_center[1] * 1e3:.6f} mm; "
+                f"x={global_center[0]:.9f} m, y={global_center[1]:.9f} m, "
+                f"z={global_center[2]:.9f} m"
+            )
+    print(f"Wrote: {screen_spots_path}")
     print(f"Final ray count: {result.final_rays.n_rays}")
     if wrote_segments:
         print(f"Wrote: {segments_path}")
@@ -1631,53 +1474,6 @@ def main() -> None:
 
     if args.plot:
         plot_path = outdir / "scene_gaussian_35ns.html"
-        fresh_plot_path = outdir / "scene_gaussian_35ns_reconstructed_from_file.html"
-        screens_path = outdir / "screens_1_4.html"
-        screen_b_1_1_unwrap_path = outdir / "screen_b_1_1_unwrap.html"
-        screen_b_1_2_unwrap_path = outdir / "screen_b_1_2_unwrap.html"
-        screen_b_1_3_unwrap_path = outdir / "screen_b_1_3_unwrap.html"
-        screen_b_1_4_unwrap_path = outdir / "screen_b_1_4_unwrap.html"
-        screen_b_2_1_unwrap_path = outdir / "screen_b_2_1_unwrap.html"
-        screen_b_2_2_unwrap_path = outdir / "screen_b_2_2_unwrap.html"
-        screen_b_2_3_unwrap_path = outdir / "screen_b_2_3_unwrap.html"
-        screen_b_2_4_unwrap_path = outdir / "screen_b_2_4_unwrap.html"
-        screen_b_3_1_unwrap_path = outdir / "screen_b_3_1_unwrap.html"
-        screen_b_3_2_unwrap_path = outdir / "screen_b_3_2_unwrap.html"
-        screen_b_3_3_unwrap_path = outdir / "screen_b_3_3_unwrap.html"
-        screen_b_3_4_unwrap_path = outdir / "screen_b_3_4_unwrap.html"
-        screen_b_4_1_unwrap_path = outdir / "screen_b_4_1_unwrap.html"
-        screen_b_4_2_unwrap_path = outdir / "screen_b_4_2_unwrap.html"
-        screen_b_4_3_unwrap_path = outdir / "screen_b_4_3_unwrap.html"
-        screen_b_4_4_unwrap_path = outdir / "screen_b_4_4_unwrap.html"
-        beam_characteristics_path = outdir / "beam_characteristics.html"
-        screen_b_surfaces = [
-            CYLINDRICAL_SURFACE_1,
-            CYLINDRICAL_SURFACE_2,
-            CYLINDRICAL_SURFACE_3,
-            CYLINDRICAL_SURFACE_4,
-            CYLINDRICAL_SURFACE_5,
-            CYLINDRICAL_SURFACE_6,
-            CYLINDRICAL_SURFACE_7,
-            CYLINDRICAL_SURFACE_8,
-            CYLINDRICAL_SURFACE_9,
-            CYLINDRICAL_SURFACE_10,
-            CYLINDRICAL_SURFACE_11,
-            CYLINDRICAL_SURFACE_12,
-            CYLINDRICAL_SURFACE_13,
-            CYLINDRICAL_SURFACE_14,
-            CYLINDRICAL_SURFACE_15,
-            CYLINDRICAL_SURFACE_16,
-        ]
-        screen_b_surface_specs = [
-            {
-                "name": surface.name,
-                "center": surface.center,
-                "axis": surface.axis,
-                "radius": float(surface.radius),
-                "length": float(surface.length),
-            }
-            for surface in screen_b_surfaces
-        ]
         bundle_1_1 = make_bundle_1_1()
         bundle_1_2 = make_bundle_1_2()
         bundle_1_3 = make_bundle_1_3()
@@ -1694,10 +1490,6 @@ def main() -> None:
         bundle_4_2 = make_bundle_4_2()
         bundle_4_3 = make_bundle_4_3()
         bundle_4_4 = make_bundle_4_4()
-        adjusted_mirrors = {
-            mirror_name: _adjusted_plane_mirror(mirror_name, mirror)
-            for mirror_name, mirror in ADJUSTABLE_MIRRORS
-        }
         overlays = [
             make_circle_outline(
                 name="Source waist",
@@ -1708,22 +1500,22 @@ def main() -> None:
                 in_plane_reference=SOURCE_TEMPLATE.polarization_reference,
             ),
             make_rectangle_outline(
-                name=adjusted_mirrors["MP1"].name,
-                center=adjusted_mirrors["MP1"].center,
-                normal=adjusted_mirrors["MP1"].normal,
-                width=float(adjusted_mirrors["MP1"].width),
-                height=float(adjusted_mirrors["MP1"].height),
+                name=PERISCOPE_MIRROR_1.name,
+                center=PERISCOPE_MIRROR_1.center,
+                normal=PERISCOPE_MIRROR_1.normal,
+                width=float(PERISCOPE_MIRROR_1.width),
+                height=float(PERISCOPE_MIRROR_1.height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=adjusted_mirrors["MP1"].in_plane_reference,
+                in_plane_reference=PERISCOPE_MIRROR_1.in_plane_reference,
             ),
             make_rectangle_outline(
-                name=adjusted_mirrors["MP2"].name,
-                center=adjusted_mirrors["MP2"].center,
-                normal=adjusted_mirrors["MP2"].normal,
-                width=float(adjusted_mirrors["MP2"].width),
-                height=float(adjusted_mirrors["MP2"].height),
+                name=PERISCOPE_MIRROR_2.name,
+                center=PERISCOPE_MIRROR_2.center,
+                normal=PERISCOPE_MIRROR_2.normal,
+                width=float(PERISCOPE_MIRROR_2.width),
+                height=float(PERISCOPE_MIRROR_2.height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=adjusted_mirrors["MP2"].in_plane_reference,
+                in_plane_reference=PERISCOPE_MIRROR_2.in_plane_reference,
             ),
             make_rectangle_outline(
                 name=ONE_OF_MANY_MIRRORS.name,
@@ -1856,43 +1648,41 @@ def main() -> None:
                 color=CYLINDRICAL_SCREEN_COLOR,
                 opacity=0.0,
             ),
-            *build_bundle_ray_clip_overlays(),
-            *build_screen_b_overlays(),
             make_rectangle_outline(
-                name=adjusted_mirrors["MS1"].name,
-                center=adjusted_mirrors["MS1"].center,
-                normal=adjusted_mirrors["MS1"].normal,
-                width=float(adjusted_mirrors["MS1"].width),
-                height=float(adjusted_mirrors["MS1"].height),
+                name=TURNING_SQUARE_MIRROR_1.name,
+                center=TURNING_SQUARE_MIRROR_1.center,
+                normal=TURNING_SQUARE_MIRROR_1.normal,
+                width=float(TURNING_SQUARE_MIRROR_1.width),
+                height=float(TURNING_SQUARE_MIRROR_1.height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=adjusted_mirrors["MS1"].in_plane_reference,
+                in_plane_reference=TURNING_SQUARE_MIRROR_1.in_plane_reference,
             ),
             make_rectangle_outline(
-                name=adjusted_mirrors["MS2"].name,
-                center=adjusted_mirrors["MS2"].center,
-                normal=adjusted_mirrors["MS2"].normal,
-                width=float(adjusted_mirrors["MS2"].width),
-                height=float(adjusted_mirrors["MS2"].height),
+                name=TURNING_SQUARE_MIRROR_2.name,
+                center=TURNING_SQUARE_MIRROR_2.center,
+                normal=TURNING_SQUARE_MIRROR_2.normal,
+                width=float(TURNING_SQUARE_MIRROR_2.width),
+                height=float(TURNING_SQUARE_MIRROR_2.height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=adjusted_mirrors["MS2"].in_plane_reference,
+                in_plane_reference=TURNING_SQUARE_MIRROR_2.in_plane_reference,
             ),
             make_rectangle_outline(
-                name=adjusted_mirrors["MS3"].name,
-                center=adjusted_mirrors["MS3"].center,
-                normal=adjusted_mirrors["MS3"].normal,
-                width=float(adjusted_mirrors["MS3"].width),
-                height=float(adjusted_mirrors["MS3"].height),
+                name=TURNING_SQUARE_MIRROR_3.name,
+                center=TURNING_SQUARE_MIRROR_3.center,
+                normal=TURNING_SQUARE_MIRROR_3.normal,
+                width=float(TURNING_SQUARE_MIRROR_3.width),
+                height=float(TURNING_SQUARE_MIRROR_3.height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=adjusted_mirrors["MS3"].in_plane_reference,
+                in_plane_reference=TURNING_SQUARE_MIRROR_3.in_plane_reference,
             ),
             make_rectangle_outline(
-                name=adjusted_mirrors["MS4"].name,
-                center=adjusted_mirrors["MS4"].center,
-                normal=adjusted_mirrors["MS4"].normal,
-                width=float(adjusted_mirrors["MS4"].width),
-                height=float(adjusted_mirrors["MS4"].height),
+                name=TURNING_SQUARE_MIRROR_4.name,
+                center=TURNING_SQUARE_MIRROR_4.center,
+                normal=TURNING_SQUARE_MIRROR_4.normal,
+                width=float(TURNING_SQUARE_MIRROR_4.width),
+                height=float(TURNING_SQUARE_MIRROR_4.height),
                 color=PLANE_MIRROR_COLOR,
-                in_plane_reference=adjusted_mirrors["MS4"].in_plane_reference,
+                in_plane_reference=TURNING_SQUARE_MIRROR_4.in_plane_reference,
             ),
             *make_rectangular_prism_overlays(
                 name=SEMI_MIRROR_LEFT_1.name,
@@ -1973,257 +1763,24 @@ def main() -> None:
         write_plotly_trajectories(
             plot_path,
             result,
-            title="35 ns scene - DIRECT BUNDLE geometry from Восстановленные_микросборки.txt",
+            title="35 ns scene with reconstructed mirror positions",
             overlays=overlays,
-            detector_hit_exclude_prefixes=("Screen", "Cylindrical Screen", "screen_b_"),
+            detector_hit_exclude_prefixes=("Screen",),
             trim_end_surface_prefixes=("Screen",),
             trim_end_distance=5e-3,
             min_segment_power=20.0,
-            always_include_surface_prefixes=("Cylindrical Screen",),
+            max_segments_per_block=150,
+            always_include_surface_prefixes=("BUNDLE_", "Cylindrical Screen"),
+            always_include_child_segments_of_surface_prefixes=("BUNDLE_",),
         )
-        fresh_plot_path.write_bytes(plot_path.read_bytes())
-        write_cylindrical_unwrap_view(
-            screen_b_1_1_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_1.name,
-                "center": CYLINDRICAL_SURFACE_1.center,
-                "axis": CYLINDRICAL_SURFACE_1.axis,
-                "radius": float(CYLINDRICAL_SURFACE_1.radius),
-                "length": float(CYLINDRICAL_SURFACE_1.length),
-            },
-            title="Развертка пересечений лучей с screen_b_1_1",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_1_2_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_2.name,
-                "center": CYLINDRICAL_SURFACE_2.center,
-                "axis": CYLINDRICAL_SURFACE_2.axis,
-                "radius": float(CYLINDRICAL_SURFACE_2.radius),
-                "length": float(CYLINDRICAL_SURFACE_2.length),
-            },
-            title="Развертка пересечений лучей с screen_b_1_2",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_1_3_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_3.name,
-                "center": CYLINDRICAL_SURFACE_3.center,
-                "axis": CYLINDRICAL_SURFACE_3.axis,
-                "radius": float(CYLINDRICAL_SURFACE_3.radius),
-                "length": float(CYLINDRICAL_SURFACE_3.length),
-            },
-            title="Развертка пересечений лучей с screen_b_1_3",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_1_4_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_4.name,
-                "center": CYLINDRICAL_SURFACE_4.center,
-                "axis": CYLINDRICAL_SURFACE_4.axis,
-                "radius": float(CYLINDRICAL_SURFACE_4.radius),
-                "length": float(CYLINDRICAL_SURFACE_4.length),
-            },
-            title="Развертка пересечений лучей с screen_b_1_4",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_2_1_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_5.name,
-                "center": CYLINDRICAL_SURFACE_5.center,
-                "axis": CYLINDRICAL_SURFACE_5.axis,
-                "radius": float(CYLINDRICAL_SURFACE_5.radius),
-                "length": float(CYLINDRICAL_SURFACE_5.length),
-            },
-            title="Развертка пересечений лучей с screen_b_2_1",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_2_2_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_6.name,
-                "center": CYLINDRICAL_SURFACE_6.center,
-                "axis": CYLINDRICAL_SURFACE_6.axis,
-                "radius": float(CYLINDRICAL_SURFACE_6.radius),
-                "length": float(CYLINDRICAL_SURFACE_6.length),
-            },
-            title="Развертка пересечений лучей с screen_b_2_2",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_2_3_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_7.name,
-                "center": CYLINDRICAL_SURFACE_7.center,
-                "axis": CYLINDRICAL_SURFACE_7.axis,
-                "radius": float(CYLINDRICAL_SURFACE_7.radius),
-                "length": float(CYLINDRICAL_SURFACE_7.length),
-            },
-            title="Развертка пересечений лучей с screen_b_2_3",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_2_4_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_8.name,
-                "center": CYLINDRICAL_SURFACE_8.center,
-                "axis": CYLINDRICAL_SURFACE_8.axis,
-                "radius": float(CYLINDRICAL_SURFACE_8.radius),
-                "length": float(CYLINDRICAL_SURFACE_8.length),
-            },
-            title="Развертка пересечений лучей с screen_b_2_4",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_3_1_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_9.name,
-                "center": CYLINDRICAL_SURFACE_9.center,
-                "axis": CYLINDRICAL_SURFACE_9.axis,
-                "radius": float(CYLINDRICAL_SURFACE_9.radius),
-                "length": float(CYLINDRICAL_SURFACE_9.length),
-            },
-            title="Развертка пересечений лучей с screen_b_3_1",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_3_2_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_10.name,
-                "center": CYLINDRICAL_SURFACE_10.center,
-                "axis": CYLINDRICAL_SURFACE_10.axis,
-                "radius": float(CYLINDRICAL_SURFACE_10.radius),
-                "length": float(CYLINDRICAL_SURFACE_10.length),
-            },
-            title="Развертка пересечений лучей с screen_b_3_2",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_3_3_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_11.name,
-                "center": CYLINDRICAL_SURFACE_11.center,
-                "axis": CYLINDRICAL_SURFACE_11.axis,
-                "radius": float(CYLINDRICAL_SURFACE_11.radius),
-                "length": float(CYLINDRICAL_SURFACE_11.length),
-            },
-            title="Развертка пересечений лучей с screen_b_3_3",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_3_4_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_12.name,
-                "center": CYLINDRICAL_SURFACE_12.center,
-                "axis": CYLINDRICAL_SURFACE_12.axis,
-                "radius": float(CYLINDRICAL_SURFACE_12.radius),
-                "length": float(CYLINDRICAL_SURFACE_12.length),
-            },
-            title="Развертка пересечений лучей с screen_b_3_4",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_4_1_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_13.name,
-                "center": CYLINDRICAL_SURFACE_13.center,
-                "axis": CYLINDRICAL_SURFACE_13.axis,
-                "radius": float(CYLINDRICAL_SURFACE_13.radius),
-                "length": float(CYLINDRICAL_SURFACE_13.length),
-            },
-            title="Развертка пересечений лучей с screen_b_4_1",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_4_2_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_14.name,
-                "center": CYLINDRICAL_SURFACE_14.center,
-                "axis": CYLINDRICAL_SURFACE_14.axis,
-                "radius": float(CYLINDRICAL_SURFACE_14.radius),
-                "length": float(CYLINDRICAL_SURFACE_14.length),
-            },
-            title="Развертка пересечений лучей с screen_b_4_2",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_4_3_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_15.name,
-                "center": CYLINDRICAL_SURFACE_15.center,
-                "axis": CYLINDRICAL_SURFACE_15.axis,
-                "radius": float(CYLINDRICAL_SURFACE_15.radius),
-                "length": float(CYLINDRICAL_SURFACE_15.length),
-            },
-            title="Развертка пересечений лучей с screen_b_4_3",
-        )
-        write_cylindrical_unwrap_view(
-            screen_b_4_4_unwrap_path,
-            result,
-            surface={
-                "name": CYLINDRICAL_SURFACE_16.name,
-                "center": CYLINDRICAL_SURFACE_16.center,
-                "axis": CYLINDRICAL_SURFACE_16.axis,
-                "radius": float(CYLINDRICAL_SURFACE_16.radius),
-                "length": float(CYLINDRICAL_SURFACE_16.length),
-            },
-            title="Развертка пересечений лучей с screen_b_4_4",
-        )
-        write_detector_screen_views(
-            screens_path,
-            result,
-            title="Результаты моделирования",
-            screens=[
-                {"name": SCREEN_1.name, "label": "Screen 1", "radius": float(SCREEN_1.radius)},
-                {"name": SCREEN_4.name, "label": "Screen 4", "radius": float(SCREEN_4.radius)},
-                {"name": SCREEN_2.name, "label": "Screen 2", "radius": float(SCREEN_2.radius)},
-                {
-                    "name": SCREEN_3.name,
-                    "label": "Screen 3",
-                    "radius": float(SCREEN_3.radius),
-                    "primary_block_only": True,
-                },
-            ],
-            remember_spot_centers=True,
-            update_spot_reference_centers=adjustable_mirrors_are_at_zero(),
-            gas_volume_surfaces=screen_b_surface_specs,
-            remember_gas_volume_bundle_centers=adjustable_mirrors_are_at_zero(),
-        )
-        write_beam_characteristics_window(
-            beam_characteristics_path,
-            source,
-            rays,
-            mirror_angles=adjustable_mirror_angle_rows(),
-        )
+        _add_mirror_angle_controls(plot_path, controlled_mirror_angles)
         print(f"Wrote: {plot_path}")
-        print(f"Wrote: {fresh_plot_path}")
-        print(f"Wrote: {screens_path}")
-        print(f"Wrote: {screen_b_1_1_unwrap_path}")
-        print(f"Wrote: {screen_b_1_2_unwrap_path}")
-        print(f"Wrote: {screen_b_1_3_unwrap_path}")
-        print(f"Wrote: {screen_b_1_4_unwrap_path}")
-        print(f"Wrote: {screen_b_2_1_unwrap_path}")
-        print(f"Wrote: {screen_b_2_2_unwrap_path}")
-        print(f"Wrote: {screen_b_2_3_unwrap_path}")
-        print(f"Wrote: {screen_b_2_4_unwrap_path}")
-        print(f"Wrote: {screen_b_3_1_unwrap_path}")
-        print(f"Wrote: {screen_b_3_2_unwrap_path}")
-        print(f"Wrote: {screen_b_3_3_unwrap_path}")
-        print(f"Wrote: {screen_b_3_4_unwrap_path}")
-        print(f"Wrote: {screen_b_4_1_unwrap_path}")
-        print(f"Wrote: {screen_b_4_2_unwrap_path}")
-        print(f"Wrote: {screen_b_4_3_unwrap_path}")
-        print(f"Wrote: {screen_b_4_4_unwrap_path}")
-        print(f"Wrote: {beam_characteristics_path}")
         if args.open_plot:
-            webbrowser.open(fresh_plot_path.resolve().as_uri())
-            webbrowser.open(screens_path.resolve().as_uri())
-            webbrowser.open(beam_characteristics_path.resolve().as_uri())
+            _serve_interactive_plot(
+                outdir=outdir,
+                backend=args.backend,
+                max_interactions=args.max_interactions,
+            )
 
 if __name__ == "__main__":
     main()

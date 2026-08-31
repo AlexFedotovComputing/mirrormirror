@@ -1,0 +1,7 @@
+parameter,axis,reference,min_deg,max_deg,step_deg
+MP1,x,current_position,-0.010,0.000,0.002
+MP1,z,current_position,-0.002,0.010,0.002
+MP2,x,current_position,0.000,0.010,0.002
+MP2,z,current_position,-0.010,0.004,0.002
+MS1-MS4,x,current_position,-0.010,0.012,0.002
+MS1-MS4,z,current_position,-0.004,0.002,0.002
