@@ -23,7 +23,6 @@ from vizual import (
     make_rectangle_outline,
     make_rectangular_prism_overlays,
     make_triangular_prism_overlays,
-    write_detector_screen_views,
     write_plotly_trajectories,
 )
 
@@ -33,10 +32,6 @@ INITIAL_RAY_COUNT = 10000
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 20
-MIRROR_ANGLE_STEP_ARCSEC = 0.15
-MIRROR_ANGLE_STEP_DEG = 0.000041666667
-TURNING_SQUARE_MIRRORS_Y_SWEEP_MAX_DEG = 0.02033333349
-TURNING_SQUARE_MIRRORS_Y_SWEEP_STEP_DEG = 0.000041666667
 
 PLANE_MIRROR_COLOR = "#9467bd"
 SEMI_TRANSPARENT_MIRROR_COLOR = "#17becf"
@@ -1023,9 +1018,9 @@ def _add_mirror_angle_controls(path: Path, angles: Dict[str, Dict[str, float]]) 
     sections = []
     for index, (label, mirror) in enumerate(CONTROLLED_MIRRORS):
         rows = "".join(
-            f'<label><i>{axis}</i><button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="-{MIRROR_ANGLE_STEP_DEG:.12f}">−</button>'
-            f'<input type="number" value="{angles[mirror.name][axis]:.9f}" step="{MIRROR_ANGLE_STEP_DEG:.12f}" data-mirror="{index}" data-axis="{axis}">'
-            f'<button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="{MIRROR_ANGLE_STEP_DEG:.12f}">+</button></label>'
+            f'<label><i>{axis}</i><button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="-0.005">−</button>'
+            f'<input type="number" value="{angles[mirror.name][axis]:.6f}" step="0.005" data-mirror="{index}" data-axis="{axis}">'
+            f'<button class="angle-step" data-mirror="{index}" data-axis="{axis}" data-delta="0.005">+</button></label>'
             for axis in ("x", "y", "z")
         )
         sections.append(f'<details><summary>{label}</summary><div class="axis-rows">{rows}</div><button class="reset-one" data-mirror="{index}">Сбросить</button></details>')
@@ -1038,14 +1033,14 @@ body{{margin:0;overflow:hidden;font-family:Arial,sans-serif}}.plotly-graph-div{{
 .angle-step{{height:24px;padding:0;border:1px solid #94a3b8;border-radius:4px;background:white;font-size:16px;cursor:pointer}}.angle-step:active{{background:#e2e8f0}}.reset-one{{margin:0 7px 7px;padding:3px 7px;border:1px solid #94a3b8;border-radius:4px;background:#f8fafc;cursor:pointer}}
 #reset-all,#recalculate{{width:100%;margin-top:6px;padding:7px;border-radius:4px;font-weight:700;cursor:pointer}}#reset-all{{border:1px solid #94a3b8;background:#f8fafc}}#recalculate{{border:0;background:#2563eb;color:white}}#recalculate:disabled{{background:#94a3b8;cursor:wait}}#status{{min-height:16px;margin:6px 0 0}}
 </style>
-<aside id="mirror-panel"><h3>Отклонение зеркал, °</h3><p>Относительно текущего положения по осям x, y, z. Шаг: {MIRROR_ANGLE_STEP_ARCSEC:.2f}″.</p>{''.join(sections)}<button id="reset-all">Сбросить все</button><button id="recalculate">Пересчитать и показать</button><p id="status"></p></aside>
+<aside id="mirror-panel"><h3>Отклонение зеркал, °</h3><p>Относительно текущего положения по осям x, y, z.</p>{''.join(sections)}<button id="reset-all">Сбросить все</button><button id="recalculate">Пересчитать и показать</button><p id="status"></p></aside>
 <script>
 (()=>{{const config={json.dumps(config, ensure_ascii=False)},names=Object.keys(config),rendered={json.dumps(angles, ensure_ascii=False)},states=names.map(n=>({{...rendered[n]}}));
 function rotate(p,c,a){{let x=p[0]-c[0],y=p[1]-c[1],z=p[2]-c[2],r=a.x*Math.PI/180,ny=y*Math.cos(r)-z*Math.sin(r),nz=y*Math.sin(r)+z*Math.cos(r);y=ny;z=nz;r=a.y*Math.PI/180;let nx=x*Math.cos(r)+z*Math.sin(r);nz=-x*Math.sin(r)+z*Math.cos(r);x=nx;z=nz;r=a.z*Math.PI/180;return[x*Math.cos(r)-y*Math.sin(r)+c[0],x*Math.sin(r)+y*Math.cos(r)+c[1],z+c[2]]}}
 function init(){{const plot=document.querySelector('.plotly-graph-div');if(!plot||!plot.data){{setTimeout(init,50);return}}names.forEach(n=>{{const i=plot.data.findIndex(t=>t.name===n),t=i>=0?plot.data[i]:null;if(t){{config[n].i=i;config[n].points=t.x.map((x,j)=>[Number(x),Number(t.y[j]),Number(t.z[j])])}}}});
 function preview(i){{const n=names[i],c=config[n];if(c.i===undefined)return;const a={{x:states[i].x-rendered[n].x,y:states[i].y-rendered[n].y,z:states[i].z-rendered[n].z}},p=c.points.map(v=>rotate(v,c.center,a));Plotly.restyle(plot,{{x:[p.map(v=>v[0])],y:[p.map(v=>v[1])],z:[p.map(v=>v[2])]}},[c.i])}}
 document.querySelectorAll('#mirror-panel input').forEach(input=>input.addEventListener('input',()=>{{const i=Number(input.dataset.mirror);states[i][input.dataset.axis]=Number(input.value)||0;preview(i)}}));
-document.querySelectorAll('.angle-step').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror),axis=button.dataset.axis;states[i][axis]+=Number(button.dataset.delta);const input=document.querySelector(`input[data-mirror="${{i}}"][data-axis="${{axis}}"]`);input.value=states[i][axis].toFixed(9);preview(i)}}));
+document.querySelectorAll('.angle-step').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror),axis=button.dataset.axis;states[i][axis]=Math.round((states[i][axis]+Number(button.dataset.delta))*1000)/1000;const input=document.querySelector(`input[data-mirror="${{i}}"][data-axis="${{axis}}"]`);input.value=states[i][axis].toFixed(3);preview(i)}}));
 document.querySelectorAll('.reset-one').forEach(button=>button.addEventListener('click',()=>{{const i=Number(button.dataset.mirror);states[i]={{x:0,y:0,z:0}};document.querySelectorAll(`input[data-mirror="${{i}}"]`).forEach(v=>v.value='0');preview(i)}}));
 async function recalc(){{const b=document.getElementById('recalculate'),s=document.getElementById('status'),payload={{}};names.forEach((n,i)=>payload[n]=states[i]);b.disabled=true;s.textContent='Выполняется трассировка лучей…';try{{const r=await fetch('/recalculate',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{angles:payload}})}}),v=await r.json();if(!r.ok)throw new Error(v.error||'Ошибка пересчёта');s.textContent='Готово. Обновляю визуализацию…';location.href='/scene_gaussian_35ns.html?v='+Date.now()}}catch(e){{s.textContent=e.message;b.disabled=false}}}}
 document.getElementById('recalculate').addEventListener('click',recalc);document.getElementById('reset-all').addEventListener('click',()=>{{states.forEach((_,i)=>{{states[i]={{x:0,y:0,z:0}};preview(i)}});document.querySelectorAll('#mirror-panel input').forEach(v=>v.value='0');recalc()}});addEventListener('resize',()=>Plotly.Plots.resize(plot));Plotly.Plots.resize(plot)}}init()}})();
@@ -1080,7 +1075,7 @@ def _serve_interactive_plot(*, outdir: Path, backend: str, max_interactions: int
                         if not math.isfinite(value) or abs(value) > 180.0:
                             raise ValueError(f"Invalid {name}:{axis} angle: {value}")
                         command.extend(("--mirror-angle", f"{name}:{axis}={value}"))
-                completed = subprocess.run(command, cwd=str(script_path.parent), capture_output=True, text=True, timeout=86400)
+                completed = subprocess.run(command, cwd=str(script_path.parent), capture_output=True, text=True, timeout=3600)
                 if completed.returncode:
                     raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "Recalculation failed.")
                 response = json.dumps({"ok": True}).encode()
@@ -1099,15 +1094,9 @@ def _serve_interactive_plot(*, outdir: Path, backend: str, max_interactions: int
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     host, port = server.server_address
     url = f"http://{host}:{port}/scene_gaussian_35ns.html"
-    screens_url = f"http://{host}:{port}/screen_spots.html"
-    turning_square_mirrors_y_table_url = f"http://{host}:{port}/turning_square_mirrors_y_table.html"
     print(f"Interactive plot: {url}")
-    print(f"Screen spots: {screens_url}")
-    print(f"TURNING_SQUARE_MIRROR_1-4 y table: {turning_square_mirrors_y_table_url}")
     print("Keep this process running for recalculation; press Ctrl+C to stop.")
     webbrowser.open(url)
-    webbrowser.open(screens_url, new=1)
-    webbrowser.open(turning_square_mirrors_y_table_url, new=1)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -1173,250 +1162,6 @@ def flatten_detector_hits(blocks: List[Dict[str, np.ndarray]]) -> Iterable[Dict[
                 "u": float(block["local_u"][i]),
                 "v": float(block["local_v"][i]),
             }
-
-
-def calculate_screen_spots(result: object, histogram_bins: int = 96) -> Dict[str, Dict[str, object]]:
-    """Calculate power-weighted spot centroids and legacy display histograms for Screen 1..4."""
-    screens = (SCREEN_1, SCREEN_2, SCREEN_3, SCREEN_4)
-    hit_blocks: Dict[str, List[Dict[str, np.ndarray]]] = {screen.name: [] for screen in screens}
-    for block in result.detector_hits:
-        name = str(block["surface"])
-        if name in hit_blocks:
-            hit_blocks[name].append(block)
-
-    spots: Dict[str, Dict[str, object]] = {}
-    for screen in screens:
-        blocks = hit_blocks[screen.name]
-        radius = float(screen.radius)
-        if blocks:
-            u = np.concatenate([np.asarray(to_numpy(block["local_u"]), dtype=float) for block in blocks])
-            v = np.concatenate([np.asarray(to_numpy(block["local_v"]), dtype=float) for block in blocks])
-            power = np.concatenate([np.asarray(to_numpy(block["power"]), dtype=float) for block in blocks])
-            positions = np.concatenate(
-                [np.asarray(to_numpy(block["position"]), dtype=float) for block in blocks], axis=0
-            )
-            valid = np.isfinite(u) & np.isfinite(v) & np.isfinite(power) & (power > 0.0)
-            u, v, power, positions = u[valid], v[valid], power[valid], positions[valid]
-        else:
-            u = np.empty(0, dtype=float)
-            v = np.empty(0, dtype=float)
-            power = np.empty(0, dtype=float)
-            positions = np.empty((0, 3), dtype=float)
-
-        total_power = float(np.sum(power))
-        if total_power > 0.0:
-            local_center = [
-                float(np.sum(power * u) / total_power),
-                float(np.sum(power * v) / total_power),
-            ]
-            global_center = [
-                float(np.sum(power * positions[:, axis]) / total_power) for axis in range(3)
-            ]
-        else:
-            local_center = None
-            global_center = None
-
-        histogram, _, _ = np.histogram2d(
-            v,
-            u,
-            bins=histogram_bins,
-            range=((-radius, radius), (-radius, radius)),
-            weights=power,
-        )
-        spots[screen.name] = {
-            "radius_m": radius,
-            "hit_count": int(len(power)),
-            "total_power_w": total_power,
-            "local_center_m": local_center,
-            "global_center_m": global_center,
-            "histogram": histogram.tolist(),
-        }
-    return spots
-
-
-def write_screen_spots_html(path: Path, spots: Dict[str, Dict[str, object]]) -> None:
-    data = json.dumps(spots, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-    version = path.stat().st_mtime_ns if path.exists() else 0
-    html = f"""<!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="screen-data-version" content="{version}"><title>Лазерные пятна на экранах</title>
-<style>
-*{{box-sizing:border-box}} body{{margin:0;padding:14px;background:#eef2f7;color:#172033;font-family:Arial,sans-serif}}
-h1{{margin:0 0 10px;text-align:center;font-size:20px}} .grid{{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:'s1 s4' 's2 s3';gap:12px;max-width:1100px;margin:auto}}
-.screen{{min-width:0;padding:10px;background:white;border:1px solid #ccd5e1;border-radius:10px;box-shadow:0 2px 8px #10204018;text-align:center}}
-.screen h2{{margin:0 0 5px;font-size:16px}} canvas{{display:block;width:min(100%,390px);aspect-ratio:1;margin:auto;background:white}}
-.center{{min-height:38px;margin:5px 0 0;font:13px/1.45 Consolas,monospace}} .s1{{grid-area:s1}}.s2{{grid-area:s2}}.s3{{grid-area:s3}}.s4{{grid-area:s4}}
-@media(max-width:650px){{.grid{{grid-template-columns:1fr;grid-template-areas:'s1' 's4' 's2' 's3'}}}}
-</style></head><body><h1>Лазерные пятна на Screen 1–4</h1><main class="grid">
-<section class="screen s1"><h2>Screen 1</h2><canvas></canvas><p class="center"></p></section>
-<section class="screen s2"><h2>Screen 2</h2><canvas></canvas><p class="center"></p></section>
-<section class="screen s3"><h2>Screen 3</h2><canvas></canvas><p class="center"></p></section>
-<section class="screen s4"><h2>Screen 4</h2><canvas></canvas><p class="center"></p></section>
-</main><script>
-const spots={data};
-function color(t){{t=Math.max(0,Math.min(1,t));const hue=270-215*t,light=98-48*t;return `hsl(${{hue}} 95% ${{light}}%)`}}
-function draw(section,name){{const d=spots[name],canvas=section.querySelector('canvas'),box=canvas.getBoundingClientRect(),scale=devicePixelRatio||1,n=Math.max(250,Math.floor(box.width*scale));canvas.width=n;canvas.height=n;const c=canvas.getContext('2d'),pad=n*.075,size=n-2*pad,h=d.histogram,max=Math.max(0,...h.flat());c.clearRect(0,0,n,n);c.save();c.beginPath();c.arc(n/2,n/2,size/2,0,2*Math.PI);c.clip();c.fillStyle='#fff';c.fillRect(pad,pad,size,size);if(max>0){{const denom=Math.log1p(max);for(let row=0;row<h.length;row++)for(let col=0;col<h[row].length;col++){{const value=h[row][col];if(value<=0)continue;c.fillStyle=color(Math.log1p(value)/denom);const cell=size/h.length;c.fillRect(pad+col*cell,pad+(h.length-1-row)*cell,cell+1,cell+1)}}}}c.restore();c.strokeStyle='#26364d';c.lineWidth=Math.max(1,scale);c.beginPath();c.arc(n/2,n/2,size/2,0,2*Math.PI);c.stroke();c.strokeStyle='#9aa8b9';c.beginPath();c.moveTo(n/2,pad);c.lineTo(n/2,n-pad);c.moveTo(pad,n/2);c.lineTo(n-pad,n/2);c.stroke();if(d.local_center_m){{const u=d.local_center_m[0],v=d.local_center_m[1],x=n/2+u/(2*d.radius_m)*size,y=n/2-v/(2*d.radius_m)*size;c.strokeStyle='#00d8ff';c.lineWidth=Math.max(2,2*scale);c.beginPath();c.moveTo(x-7*scale,y);c.lineTo(x+7*scale,y);c.moveTo(x,y-7*scale);c.lineTo(x,y+7*scale);c.stroke();c.fillStyle='#102030';c.font=`${{11*scale}}px Arial`;c.fillText('+v',n/2+4*scale,pad+12*scale);c.fillText('+u',n-pad-18*scale,n/2-4*scale);const g=d.global_center_m;section.querySelector('.center').innerHTML=`центр: u=${{(u*1e3).toFixed(4)}} мм, v=${{(v*1e3).toFixed(4)}} мм<br>x=${{g[0].toFixed(7)}} м, y=${{g[1].toFixed(7)}} м, z=${{g[2].toFixed(7)}} м`}}else{{section.querySelector('.center').textContent='центр не определён: попаданий нет'}}}}
-function drawAll(){{document.querySelectorAll('.screen').forEach((s,i)=>draw(s,s.querySelector('h2').textContent))}}drawAll();addEventListener('resize',drawAll);
-let current=document.querySelector('meta[name="screen-data-version"]').content;setInterval(async()=>{{try{{const text=await (await fetch('/screen_spots.html?v='+Date.now())).text(),m=text.match(/name="screen-data-version" content="(\\d+)"/);if(m&&m[1]!==current)location.reload()}}catch(_e){{}}}},1500);
-</script></body></html>"""
-    path.write_text(html, encoding="utf-8")
-
-
-def write_high_quality_screen_spots_html(
-    path: Path,
-    result: object,
-    spots: Dict[str, Dict[str, object]],
-) -> None:
-    screen_by_name = {screen.name: screen for screen in (SCREEN_1, SCREEN_2, SCREEN_3, SCREEN_4)}
-    # Row-major Plotly order gives the requested physical arrangement:
-    # Screen 1 | Screen 4
-    # Screen 2 | Screen 3
-    ordered_names = ("Screen 1", "Screen 4", "Screen 2", "Screen 3")
-    screen_configs = []
-    for name in ordered_names:
-        screen = screen_by_name[name]
-        spot = spots[name]
-        local_center = spot["local_center_m"]
-        global_center = spot["global_center_m"]
-        if local_center is None or global_center is None:
-            footer = "центр не определён: попаданий нет"
-        else:
-            footer = (
-                f"центр: u={local_center[0] * 1e3:.4f} мм, v={local_center[1] * 1e3:.4f} мм"
-                f"<br>x={global_center[0]:.7f} м, y={global_center[1]:.7f} м, "
-                f"z={global_center[2]:.7f} м"
-            )
-        screen_configs.append(
-            {
-                "name": name,
-                "label": name,
-                "radius": float(screen.radius),
-                "footer": footer,
-            }
-        )
-
-    write_detector_screen_views(
-        path,
-        result,
-        screens=screen_configs,
-        title="Лазерные пятна на Screen 1–4",
-        grid_size=320,
-        smooth_passes=5,
-    )
-
-    # Keep this second browser view in sync after an interactive mirror recalculation.
-    html = path.read_text(encoding="utf-8")
-    version = path.stat().st_mtime_ns
-    auto_reload = f"""
-<meta name="screen-data-version" content="{version}">
-<script>
-(()=>{{const current='{version}';setInterval(async()=>{{try{{const text=await (await fetch('/screen_spots.html?v='+Date.now())).text();const match=text.match(/name="screen-data-version" content="(\\d+)"/);if(match&&match[1]!==current)location.reload()}}catch(_error){{}}}},1500)}})();
-</script>
-"""
-    path.write_text(html.replace("</body>", auto_reload + "</body>", 1), encoding="utf-8")
-
-
-def calculate_turning_square_mirrors_y_sweep(
-    rays: object,
-    baseline_result: object,
-    *,
-    backend: str,
-    max_interactions: int,
-) -> List[Dict[str, object]]:
-    """Trace TURNING_SQUARE_MIRROR_1-4 together around global y."""
-    target_mirrors = (
-        TURNING_SQUARE_MIRROR_1,
-        TURNING_SQUARE_MIRROR_2,
-        TURNING_SQUARE_MIRROR_3,
-        TURNING_SQUARE_MIRROR_4,
-    )
-    base_geometry = [
-        (tuple(mirror.normal), tuple(mirror.in_plane_reference)) for mirror in target_mirrors
-    ]
-    step_count = int(round(TURNING_SQUARE_MIRRORS_Y_SWEEP_MAX_DEG / TURNING_SQUARE_MIRRORS_Y_SWEEP_STEP_DEG))
-    angles_deg = [index * TURNING_SQUARE_MIRRORS_Y_SWEEP_STEP_DEG for index in range(step_count + 1)]
-    angles_deg[-1] = TURNING_SQUARE_MIRRORS_Y_SWEEP_MAX_DEG
-    rows: List[Dict[str, object]] = []
-
-    try:
-        for index, angle_deg in enumerate(angles_deg):
-            if index == 0:
-                angle_result = baseline_result
-            else:
-                for mirror, (base_normal, base_reference) in zip(target_mirrors, base_geometry):
-                    mirror.normal = _rotate_mirror_vector(
-                        base_normal, (0.0, 1.0, 0.0), angle_deg
-                    )
-                    mirror.in_plane_reference = _rotate_mirror_vector(
-                        base_reference, (0.0, 1.0, 0.0), angle_deg
-                    )
-                tracer = RayTracer(
-                    scene=build_initial_scene(),
-                    backend=backend,
-                    max_interactions=max_interactions,
-                    max_time_s=INTEGRATION_TIME_S,
-                    record_segments=False,
-                    bundle_clip_inner_radius_m=BUNDLE_RAY_INNER_CYLINDER_RADIUS_M,
-                    bundle_clip_outer_radius_m=BUNDLE_RAY_OUTER_CYLINDER_RADIUS_M,
-                    bundle_clip_z_min_m=BUNDLE_RAY_Z_MIN_M,
-                    bundle_clip_z_max_m=BUNDLE_RAY_Z_MAX_M,
-                )
-                angle_result = tracer.trace(rays)
-
-            spots = calculate_screen_spots(angle_result)
-            row: Dict[str, object] = {"angle_deg": angle_deg}
-            for screen_index in range(1, 5):
-                center = spots[f"Screen {screen_index}"]["global_center_m"]
-                row[f"screen_{screen_index}_x_m"] = None if center is None else center[0]
-                row[f"screen_{screen_index}_y_m"] = None if center is None else center[1]
-            rows.append(row)
-            if index == 0 or index % 25 == 0 or index == len(angles_deg) - 1:
-                print(
-                    f"TURNING_SQUARE_MIRROR_1-4 y sweep: {index}/{len(angles_deg) - 1}, "
-                    f"angle={angle_deg:.12f} deg",
-                    flush=True,
-                )
-    finally:
-        for mirror, (base_normal, base_reference) in zip(target_mirrors, base_geometry):
-            mirror.normal = base_normal
-            mirror.in_plane_reference = base_reference
-
-    return rows
-
-
-def write_turning_square_mirrors_y_table_html(
-    path: Path,
-    rows: Sequence[Dict[str, object]],
-) -> None:
-    def coordinate_cell(value: object) -> str:
-        return "—" if value is None else f"{float(value):.9f}"
-
-    body_rows = []
-    for row in rows:
-        cells = [f'<td class="angle">{float(row["angle_deg"]):.12f}</td>']
-        for screen_index in range(1, 5):
-            cells.append(f'<td>{coordinate_cell(row[f"screen_{screen_index}_x_m"])}</td>')
-            cells.append(f'<td>{coordinate_cell(row[f"screen_{screen_index}_y_m"])}</td>')
-        body_rows.append(f"<tr>{''.join(cells)}</tr>")
-
-    header_cells = ['<th rowspan="2">Угол TURNING_SQUARE_MIRROR_1–4 y, °</th>']
-    header_cells.extend(f'<th colspan="2">Screen {index}</th>' for index in range(1, 5))
-    coordinate_headers = "".join("<th>x, м</th><th>y, м</th>" for _ in range(4))
-    html = f"""<!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Таблица TURNING_SQUARE_MIRROR_1–4 y</title><style>
-:root{{font-family:"Segoe UI",Arial,sans-serif;color:#183052;background:#f4f7fb}}body{{margin:0;padding:28px;background:radial-gradient(circle at 12% 0%,rgba(225,129,215,.18),transparent 28rem),radial-gradient(circle at 90% 8%,rgba(48,112,220,.14),transparent 28rem),#f4f7fb}}
-h1{{margin:0 0 7px;font-size:27px}}p{{margin:0 0 20px;color:#52647e}}.card{{overflow-x:auto;padding:14px;background:#ffffffd9;border:1px solid #cbd6e5;border-radius:16px;box-shadow:0 16px 38px #203a601c}}
-table{{width:100%;min-width:1050px;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}}th,td{{padding:13px 12px;text-align:center;border-right:1px solid #d7dfeb;border-bottom:1px solid #d7dfeb}}th{{background:#dce6f5;font-weight:700}}thead tr:first-child th{{border-top:1px solid #b9c8dc}}th:first-child,td:first-child{{border-left:1px solid #b9c8dc}}tbody tr:hover td{{background:#eef5ff}}td{{background:#fff;font-family:Consolas,monospace}}td.angle{{font-weight:700;color:#2458a6}}
-</style></head><body><h1>TURNING_SQUARE_MIRROR_1–4 y: центры лазерных пятен</h1>
-<p>Текущие положения зеркал приняты за 0°. Диапазон: 0…{TURNING_SQUARE_MIRRORS_Y_SWEEP_MAX_DEG:.11f}°. Шаг: {TURNING_SQUARE_MIRRORS_Y_SWEEP_STEP_DEG:.12f}°. Все четыре зеркала вращаются одновременно. Координаты — глобальные.</p>
-<div class="card"><table><thead><tr>{''.join(header_cells)}</tr><tr>{coordinate_headers}</tr></thead><tbody>{''.join(body_rows)}</tbody></table></div></body></html>"""
-    path.write_text(html, encoding="utf-8")
-    version = path.stat().st_mtime_ns
-    html = path.read_text(encoding="utf-8")
-    auto_reload = f"""<meta name="turning-square-mirrors-y-data-version" content="{version}"><script>(()=>{{const current='{version}';setInterval(async()=>{{try{{const text=await (await fetch('/turning_square_mirrors_y_table.html?v='+Date.now())).text();const match=text.match(/name="turning-square-mirrors-y-data-version" content="(\\d+)"/);if(match&&match[1]!==current)location.reload()}}catch(_error){{}}}},1500)}})();</script>"""
-    path.write_text(html.replace("</body>", auto_reload + "</body>", 1), encoding="utf-8")
-
 
 def write_csv(path: Path, rows: Iterable[Dict[str, object]]) -> bool:
     rows = list(rows)
@@ -1484,8 +1229,6 @@ def main() -> None:
 
     segments_path = outdir / "segments.csv"
     detector_hits_path = outdir / "detector_hits.csv"
-    screen_spots_path = outdir / "screen_spots.html"
-    turning_square_mirrors_y_table_path = outdir / "turning_square_mirrors_y_table.html"
     wrote_segments = False
     wrote_detector_hits = False
     if not args.skip_csv:
@@ -1495,18 +1238,6 @@ def main() -> None:
     source_power = float(np.sum(to_numpy(rays.power)))
     power_summary = result.detector_power_summary()
     energy_summary = detector_energy_summary(result, INTEGRATION_TIME_S)
-    screen_spots = calculate_screen_spots(result)
-    write_high_quality_screen_spots_html(screen_spots_path, result, screen_spots)
-    turning_square_mirrors_y_rows = calculate_turning_square_mirrors_y_sweep(
-        rays,
-        result,
-        backend=args.backend,
-        max_interactions=args.max_interactions,
-    )
-    write_turning_square_mirrors_y_table_html(
-        turning_square_mirrors_y_table_path,
-        turning_square_mirrors_y_rows,
-    )
 
     print("Initial scene: Gaussian source with scene scaffold")
     print(f"Integration time: {INTEGRATION_TIME_S * 1e9:.3f} ns")
@@ -1567,22 +1298,6 @@ def main() -> None:
     else:
         for name, energy in energy_summary.items():
             print(f"  {name}: {energy:.6e} J")
-    print("Power-weighted laser spot centers:")
-    for screen in (SCREEN_1, SCREEN_2, SCREEN_3, SCREEN_4):
-        spot = screen_spots[screen.name]
-        local_center = spot["local_center_m"]
-        global_center = spot["global_center_m"]
-        if local_center is None or global_center is None:
-            print(f"  {screen.name}: <no detector hits>")
-        else:
-            print(
-                f"  {screen.name}: u={local_center[0] * 1e3:.6f} mm, "
-                f"v={local_center[1] * 1e3:.6f} mm; "
-                f"x={global_center[0]:.9f} m, y={global_center[1]:.9f} m, "
-                f"z={global_center[2]:.9f} m"
-            )
-    print(f"Wrote: {screen_spots_path}")
-    print(f"Wrote: {turning_square_mirrors_y_table_path}")
     print(f"Final ray count: {result.final_rays.n_rays}")
     if wrote_segments:
         print(f"Wrote: {segments_path}")
