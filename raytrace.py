@@ -2199,8 +2199,11 @@ class TriangularPrism(OpticalElement):
                     center=side_c,
                     normal=side_n,
                     shape="rectangle",
-                    width=edge_len,
-                    height=self.thickness,
+                    # With ``n`` as the in-plane reference, PlaneSurface's
+                    # local u-axis runs through the prism thickness and its
+                    # local v-axis runs along this triangular edge.
+                    width=self.thickness,
+                    height=edge_len,
                     in_plane_reference=n,
                 )
             )
