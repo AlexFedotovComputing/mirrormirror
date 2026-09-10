@@ -2,3 +2,5 @@
 __pycache__/
 *.py[cod]
 .tmp_bundle_table_test*/
+scene_gaussian_35nd_output_из-к+_идеальная/segments.csv
+scene_gaussian_35ns_output_из-к+_идеальная/segments.csv

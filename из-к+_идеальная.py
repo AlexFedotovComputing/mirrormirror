@@ -370,6 +370,7 @@ def make_bundle(name: str, data: List[Dict[str, object]]) -> MirrorArrayBundle:
     return MirrorArrayBundle(
         data,
         name=name,
+        tilt_deg=135.0,
         reflectance=1.0,
         transmittance=0.0,
         reflect_from_minus_side=False,
@@ -1125,10 +1126,9 @@ ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES: Dict[str, tuple[float, float, float]
 }
 
 DEFAULT_ADJUSTABLE_MIRROR_ROTATIONS_DEG: Dict[str, Dict[str, float]] = {
-    # Latest accepted mirror-position optimization result.  Keep the optimized
-    # position as the model baseline; angle-search utilities apply overrides to
-    # a copy of these values instead of resetting the model to mechanical zero.
-    "MP1": {"x": -0.011, "y": 0.0, "z": 0.0},
+    # Mechanical-zero baseline; angle-search utilities apply overrides to a
+    # copy of these values.
+    "MP1": {"x": 0.0, "y": 0.0, "z": 0.0},
     "MP2": {"x": 0.0, "y": 0.0, "z": 0.0},
     "MS1": {"x": 0.0, "y": 0.0, "z": 0.0},
     "MS2": {"x": 0.0, "y": 0.0, "z": 0.0},
@@ -1148,6 +1148,370 @@ ADJUSTABLE_MIRRORS = [
     ("MS3", TURNING_SQUARE_MIRROR_3),
     ("MS4", TURNING_SQUARE_MIRROR_4),
 ]
+
+
+REFLECTION_PLANE_Z_M = float(SOURCE_TEMPLATE.waist_position[2])
+
+
+def _reflect_point_about_source_xy(point: Sequence[float]) -> tuple[float, float, float]:
+    x, y, z = (float(value) for value in point)
+    return x, y, 2.0 * REFLECTION_PLANE_Z_M - z
+
+
+def _reflect_vector_about_xy(vector: Sequence[float]) -> tuple[float, float, float]:
+    x, y, z = (float(value) for value in vector)
+    return x, y, -z
+
+
+def _reflect_complete_construction_about_source_xy() -> None:
+    global BUNDLE_RAY_Z_MIN_M, BUNDLE_RAY_Z_MAX_M
+
+    # The source origin lies in the reflection plane and therefore stays fixed;
+    # its propagation direction is reflected together with the construction.
+    SOURCE_TEMPLATE.waist_position = _reflect_point_about_source_xy(SOURCE_TEMPLATE.waist_position)
+    SOURCE_TEMPLATE.axis = _reflect_vector_about_xy(SOURCE_TEMPLATE.axis)
+    SOURCE_TEMPLATE.polarization_reference = _reflect_vector_about_xy(
+        SOURCE_TEMPLATE.polarization_reference
+    )
+
+    scene_objects = [
+        SCREEN_1,
+        SCREEN_2,
+        SCREEN_3,
+        SCREEN_4,
+        CYLINDRICAL_SCREEN_1,
+        *(globals()[f"CYLINDRICAL_SURFACE_{idx}"] for idx in range(1, 17)),
+        PERISCOPE_MIRROR_1,
+        PERISCOPE_MIRROR_2,
+        ONE_OF_MANY_MIRRORS,
+        BLOCK_MIRROR_1,
+        BLOCK_MIRROR_2,
+        ON_ENTER_BEAMSPLITTER,
+        SMALL_REFLECTIVE_MIRROR,
+        TURNING_ROUND_MIRROR_2,
+        TURNING_ROUND_MIRROR_3,
+        TURNING_ROUND_MIRROR_4,
+        TURNING_SQUARE_MIRROR_1,
+        TURNING_SQUARE_MIRROR_2,
+        TURNING_SQUARE_MIRROR_3,
+        TURNING_SQUARE_MIRROR_4,
+        SEMI_MIRROR_LEFT_1,
+        SEMI_MIRROR_NEW,
+        PRISM_1,
+        PRISM_2,
+        PRISM_3,
+        PRISM_4,
+        PRISM_5,
+        SEMI_MIRROR_3,
+    ]
+    prisms = {id(PRISM_1), id(PRISM_2), id(PRISM_3), id(PRISM_4), id(PRISM_5)}
+    for obj in scene_objects:
+        if hasattr(obj, "center"):
+            obj.center = _reflect_point_about_source_xy(obj.center)
+        if hasattr(obj, "axis"):
+            obj.axis = _reflect_vector_about_xy(obj.axis)
+        if hasattr(obj, "normal"):
+            reflected_normal = _reflect_vector_about_xy(obj.normal)
+            # Reversing a prism's axis-normal representation keeps its local
+            # triangular coordinates right-handed while describing the exact
+            # same reflected volume.  Its top and bottom labels swap places.
+            if id(obj) in prisms:
+                reflected_normal = tuple(-value for value in reflected_normal)
+                obj.bottom_reflectance, obj.top_reflectance = (
+                    obj.top_reflectance,
+                    obj.bottom_reflectance,
+                )
+                obj.bottom_transmittance, obj.top_transmittance = (
+                    obj.top_transmittance,
+                    obj.bottom_transmittance,
+                )
+            obj.normal = reflected_normal
+        if hasattr(obj, "in_plane_reference") and obj.in_plane_reference is not None:
+            obj.in_plane_reference = _reflect_vector_about_xy(obj.in_plane_reference)
+
+    for sector in range(1, 5):
+        for layer in range(1, 5):
+            bundle_data = globals()[f"BUNDLE_{sector}_{layer}_DATA"]
+            for item in bundle_data:
+                item["center"] = _reflect_point_about_source_xy(item["center"])
+                if "normal" in item:
+                    item["normal"] = _reflect_vector_about_xy(item["normal"])
+                if "in_plane_reference" in item:
+                    item["in_plane_reference"] = _reflect_vector_about_xy(
+                        item["in_plane_reference"]
+                    )
+                if "reconstructed_points" in item:
+                    item["reconstructed_points"] = [
+                        _reflect_point_about_source_xy(point)
+                        for point in item["reconstructed_points"]
+                    ]
+
+    for mirror_name, normal in tuple(ADJUSTABLE_MIRROR_ZERO_NORMALS.items()):
+        ADJUSTABLE_MIRROR_ZERO_NORMALS[mirror_name] = _reflect_vector_about_xy(normal)
+    for mirror_name, reference in tuple(ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES.items()):
+        ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES[mirror_name] = _reflect_vector_about_xy(reference)
+    for rotation_table in (
+        DEFAULT_ADJUSTABLE_MIRROR_ROTATIONS_DEG,
+        ADJUSTABLE_MIRROR_ROTATIONS_DEG,
+    ):
+        for rotations in rotation_table.values():
+            rotations["x"] = -float(rotations.get("x", 0.0))
+            rotations["y"] = -float(rotations.get("y", 0.0))
+
+    BUNDLE_RAY_Z_MIN_M = float(CYLINDRICAL_SCREEN_1.center[2]) - 0.5 * float(
+        CYLINDRICAL_SCREEN_1.length
+    )
+    BUNDLE_RAY_Z_MAX_M = float(CYLINDRICAL_SCREEN_1.center[2]) + 0.5 * float(
+        CYLINDRICAL_SCREEN_1.length
+    )
+
+
+_reflect_complete_construction_about_source_xy()
+
+
+def _reflect_point_about_vertical_xy_diagonal(
+    point: Sequence[float],
+) -> tuple[float, float, float]:
+    x, y, z = (float(value) for value in point)
+    return -y, -x, z
+
+
+def _reflect_vector_about_vertical_xy_diagonal(
+    vector: Sequence[float],
+) -> tuple[float, float, float]:
+    x, y, z = (float(value) for value in vector)
+    return -y, -x, z
+
+
+def _reflect_first_channel_about_vertical_xy_diagonal() -> None:
+    # Plane x + y = 0: it contains the Z axis and the XY points
+    # (1, -1) and (-1, 1).
+    for layer in range(1, 5):
+        bundle_data = globals()[f"BUNDLE_1_{layer}_DATA"]
+        for item in bundle_data:
+            item["center"] = _reflect_point_about_vertical_xy_diagonal(item["center"])
+            item["phi"] = 90.0 - float(item["phi"])
+            if "normal" in item:
+                item["normal"] = _reflect_vector_about_vertical_xy_diagonal(item["normal"])
+            if "in_plane_reference" in item:
+                item["in_plane_reference"] = _reflect_vector_about_vertical_xy_diagonal(
+                    item["in_plane_reference"]
+                )
+            if "reconstructed_points" in item:
+                item["reconstructed_points"] = [
+                    _reflect_point_about_vertical_xy_diagonal(point)
+                    for point in item["reconstructed_points"]
+                ]
+
+        # These transparent cylindrical screens are centered on BUNDLE_1_*;
+        # they must follow their corresponding mirror assembly.
+        cylindrical_surface = globals()[f"CYLINDRICAL_SURFACE_{layer}"]
+        cylindrical_surface.center = _reflect_point_about_vertical_xy_diagonal(
+            cylindrical_surface.center
+        )
+        cylindrical_surface.axis = _reflect_vector_about_vertical_xy_diagonal(
+            cylindrical_surface.axis
+        )
+
+    for obj in (SCREEN_1, TURNING_SQUARE_MIRROR_1, SMALL_REFLECTIVE_MIRROR):
+        obj.center = _reflect_point_about_vertical_xy_diagonal(obj.center)
+        if hasattr(obj, "normal"):
+            obj.normal = _reflect_vector_about_vertical_xy_diagonal(obj.normal)
+        if hasattr(obj, "axis"):
+            obj.axis = _reflect_vector_about_vertical_xy_diagonal(obj.axis)
+        if hasattr(obj, "in_plane_reference") and obj.in_plane_reference is not None:
+            obj.in_plane_reference = _reflect_vector_about_vertical_xy_diagonal(
+                obj.in_plane_reference
+            )
+
+    ADJUSTABLE_MIRROR_ZERO_NORMALS["MS1"] = _reflect_vector_about_vertical_xy_diagonal(
+        ADJUSTABLE_MIRROR_ZERO_NORMALS["MS1"]
+    )
+    ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS1"] = (
+        _reflect_vector_about_vertical_xy_diagonal(
+            ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS1"]
+        )
+    )
+
+
+_reflect_first_channel_about_vertical_xy_diagonal()
+
+
+def _reflect_point_about_vertical_y_equals_x(
+    point: Sequence[float],
+) -> tuple[float, float, float]:
+    x, y, z = (float(value) for value in point)
+    return y, x, z
+
+
+def _reflect_vector_about_vertical_y_equals_x(
+    vector: Sequence[float],
+) -> tuple[float, float, float]:
+    x, y, z = (float(value) for value in vector)
+    return y, x, z
+
+
+def _reflect_second_channel_about_vertical_y_equals_x() -> None:
+    # Plane x - y = 0: it contains the Z axis and the XY points
+    # (-1, -1) and (1, 1).
+    for layer in range(1, 5):
+        bundle_data = globals()[f"BUNDLE_2_{layer}_DATA"]
+        for item in bundle_data:
+            item["center"] = _reflect_point_about_vertical_y_equals_x(item["center"])
+            item["phi"] = 270.0 - float(item["phi"])
+            if "normal" in item:
+                item["normal"] = _reflect_vector_about_vertical_y_equals_x(item["normal"])
+            if "in_plane_reference" in item:
+                item["in_plane_reference"] = _reflect_vector_about_vertical_y_equals_x(
+                    item["in_plane_reference"]
+                )
+            if "reconstructed_points" in item:
+                item["reconstructed_points"] = [
+                    _reflect_point_about_vertical_y_equals_x(point)
+                    for point in item["reconstructed_points"]
+                ]
+
+        cylindrical_surface = globals()[f"CYLINDRICAL_SURFACE_{4 + layer}"]
+        cylindrical_surface.center = _reflect_point_about_vertical_y_equals_x(
+            cylindrical_surface.center
+        )
+        cylindrical_surface.axis = _reflect_vector_about_vertical_y_equals_x(
+            cylindrical_surface.axis
+        )
+
+    for obj in (SCREEN_2, TURNING_SQUARE_MIRROR_2, TURNING_ROUND_MIRROR_2):
+        obj.center = _reflect_point_about_vertical_y_equals_x(obj.center)
+        if hasattr(obj, "normal"):
+            obj.normal = _reflect_vector_about_vertical_y_equals_x(obj.normal)
+        if hasattr(obj, "axis"):
+            obj.axis = _reflect_vector_about_vertical_y_equals_x(obj.axis)
+        if hasattr(obj, "in_plane_reference") and obj.in_plane_reference is not None:
+            obj.in_plane_reference = _reflect_vector_about_vertical_y_equals_x(
+                obj.in_plane_reference
+            )
+
+    ADJUSTABLE_MIRROR_ZERO_NORMALS["MS2"] = _reflect_vector_about_vertical_y_equals_x(
+        ADJUSTABLE_MIRROR_ZERO_NORMALS["MS2"]
+    )
+    ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS2"] = (
+        _reflect_vector_about_vertical_y_equals_x(
+            ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS2"]
+        )
+    )
+
+
+_reflect_second_channel_about_vertical_y_equals_x()
+
+
+def _reflect_third_channel_about_vertical_xy_diagonal() -> None:
+    # Plane x + y = 0: it contains the Z axis and the XY points
+    # (1, -1) and (-1, 1).
+    for layer in range(1, 5):
+        bundle_data = globals()[f"BUNDLE_3_{layer}_DATA"]
+        for item in bundle_data:
+            item["center"] = _reflect_point_about_vertical_xy_diagonal(item["center"])
+            item["phi"] = 90.0 - float(item["phi"])
+            if "normal" in item:
+                item["normal"] = _reflect_vector_about_vertical_xy_diagonal(item["normal"])
+            if "in_plane_reference" in item:
+                item["in_plane_reference"] = _reflect_vector_about_vertical_xy_diagonal(
+                    item["in_plane_reference"]
+                )
+            if "reconstructed_points" in item:
+                item["reconstructed_points"] = [
+                    _reflect_point_about_vertical_xy_diagonal(point)
+                    for point in item["reconstructed_points"]
+                ]
+
+        cylindrical_surface = globals()[f"CYLINDRICAL_SURFACE_{8 + layer}"]
+        cylindrical_surface.center = _reflect_point_about_vertical_xy_diagonal(
+            cylindrical_surface.center
+        )
+        cylindrical_surface.axis = _reflect_vector_about_vertical_xy_diagonal(
+            cylindrical_surface.axis
+        )
+
+    for obj in (SCREEN_3, TURNING_SQUARE_MIRROR_3, TURNING_ROUND_MIRROR_3):
+        obj.center = _reflect_point_about_vertical_xy_diagonal(obj.center)
+        if hasattr(obj, "normal"):
+            obj.normal = _reflect_vector_about_vertical_xy_diagonal(obj.normal)
+        if hasattr(obj, "axis"):
+            obj.axis = _reflect_vector_about_vertical_xy_diagonal(obj.axis)
+        if hasattr(obj, "in_plane_reference") and obj.in_plane_reference is not None:
+            obj.in_plane_reference = _reflect_vector_about_vertical_xy_diagonal(
+                obj.in_plane_reference
+            )
+
+    ADJUSTABLE_MIRROR_ZERO_NORMALS["MS3"] = _reflect_vector_about_vertical_xy_diagonal(
+        ADJUSTABLE_MIRROR_ZERO_NORMALS["MS3"]
+    )
+    ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS3"] = (
+        _reflect_vector_about_vertical_xy_diagonal(
+            ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS3"]
+        )
+    )
+
+
+_reflect_third_channel_about_vertical_xy_diagonal()
+
+
+def _reflect_fourth_channel_about_vertical_y_equals_x() -> None:
+    # Plane x - y = 0: it contains the Z axis and the XY points
+    # (-1, -1) and (1, 1).
+    for layer in range(1, 5):
+        bundle_data = globals()[f"BUNDLE_4_{layer}_DATA"]
+        for item in bundle_data:
+            item["center"] = _reflect_point_about_vertical_y_equals_x(item["center"])
+            item["phi"] = 270.0 - float(item["phi"])
+            if "normal" in item:
+                item["normal"] = _reflect_vector_about_vertical_y_equals_x(item["normal"])
+            if "in_plane_reference" in item:
+                item["in_plane_reference"] = _reflect_vector_about_vertical_y_equals_x(
+                    item["in_plane_reference"]
+                )
+            if "reconstructed_points" in item:
+                item["reconstructed_points"] = [
+                    _reflect_point_about_vertical_y_equals_x(point)
+                    for point in item["reconstructed_points"]
+                ]
+
+        cylindrical_surface = globals()[f"CYLINDRICAL_SURFACE_{12 + layer}"]
+        cylindrical_surface.center = _reflect_point_about_vertical_y_equals_x(
+            cylindrical_surface.center
+        )
+        cylindrical_surface.axis = _reflect_vector_about_vertical_y_equals_x(
+            cylindrical_surface.axis
+        )
+
+    for obj in (SCREEN_4, TURNING_SQUARE_MIRROR_4, TURNING_ROUND_MIRROR_4):
+        obj.center = _reflect_point_about_vertical_y_equals_x(obj.center)
+        if hasattr(obj, "normal"):
+            obj.normal = _reflect_vector_about_vertical_y_equals_x(obj.normal)
+        if hasattr(obj, "axis"):
+            obj.axis = _reflect_vector_about_vertical_y_equals_x(obj.axis)
+        if hasattr(obj, "in_plane_reference") and obj.in_plane_reference is not None:
+            obj.in_plane_reference = _reflect_vector_about_vertical_y_equals_x(
+                obj.in_plane_reference
+            )
+
+    ADJUSTABLE_MIRROR_ZERO_NORMALS["MS4"] = _reflect_vector_about_vertical_y_equals_x(
+        ADJUSTABLE_MIRROR_ZERO_NORMALS["MS4"]
+    )
+    ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS4"] = (
+        _reflect_vector_about_vertical_y_equals_x(
+            ADJUSTABLE_MIRROR_ZERO_IN_PLANE_REFERENCES["MS4"]
+        )
+    )
+
+
+_reflect_fourth_channel_about_vertical_y_equals_x()
+
+# A reflection is its own inverse.  Apply the four channel transforms once
+# more to restore channels 1-4 to their positions before the diagonal mirrors.
+_reflect_first_channel_about_vertical_xy_diagonal()
+_reflect_second_channel_about_vertical_y_equals_x()
+_reflect_third_channel_about_vertical_xy_diagonal()
+_reflect_fourth_channel_about_vertical_y_equals_x()
 
 
 def _normalized_vector(vector: Iterable[float]) -> np.ndarray:
@@ -1510,7 +1874,11 @@ def main() -> None:
         default=MAX_SECONDARY_RAY_GENERATIONS,
         help="Maximum number of ray interactions / secondary-ray generations",
     )
-    parser.add_argument("--outdir", default="scene_gaussian_35ns_output", help="Directory for outputs")
+    parser.add_argument(
+        "--outdir",
+        default="scene_gaussian_35ns_output_из-к+_идеальная",
+        help="Directory for outputs",
+    )
     parser.add_argument("--no-plot", dest="plot", action="store_false", help="Skip saving the Plotly trajectories plot")
     parser.add_argument("--no-open-plot", dest="open_plot", action="store_false", help="Do not open the saved plots in a browser")
     parser.set_defaults(plot=True, open_plot=True)
