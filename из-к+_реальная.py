@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Sequence
 
 import numpy as np
+from scipy.optimize import minimize
 
 from raytrace import AIR, BlockMirror, CylinderSurface, CylindricalScreen, Detector, GaussianBeamSource, InteractionMode, MirrorArrayBundle, PlaneMirror, RayTracer, Scene, SemiTransparentMirror, SurfaceOptics, TriangularPrism, to_numpy
 from vizual import (
@@ -1512,6 +1513,405 @@ _reflect_first_channel_about_vertical_xy_diagonal()
 _reflect_second_channel_about_vertical_y_equals_x()
 _reflect_third_channel_about_vertical_xy_diagonal()
 _reflect_fourth_channel_about_vertical_y_equals_x()
+
+
+IDEAL_RAY_EQUATIONS_PATH = Path(__file__).with_name(
+    "уравнения_лучей_в_СК_идеальной_геометрии.txt"
+)
+MAX_IDEAL_RAY_MIRROR_SHIFT_M = 2e-3
+
+
+def _unit_ideal_ray_vector(vector: Sequence[float], description: str) -> np.ndarray:
+    array = np.asarray(vector, dtype=float)
+    length = float(np.linalg.norm(array))
+    if length <= 1e-15:
+        raise ValueError(f"Zero-length vector in {description}.")
+    return array / length
+
+
+def _mirror_reference_for_normal(
+    item: Dict[str, object],
+    normal: np.ndarray,
+) -> tuple[float, float, float]:
+    if "in_plane_reference" in item:
+        reference = np.asarray(item["in_plane_reference"], dtype=float)
+    else:
+        phi_rad = math.radians(float(item["phi"]))
+        reference = np.array((math.cos(phi_rad), math.sin(phi_rad), 0.0), dtype=float)
+    reference -= normal * float(np.dot(reference, normal))
+    if float(np.linalg.norm(reference)) <= 1e-12:
+        candidates = np.eye(3, dtype=float)
+        reference = min(candidates, key=lambda axis: abs(float(np.dot(axis, normal)))).copy()
+        reference -= normal * float(np.dot(reference, normal))
+    reference = _unit_ideal_ray_vector(reference, "mirror in-plane reference")
+    return tuple(float(value) for value in reference)
+
+
+def _orient_selected_bundle_mirrors_from_ideal_rays(path: Path) -> None:
+    """Orient only mirrors having complete parametric ray equations.
+
+    Each selected center is moved toward the nearest point of its line, with a
+    strict displacement limit of MAX_IDEAL_RAY_MIRROR_SHIFT_M.
+    """
+    incoming_direction = np.array((0.0, 0.0, 1.0), dtype=float)
+    current_sector: int | None = None
+    seen_keys: set[tuple[int, int, int]] = set()
+
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.reader(handle, delimiter="\t")
+        next(reader, None)
+        for row in reader:
+            if not row or not any(cell.strip() for cell in row):
+                continue
+            if len(row) < 8:
+                raise ValueError(f"Unexpected ideal-ray row: {row!r}")
+            if row[0].strip():
+                current_sector = int(row[0])
+            if current_sector is None:
+                raise ValueError("An ideal-ray row appears before the first stem number.")
+
+            layer, mirror_index = (int(value) for value in row[1].strip().split("_"))
+            key = (current_sector, layer, mirror_index)
+            if key in seen_keys:
+                raise ValueError(f"Duplicate ideal-ray row for {key}.")
+            seen_keys.add(key)
+
+            point_cells = [cell.strip() for cell in row[2:5]]
+            direction_cells = [cell.strip() for cell in row[5:8]]
+            # Only a complete parametric equation authorizes changing a mirror.
+            if not all(cell != "-" for cell in point_cells + direction_cells):
+                continue
+
+            point = np.asarray(
+                [float(cell.replace(",", ".")) for cell in point_cells],
+                dtype=float,
+            ) * 1e-3
+            line_direction = _unit_ideal_ray_vector(
+                [float(cell.replace(",", ".")) for cell in direction_cells],
+                f"BUNDLE_{current_sector}_{layer} Mirror {mirror_index} ideal ray",
+            )
+
+            item = globals()[f"BUNDLE_{current_sector}_{layer}_DATA"][mirror_index - 1]
+            center = np.asarray(item["center"], dtype=float)
+            parameter_at_nearest_point = float(np.dot(center - point, line_direction))
+            nearest_line_point = point + parameter_at_nearest_point * line_direction
+            requested_shift = nearest_line_point - center
+            requested_shift_length = float(np.linalg.norm(requested_shift))
+            outgoing_direction = (
+                -line_direction if parameter_at_nearest_point > 0.0 else line_direction
+            )
+
+            # For specular reflection n is the bisector of the incoming and
+            # outgoing directions. This sign also enables the configured
+            # reflect_from_plus_side branch for the +Z incident bundle rays.
+            normal = _unit_ideal_ray_vector(
+                outgoing_direction - incoming_direction,
+                f"BUNDLE_{current_sector}_{layer} Mirror {mirror_index} normal",
+            )
+
+            applied_scale = min(
+                1.0,
+                MAX_IDEAL_RAY_MIRROR_SHIFT_M / max(requested_shift_length, 1e-15),
+            )
+            # Keep the old vertical chief ray inside the rotated mirror disk.
+            # Its intersection offset in the mirror plane scales linearly with
+            # the requested translation. Half a radius leaves sampling margin.
+            if (
+                requested_shift_length > MAX_IDEAL_RAY_MIRROR_SHIFT_M
+                and abs(float(normal[2])) > 1e-12
+            ):
+                chief_ray_plane_offset_per_scale = np.array(
+                    (
+                        -float(requested_shift[0]),
+                        -float(requested_shift[1]),
+                        float(
+                            (normal[0] * requested_shift[0] + normal[1] * requested_shift[1])
+                            / normal[2]
+                        ),
+                    ),
+                    dtype=float,
+                )
+                chief_ray_offset_length = float(
+                    np.linalg.norm(chief_ray_plane_offset_per_scale)
+                )
+                if chief_ray_offset_length > 1e-15:
+                    applied_scale = min(
+                        applied_scale,
+                        0.5 * float(item["radius"]) / chief_ray_offset_length,
+                    )
+            applied_shift = requested_shift * applied_scale
+            new_center = center + applied_shift
+
+            item["center"] = tuple(float(value) for value in new_center)
+            item["normal"] = tuple(float(value) for value in normal)
+            item["in_plane_reference"] = _mirror_reference_for_normal(item, normal)
+            item["target_ideal_ray_point"] = tuple(float(value) for value in point)
+            item["target_ideal_ray_direction"] = tuple(
+                float(value) for value in outgoing_direction
+            )
+            item["ideal_ray_requested_shift_m"] = requested_shift_length
+            item["ideal_ray_applied_shift_m"] = float(np.linalg.norm(applied_shift))
+            item["ideal_ray_applied_shift"] = tuple(
+                float(value) for value in applied_shift
+            )
+            if "reconstructed_points" in item:
+                item["reconstructed_points"] = [
+                    tuple(
+                        float(value)
+                        for value in (np.asarray(corner, dtype=float) + applied_shift)
+                    )
+                    for corner in item["reconstructed_points"]
+                ]
+
+    expected_keys = {
+        (sector, layer, mirror_index)
+        for sector in range(1, 5)
+        for layer in range(1, 5)
+        for mirror_index in range(1, 8)
+    }
+    if seen_keys != expected_keys:
+        missing = sorted(expected_keys - seen_keys)
+        extra = sorted(seen_keys - expected_keys)
+        raise ValueError(f"Ideal-ray mirror mapping mismatch; missing={missing}, extra={extra}")
+
+
+_orient_selected_bundle_mirrors_from_ideal_rays(IDEAL_RAY_EQUATIONS_PATH)
+
+
+# The reconstructed four-point contours describe 1 x 1 mm micromirrors.  For
+# collision checks each one is enclosed by its physical 0.5 mm-radius cylinder
+# (the larger BUNDLE_1_1_RADIUS_M is only the circumscribed tracing disk).
+MICROMIRROR_CYLINDER_RADIUS_M = 0.5e-3
+MICROMIRROR_CYLINDER_CLEARANCE_M = 1e-9
+MAX_HEX_FIT_MIRROR_SHIFT_M = 2e-3
+MAX_HEX_FIT_RAY_SHIFT_M = 2e-3
+
+
+def _best_rigid_six_petal_target(current_centers: np.ndarray) -> np.ndarray:
+    """Rigidly align the original seven-mirror pattern to one current bundle."""
+    template = np.asarray(
+        [item["center"] for item in _BUNDLE_1_1_BASE_DATA],
+        dtype=float,
+    )
+    template -= np.mean(template, axis=0)
+    centered_current = current_centers - np.mean(current_centers, axis=0)
+    u, _, vt = np.linalg.svd(template.T @ centered_current)
+    rotation = vt.T @ u.T
+    return template @ rotation.T + np.mean(current_centers, axis=0)
+
+
+def _fit_bundle_to_six_petal(
+    sector: int,
+    layer: int,
+    bundle_data: List[Dict[str, object]],
+) -> None:
+    """Make one bundle as six-petal-like as possible under hard tolerances."""
+    current_centers_m = np.asarray(
+        [item["center"] for item in bundle_data],
+        dtype=float,
+    )
+    original_centers_m = np.asarray(
+        [
+            np.asarray(item["center"], dtype=float)
+            - np.asarray(item.get("ideal_ray_applied_shift", (0.0, 0.0, 0.0)), dtype=float)
+            for item in bundle_data
+        ],
+        dtype=float,
+    )
+    target_centers_m = _best_rigid_six_petal_target(current_centers_m)
+
+    # Millimetres keep the SLSQP objective and constraints well scaled.
+    current_centers_mm = current_centers_m * 1e3
+    original_centers_mm = original_centers_m * 1e3
+    target_centers_mm = target_centers_m * 1e3
+    max_mirror_shift_mm = MAX_HEX_FIT_MIRROR_SHIFT_M * 1e3
+    minimum_center_distance_mm = (
+        2.0 * MICROMIRROR_CYLINDER_RADIUS_M
+        + MICROMIRROR_CYLINDER_CLEARANCE_M
+    ) * 1e3
+
+    def centers_from_flat(flat_centers: np.ndarray) -> np.ndarray:
+        return np.asarray(flat_centers, dtype=float).reshape(7, 3)
+
+    def objective(flat_centers: np.ndarray) -> float:
+        difference = centers_from_flat(flat_centers) - target_centers_mm
+        return float(np.sum(difference * difference))
+
+    constraints: List[Dict[str, object]] = []
+    for mirror_index in range(7):
+        constraints.append(
+            {
+                "type": "ineq",
+                "fun": lambda flat, idx=mirror_index: (
+                    max_mirror_shift_mm**2
+                    - float(
+                        np.sum(
+                            (centers_from_flat(flat)[idx] - original_centers_mm[idx])
+                            ** 2
+                        )
+                    )
+                ),
+            }
+        )
+
+        item = bundle_data[mirror_index]
+        if "target_ideal_ray_direction" in item:
+            ray_direction = _unit_ideal_ray_vector(
+                item["target_ideal_ray_direction"],
+                f"BUNDLE_{sector}_{layer} Mirror {mirror_index + 1} ray",
+            )
+            constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda flat, idx=mirror_index, direction=ray_direction: (
+                        (MAX_HEX_FIT_RAY_SHIFT_M * 1e3) ** 2
+                        - float(
+                            np.sum(
+                                (
+                                    (centers_from_flat(flat)[idx] - current_centers_mm[idx])
+                                    - direction
+                                    * float(
+                                        np.dot(
+                                            centers_from_flat(flat)[idx]
+                                            - current_centers_mm[idx],
+                                            direction,
+                                        )
+                                    )
+                                )
+                                ** 2
+                            )
+                        )
+                    ),
+                }
+            )
+
+    for first_index in range(7):
+        for second_index in range(first_index + 1, 7):
+            constraints.append(
+                {
+                    "type": "ineq",
+                    "fun": lambda flat, first=first_index, second=second_index: (
+                        float(
+                            np.sum(
+                                (
+                                    centers_from_flat(flat)[first]
+                                    - centers_from_flat(flat)[second]
+                                )
+                                ** 2
+                            )
+                        )
+                        - minimum_center_distance_mm**2
+                    ),
+                }
+            )
+
+    result = minimize(
+        objective,
+        current_centers_mm.reshape(-1),
+        method="SLSQP",
+        constraints=constraints,
+        options={"ftol": 1e-12, "maxiter": 1000},
+    )
+    if not result.success:
+        raise RuntimeError(
+            f"Six-petal fit failed for BUNDLE_{sector}_{layer}: {result.message}"
+        )
+
+    fitted_centers_m = centers_from_flat(result.x) * 1e-3
+    for item, original_center, old_center, new_center, target_center in zip(
+        bundle_data,
+        original_centers_m,
+        current_centers_m,
+        fitted_centers_m,
+        target_centers_m,
+    ):
+        shift = new_center - old_center
+        total_shift = new_center - original_center
+        item["center"] = tuple(float(value) for value in new_center)
+        item["hex_fit_original_center"] = tuple(
+            float(value) for value in original_center
+        )
+        item["hex_fit_target_center"] = tuple(float(value) for value in target_center)
+        item["hex_fit_adjustment_m"] = float(np.linalg.norm(shift))
+        item["hex_fit_shift_m"] = float(np.linalg.norm(total_shift))
+        if "target_ideal_ray_direction" in item:
+            direction = np.asarray(item["target_ideal_ray_direction"], dtype=float)
+            transverse_shift = shift - direction * float(np.dot(shift, direction))
+            item["hex_fit_ray_shift_m"] = float(np.linalg.norm(transverse_shift))
+        if "reconstructed_points" in item:
+            item["reconstructed_points"] = [
+                tuple(
+                    float(value)
+                    for value in (np.asarray(corner, dtype=float) + shift)
+                )
+                for corner in item["reconstructed_points"]
+            ]
+
+
+def _validate_six_petal_constraints() -> None:
+    minimum_distance = (
+        2.0 * MICROMIRROR_CYLINDER_RADIUS_M
+        + MICROMIRROR_CYLINDER_CLEARANCE_M
+    )
+    tolerance = 1e-8
+    all_micromirrors: List[tuple[str, np.ndarray]] = []
+    for sector in range(1, 5):
+        for layer in range(1, 5):
+            bundle_data = globals()[f"BUNDLE_{sector}_{layer}_DATA"]
+            centers = np.asarray([item["center"] for item in bundle_data], dtype=float)
+            for mirror_index, item in enumerate(bundle_data, start=1):
+                all_micromirrors.append(
+                    (f"BUNDLE_{sector}_{layer} Mirror {mirror_index}", centers[mirror_index - 1])
+                )
+                if float(item["hex_fit_shift_m"]) > MAX_HEX_FIT_MIRROR_SHIFT_M + tolerance:
+                    raise RuntimeError(
+                        f"BUNDLE_{sector}_{layer} Mirror {mirror_index} exceeds "
+                        "the 2 mm position tolerance."
+                    )
+                if float(item.get("hex_fit_ray_shift_m", 0.0)) > MAX_HEX_FIT_RAY_SHIFT_M + tolerance:
+                    raise RuntimeError(
+                        f"BUNDLE_{sector}_{layer} Mirror {mirror_index} exceeds "
+                        "the 2 mm reflected-ray tolerance."
+                    )
+    for first_index in range(len(all_micromirrors)):
+        first_name, first_center = all_micromirrors[first_index]
+        for second_index in range(first_index + 1, len(all_micromirrors)):
+            second_name, second_center = all_micromirrors[second_index]
+            distance = float(np.linalg.norm(first_center - second_center))
+            if distance + tolerance < minimum_distance:
+                raise RuntimeError(
+                    f"Micromirror cylinders intersect: {first_name} and {second_name}."
+                )
+
+    # All bundle envelopes are parallel to Z in this model.  Two finite
+    # cylinders intersect only when both their XY disks and Z intervals overlap.
+    bundle_cylinders = [globals()[f"CYLINDRICAL_SURFACE_{idx}"] for idx in range(1, 17)]
+    for first_index in range(len(bundle_cylinders)):
+        first = bundle_cylinders[first_index]
+        first_center = np.asarray(first.center, dtype=float)
+        for second_index in range(first_index + 1, len(bundle_cylinders)):
+            second = bundle_cylinders[second_index]
+            second_center = np.asarray(second.center, dtype=float)
+            xy_distance = float(np.linalg.norm(first_center[:2] - second_center[:2]))
+            z_distance = abs(float(first_center[2] - second_center[2]))
+            radial_overlap = xy_distance + tolerance < float(first.radius + second.radius)
+            axial_overlap = z_distance + tolerance < 0.5 * float(first.length + second.length)
+            if radial_overlap and axial_overlap:
+                raise RuntimeError(
+                    f"Bundle cylinders intersect: {first.name} and {second.name}."
+                )
+
+
+for _hex_sector in range(1, 5):
+    for _hex_layer in range(1, 5):
+        _fit_bundle_to_six_petal(
+            _hex_sector,
+            _hex_layer,
+            globals()[f"BUNDLE_{_hex_sector}_{_hex_layer}_DATA"],
+        )
+
+_sync_cylindrical_surfaces_to_bundle_centers()
+_validate_six_petal_constraints()
 
 
 def _normalized_vector(vector: Iterable[float]) -> np.ndarray:
