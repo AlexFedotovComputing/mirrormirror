@@ -28,7 +28,7 @@ from vizual import (
 
 INTEGRATION_TIME_S = 50e-9
 BEAM_RADIAL_POSITIONS = 55
-INITIAL_RAY_COUNT = 10000
+INITIAL_RAY_COUNT = 20000
 BEAM_CUTOFF_RATIO = 1.0
 # Limits the number of secondary-ray generations via RayTracer.max_interactions.
 MAX_SECONDARY_RAY_GENERATIONS = 20
@@ -737,7 +737,7 @@ PRISM_1 = TriangularPrism(
     name="Prism_72_5deg",
     center=(0.3112809928, 0.09698887063, 0.025),
     normal=(0.0, 0.0, 1.0),
-    in_plane_reference=(0.3007058, -0.95371695, 0.0),
+    in_plane_reference=(0.26723837659979455, -0.9636304524781525, 0.0),
     vertices_2d=[
         (-0.026644999988928504, -0.013362922497475945),
         (0.02664499999877028, -0.013362922497475945),
