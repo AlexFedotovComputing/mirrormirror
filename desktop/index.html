@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; worker-src blob:; object-src 'none'; base-uri 'none'">
+  <title>MirrorLab · Конфигурация зеркал</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="../node_modules/plotly.js-dist-min/plotly.min.js"></script>
+  <script defer src="renderer.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">M<span>↗</span></span><div>MirrorLab<small>ЛАЗЕРНАЯ СИСТЕМА</small></div></div>
+    <p class="nav-label">РАБОЧАЯ ОБЛАСТЬ</p>
+    <nav aria-label="Модули приложения">
+      <button class="nav-button active" data-tab="static" aria-current="page" title="Статическая конфигурация"><span class="nav-icon">◈</span><span class="nav-text">Статическая конфигурация</span></button>
+      <button class="nav-button" data-tab="dynamic" title="Динамический анализ"><span class="nav-icon">⌁</span><span class="nav-text">Динамический анализ</span></button>
+      <button class="nav-button" data-tab="distributions" title="Распределения"><span class="nav-icon">▥</span><span class="nav-text">Распределения</span></button>
+    </nav>
+    <div class="sidebar-note"><span class="status-dot"></span><span id="connection-label">Подключение к расчёту…</span></div>
+    <div class="coordinate-note"><strong>Геодезические XYZ · метры</strong><p>WEST = «+» · EAST = «−»<br>Центральная плоскость объёма: z = 0.</p></div>
+    <div class="sidebar-footer">Геометрическая оптика<span>Python + Plotly</span></div>
+  </aside>
+
+  <main>
+    <header class="topbar"><span>Конфигурация зеркал / <b id="breadcrumb">Статика</b></span><div class="side-labels" aria-label="Стороны системы"><span>WEST +</span><span>EAST −</span></div></header>
+    <div id="notice" class="notice" role="status" hidden></div>
+
+    <section id="static-panel" class="panel">
+      <h1 class="sr-only">Статическая конфигурация</h1>
+
+      <div class="workspace">
+        <div class="controls-column">
+          <form id="trace-form" class="card control-card">
+            <div class="card-heading"><h2>Параметры расчёта</h2></div>
+            <fieldset id="controls">
+              <label for="direction">Сторона ввода</label>
+              <select id="direction"><option value="both">Обе стороны: WEST и EAST</option><option value="east_to_west">WEST +</option><option value="west_to_east">EAST −</option></select>
+              <label for="kind">Конфигурация</label>
+              <select id="kind"><option value="ideal">Идеальная</option><option value="real">Реальная</option></select>
+              <label for="collision-mode">Поиск пересечений</label>
+              <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
+              <div class="input-pair"><div><label for="ray-count">Лучей на лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div><div><label for="max-interactions">Взаимодействий</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required></div></div>
+              <button id="run" type="submit" class="primary-button"><span>Построить конфигурацию</span><span>↗</span></button>
+            </fieldset>
+            <button id="cancel" type="button" class="secondary-button full-width" hidden>Остановить расчёт</button>
+            <div id="run-status" class="sr-only" aria-live="polite">Готово к построению</div>
+          </form>
+          <section id="calibration-card" class="card calibration-card" hidden>
+            <div class="card-heading"><h2>Геодезические измерения</h2><span class="step">02</span></div>
+            <button id="calibrate" class="secondary-button full-width">Восстановить по измерениям</button>
+          </section>
+        </div>
+
+        <div class="result-column">
+          <div id="side-status" class="side-status" aria-label="Стороны и дополнительные экраны" aria-live="polite"></div>
+          <section class="card scene-card">
+            <div class="scene-toolbar"><div><span class="status-dot"></span><h2>Оптическая сцена</h2><span id="scene-label" class="muted">3D</span></div><div><button id="scene-extent" class="text-button" disabled>Вся схема</button><button id="reset-camera" class="text-button" disabled>Сбросить вид ↺</button></div></div>
+            <div class="plot-container"><div id="scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true">╱<span>───</span>╱</div><h3>Сцена готова к построению</h3><p>Выберите направление и конфигурацию.<br>После расчёта здесь появятся оптика и лучи.</p></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong><span>Расчёт выполняется в Python</span></div></div>
+            <div class="scene-footer"><span>Вращение: мышь · масштаб: колесо</span><span>Переключайте слои в легенде Plotly</span></div>
+          </section>
+          <div id="metrics" class="metrics" aria-live="polite"></div>
+          <section id="result-details" class="card details-card" hidden><div class="card-heading"><h2>Результат расчёта</h2><span id="result-direction" class="muted"></span></div><div id="result-notes"></div><details><summary>Параметры и численные результаты</summary><pre id="result-json"></pre></details></section>
+          <section id="calibration-result" class="card details-card" hidden><div class="card-heading"><h2>Восстановление по измерениям</h2><span class="tag">Отчёт</span></div><div id="measurement-sides" class="measurement-sides" aria-label="Сторона измерений"></div><div id="calibration-summary"></div><div id="measurement-figure" hidden><h3 class="measurement-heading">Геодезическая система координат</h3><p>Измеренные точки и восстановленные лучи · координаты в метрах</p><div id="measurement-plot"></div></div><div id="calibration-table" class="table-wrap"></div><details><summary>Преобразования, уравнения и исходные данные</summary><pre id="calibration-json"></pre></details></section>
+        </div>
+      </div>
+    </section>
+
+    <section id="dynamic-panel" class="panel" hidden>
+      <div class="page-heading"><div><div class="eyebrow">ИЗМЕНЕНИЕ КОНФИГУРАЦИИ</div><h1>Динамический анализ</h1><p>Интерфейс будущего модуля интерактивной и алгоритмической юстировки.</p></div><span class="planned">Запланировано</span></div>
+      <div class="card stub-intro"><div class="stub-symbol">⌁</div><h2>От начального состояния — к управлению оптикой</h2><p>Модуль будет принимать статическую конфигурацию, изменять положения и углы зеркал, пересчитывать траектории и оценивать целевую функцию.</p><div class="stub-flow"><span>Конфигурация</span><b>→</b><span>Углы и смещения</span><b>→</b><span>Трассировка</span><b>→</b><span>Критерий юстировки</span></div></div>
+      <h2 class="section-title">Варианты расчётного сервера</h2>
+      <div class="server-options"><article class="card"><span class="tag">Базовый вариант</span><h3>Локальный Python</h3><p>Текущий отдельный процесс. Удобен для одного рабочего места; Electron передаёт команды через стандартные потоки.</p></article><article class="card"><span class="tag">Интерактивный режим</span><h3>FastAPI + WebSocket</h3><p>Общий API для рабочего места и браузера. WebSocket передаёт прогресс, изменения параметров и промежуточные результаты.</p></article><article class="card"><span class="tag">Длительная оптимизация</span><h3>FastAPI + очередь задач</h3><p>Отдельные расчётные процессы и очередь Celery или RQ для многозапусковой оптимизации и работы нескольких пользователей.</p></article></div>
+      <p class="stub-footnote">Модуль пока не выполняет изменения зеркал. Выбор сервера будет зависеть от длительности расчёта и числа одновременных пользователей.</p>
+    </section>
+
+    <section id="distributions-panel" class="panel" hidden>
+      <div class="page-heading"><div><div class="eyebrow">АНАЛИЗ РЕЗУЛЬТАТОВ</div><h1>Распределения</h1><p>Точка входа для отдельного модуля визуализации и постобработки.</p></div><span class="planned">Запланировано</span></div>
+      <div class="card stub-intro"><div class="stub-symbol">▥</div><h2>Карты распределений и характеристики пучков</h2><p>Модуль сможет открываться отдельно или получать результат статического и динамического анализа: пересечения, мощности лучей и параметры экранов.</p><div class="stub-flow"><span>Результат расчёта / файл</span><b>→</b><span>Постобработка</span><b>→</b><span>Plotly-визуализация</span></div></div>
+      <div class="server-options"><article class="card"><h3>Экраны</h3><p>Двумерные распределения, развёртки цилиндрических экранов и сравнение измеренных и расчётных точек.</p></article><article class="card"><h3>Характеристики пучков</h3><p>Центры пятен, пространственный разброс, мощность и интегральные показатели для выбранных сечений.</p></article><article class="card"><h3>Постобработка</h3><p>Фильтрация, нормировка, группировка по микросборкам и экспорт обработанных результатов.</p></article></div>
+      <p class="stub-footnote">Здесь пока нет процедур постобработки. Текущую трёхмерную сцену и численные результаты можно просмотреть в статической конфигурации.</p>
+      <button class="secondary-button" data-tab="static">Вернуться к статической конфигурации ↗</button>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,88 @@
+         44366117 function calls (43423661 primitive calls) in 35.633 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1408 to 80 due to restriction <80>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   35.637   35.637 из+к-_оптимизация.py:1186(main)
+       53    0.194    0.004   21.556    0.407 benchmark_performance.py:103(wrapper)
+        1    0.000    0.000   14.023   14.023 benchmark_performance.py:179(trace_wrapper)
+        1    0.154    0.154   14.023   14.023 raytrace.py:1860(trace)
+        2    0.083    0.042   13.631    6.815 из+к-_оптимизация.py:1166(write_csv)
+       19    0.004    0.000   12.577    0.662 benchmark_performance.py:151(find_wrapper)
+       19    0.543    0.029   12.573    0.662 raytrace.py:1509(find_nearest)
+     3477    3.787    0.001   11.800    0.003 raytrace.py:702(intersect)
+        2    0.000    0.000   11.433    5.717 csv.py:228(writerows)
+        2    7.485    3.742   11.433    5.717 {method 'writerows' of '_csv.writer' objects}
+    17083    3.444    0.000    8.130    0.000 raytrace.py:78(dot)
+    26332    0.034    0.000    4.933    0.000 fromnumeric.py:2304(sum)
+    26335    0.047    0.000    4.892    0.000 fromnumeric.py:66(_wrapreduction)
+    26335    4.840    0.000    4.840    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+        1    0.578    0.578    4.296    4.296 vizual.py:2703(write_plotly_trajectories)
+ 11182575    2.040    0.000    3.118    0.000 csv.py:223(<genexpr>)
+        1    0.045    0.045    2.508    2.508 из+к-_оптимизация.py:843(emit_initial_rays)
+       28    1.474    0.053    2.460    0.088 raytrace.py:1587(emit)
+   668105    1.876    0.000    1.876    0.000 из+к-_оптимизация.py:1119(flatten_segment_blocks)
+      158    0.002    0.000    1.652    0.010 _figure.py:13953(add_scatter3d)
+29516/20256    0.007    0.000    1.397    0.000 basedatatypes.py:4397(_set_property)
+29516/20256    0.009    0.000    1.392    0.000 basedatatypes.py:389(_set_property_provided_value)
+4210/3109    0.010    0.000    1.391    0.000 basedatatypes.py:4870(__setitem__)
+      316    0.005    0.000    1.390    0.004 _scatter3d.py:1621(__init__)
+     3656    0.008    0.000    1.319    0.000 basedatatypes.py:5243(_set_prop)
+355102/1303    0.531    0.000    1.261    0.001 basevalidators.py:41(to_scalar_or_list)
+ 11924079    1.244    0.000    1.244    0.000 {method 'get' of 'dict' objects}
+     1128    0.001    0.000    1.240    0.001 basevalidators.py:416(validate_coerce)
+  1359326    0.462    0.000    1.143    0.000 {built-in method builtins.any}
+      173    0.000    0.000    0.985    0.006 _figure.py:268(add_trace)
+      173    0.000    0.000    0.985    0.006 basedatatypes.py:2024(add_trace)
+      173    0.000    0.000    0.984    0.006 _figure.py:345(add_traces)
+      173    0.002    0.000    0.984    0.006 basedatatypes.py:2131(add_traces)
+        1    0.001    0.001    0.906    0.906 из+к-_оптимизация.py:1016(_add_mirror_angle_controls)
+        1    0.000    0.000    0.884    0.884 _local.py:539(read_text)
+        1    0.000    0.000    0.884    0.884 _abc.py:628(read_text)
+        6    0.879    0.147    0.879    0.147 {built-in method _io.open}
+        5    0.000    0.000    0.879    0.176 _local.py:529(open)
+   745505    0.746    0.000    0.831    0.000 csv.py:217(_dict_to_list)
+      174    0.002    0.000    0.730    0.004 basevalidators.py:2632(validate_coerce)
+      141    0.001    0.000    0.680    0.005 {method 'update' of 'set' objects}
+     8132    0.192    0.000    0.678    0.000 vizual.py:2778(<genexpr>)
+     1706    0.016    0.000    0.649    0.000 raytrace.py:234(__post_init__)
+      753    0.001    0.000    0.564    0.001 benchmark_performance.py:196(subset_wrapper)
+      753    0.221    0.000    0.562    0.001 raytrace.py:300(subset)
+       84    0.481    0.006    0.553    0.007 shape_base.py:378(stack)
+380781/942    0.252    0.000    0.524    0.001 copy.py:119(deepcopy)
+2254/1109    0.007    0.000    0.518    0.000 copy.py:218(_deepcopy_dict)
+ 1403/656    0.096    0.000    0.484    0.001 copy.py:192(_deepcopy_list)
+     1963    0.102    0.000    0.475    0.000 raytrace.py:132(project_to_transverse)
+        1    0.000    0.000    0.473    0.473 basedatatypes.py:3608(write_html)
+        1    0.001    0.001    0.470    0.470 _html.py:352(write_html)
+        1    0.000    0.000    0.455    0.455 _html.py:35(to_html)
+      241    0.001    0.000    0.453    0.002 benchmark_performance.py:165(interact_wrapper)
+      241    0.011    0.000    0.451    0.002 raytrace.py:457(interact)
+     6742    0.163    0.000    0.446    0.000 raytrace.py:93(normalize)
+     9161    0.115    0.000    0.391    0.000 raytrace.py:84(norm)
+  1996208    0.261    0.000    0.382    0.000 vizual.py:2742(<genexpr>)
+        1    0.000    0.000    0.381    0.381 _utils.py:8(validate_coerce_fig_to_dict)
+        1    0.000    0.000    0.381    0.381 basedatatypes.py:3293(to_dict)
+      216    0.047    0.000    0.356    0.002 raytrace.py:560(_refract_like)
+  1336208    0.233    0.000    0.294    0.000 vizual.py:2781(<genexpr>)
+   720950    0.154    0.000    0.240    0.000 optional_imports.py:14(get_module)
+   357036    0.136    0.000    0.238    0.000 numeric.py:1975(isscalar)
+  2425573    0.235    0.000    0.235    0.000 {method 'append' of 'list' objects}
+  1804680    0.194    0.000    0.234    0.000 {built-in method builtins.isinstance}
+    77400    0.225    0.000    0.225    0.000 из+к-_оптимизация.py:1143(flatten_detector_hits)
+  2038300    0.187    0.000    0.187    0.000 {method 'startswith' of 'str' objects}
+   358806    0.105    0.000    0.165    0.000 basevalidators.py:182(is_numpy_convertable)
+       19    0.075    0.004    0.163    0.009 raytrace.py:819(intersect)
+ 179852/1    0.089    0.000    0.140    0.140 utils.py:103(convert_to_base64)
+  860/775    0.001    0.000    0.134    0.000 <frozen importlib._bootstrap>:1349(_find_and_load)
+   125/42    0.001    0.000    0.131    0.003 <frozen importlib._bootstrap>:1304(_find_and_load_unlocked)
+  773/771    0.001    0.000    0.127    0.000 __init__.py:71(import_module)
+  773/771    0.001    0.000    0.126    0.000 <frozen importlib._bootstrap>:1375(_gcd_import)
+      216    0.002    0.000    0.125    0.001 raytrace.py:644(_polarization_frames)
+  752/721    0.001    0.000    0.122    0.000 importers.py:23(__getattr__)
+   122/41    0.000    0.000    0.120    0.003 <frozen importlib._bootstrap>:911(_load_unlocked)
+   118/41    0.000    0.000    0.118    0.003 <frozen importlib._bootstrap_external>:1017(exec_module)
+35813/33181    0.008    0.000    0.112    0.000 {built-in method builtins.getattr}
+
+

@@ -1,124 +1,133 @@
-# COMSOL-like ray tracing on Python
+﻿# MirrorLab
 
-This is a compact primitive-based ray-tracing framework intended as a practical replacement for a COMSOL Geometrical Optics model when you want:
+Локальное Electron-приложение для анализа начальной конфигурации зеркал.
+Python рассчитывает геометрическую оптику, Plotly показывает траектории,
+поверхности и результаты обработки геодезических измерений.
 
-- explicit OOP assembly of an optical scheme,
-- simple scene compilation,
-- Gaussian-beam launch with a COMSOL-like hexapolar grid,
-- mirrors, refractive interfaces, semi-transparent mirrors, windows, detectors and beam dumps,
-- one code path for CPU (`numpy`) and optional GPU (`cupy`).
+## Запуск
 
-## What is implemented
+Нужны Python 3.11+ и Node.js 22.12+ (LTS). Из корня проекта:
 
-### Source
-- `GaussianBeamSource`
-  - waist position,
-  - beam axis,
-  - waist radius,
-  - peak intensity,
-  - wavelength,
-  - polarization reference direction,
-  - hexapolar grid with `1 + 6 * sum(k)` points,
-  - per-ray intensity and power weights.
-
-### Geometry primitives
-- `PlaneSurface`
-  - rectangle,
-  - disk,
-  - infinite plane.
-- `SphericalCapSurface`
-- `CylinderSurface`
-
-### Optical elements
-- `PlaneMirror`
-- `SemiTransparentMirror`
-- `Window`
-- `SphericalLens`
-- `Detector`
-- `BeamDump`
-
-### Physics
-- specular reflection,
-- Snell refraction,
-- optional Fresnel power coefficients,
-- user-defined 50/50 splitting,
-- transmit-only or absorb-only boundaries,
-- ray branching.
-
-## Installation
-
-Minimum:
-
-```bash
-pip install numpy
+```powershell
+python -m pip install -r requirements.txt
+npm install
+npm start
 ```
 
-Optional:
+На текущем рабочем месте зависимости установлены. Для запуска одной кнопкой
+откройте `run.py` и нажмите Run в IDE, либо выполните `python run.py`.
+Скрипт работает из любой текущей папки и использует выбранный в IDE Python
+для расчётов. Проверка без открытия окна: `python run.py --check`.
 
-```bash
-pip install matplotlib plotly
-# and a matching CuPy build for your CUDA installation
+Альтернативный запуск: `./Start-MirrorLab.ps1`.
+Он использует системный Node.js либо `.tools/node/node.exe`. Служебная папка
+`.tools` не входит в Git; на другом компьютере установите Node.js обычным способом.
+Если npm пропустил установочный скрипт Electron: `npm run setup:electron`.
+Python можно указать через переменную `MIRRORLAB_PYTHON`; автоматически
+обнаруживается и локальная `.venv`. Plotly работает без доступа к интернету.
+Закрытие окна и кнопка остановки завершают отдельный расчётный процесс.
+
+## Работа
+
+1. По умолчанию строятся **обе стороны — WEST и EAST** в общей сцене.
+   Можно выбрать одну сторону ввода: **WEST +** (лазер EAST → WEST, `из+к-`)
+   или **EAST −** (лазер WEST → EAST, `из-к+`).
+   Лазер и кольцо находятся на исходной стороне; микросборки вводят лучи
+   в газ на противоположной. Общая граница половин — `z=0`.
+   Сцена приведена к XYZ геодезических таблиц: положение колец восстановлено
+   по измеренным лучам и общему центру объёма. Невязка привязки показана в отчёте
+   под сценой; исходные точки включаются пунктом «Геодезические точки» в легенде.
+2. Выберите идеальную или сохранённую реальную конфигурацию и режим поиска
+   пересечений. Ускорение меняет только геометрический отбор кандидатов.
+3. Постройте сцену. 217 лучей — предварительный просмотр; 30 000 — исходная
+   рабочая плотность; максимум 50 000. Для микрозеркал проверяйте сходимость
+   по плотности сетки. Достижение лимита взаимодействий явно отмечается.
+4. В реальном режиме измерения обрабатываются автоматически при построении.
+   Доступные дополнительные экраны используются без отдельной галочки:
+   статус каждой стороны виден над сценой. Для WEST (EAST → WEST) лавсан
+   использован частично — 75 лучей, стержень 3 отклонён; для EAST данных нет.
+   Подробные отчёты переключаются кнопками WEST/EAST. График измерений находится в исходной
+   геодезической системе, рядом показаны уравнения и невязки.
+5. Сцена открывается крупным планом газового объёма и колец. «Вся схема»
+   показывает также лазеры и дальние участки лучей; «Сбросить вид» возвращает
+   крупный план. Под сценой доступны параметры, преобразования и отчёт измерений.
+   Исходные таблицы не перезаписываются.
+
+Сцена отображает до 24 000 равномерно выбранных сегментов; расчёт использует
+все заданные лучи. Число показанных сегментов входит в отчёт. Цилиндры рисуются
+каркасом, поверхности зеркал — контурами и гранями.
+В режиме двух сторон число лучей задаётся на каждый лазер, лимит отображения
+сегментов также применяется к каждому направлению отдельно. Источники
+трассируются независимо в своих сохранённых конфигурациях; их результаты
+объединяются для отображения. Попадания и мощности сохраняются раздельно по сторонам.
+
+## Воспроизведение расчёта
+
+- Четыре прежние конфигурации перенесены как воспроизводимые снимки геометрии
+  с SHA-256 исходников. Расчёт выполняется в их локальной системе; все контуры,
+  лучи, источники и попадания переводятся в общую геодезическую систему одним
+  преобразованием на сторону. Матрицы и невязки входят в экспорт JSON.
+- Архив Optimis_code содержит **оптимизацию быстродействия**, а не подбор
+  координат лавсана. Его групповой отбор поверхностей и детерминированная
+  выборка источника перенесены в новое ядро.
+- 111/112 строк `из-к+_уравнения_лучей.txt` воспроизводятся как
+  `p(s)=P1+s(P2−P1)`. У `4_1_3` направление есть в TXT, но отсутствует в XLSX.
+- Преобразование между двумя существующими таблицами восстановлено с
+  RMS 0,000410 мм. Это точность воспроизведения таблиц, не измерений.
+- Для лавсана реализован независимый подбор жёсткого поворота и переноса
+  каждого стержня по расстояниям до прямых, затем ортогональный МНК.
+  Стержни 1/2/4: RMS 2,756 / 2,198 / 2,111 мм; 75 уточнённых или восстановленных лучей.
+
+**Ограничение пункта 1б:** у стержня 3 повторяются уровни окон 3/4,
+RMS составляет 136,896 мм; результат показан, но не применяется.
+Даже после архивных разворотов секторов измеренные линии расходятся с текущими
+центрами зеркал до 66,409 мм. Поэтому импорт измерений не меняет автоматически
+сохранённую реальную геометрию. Для обновления требуется согласовать координатную
+привязку и номера микросборок. API применения зарегистрированных лучей предусмотрен.
+Формулы, источники и численные результаты: [калибровка](docs/calibration.md).
+
+## Структура
+
+| Папка | Назначение |
+| --- | --- |
+| `desktop/` | Electron, защищённый IPC, интерфейс и Plotly |
+| `mirrorlab/engine/` | Классы лучей, поверхностей, оптики, сцены, источника и трассировщика |
+| `mirrorlab/calibration/` | Импорт геодезии, уравнения, регистрация и лавсан |
+| `mirrorlab/configurations.py` | Загрузка геометрии и выборка источника |
+| `mirrorlab/service.py`, `worker.py` | Операции приложения и протокол JSON Lines |
+| `mirrorlab/plotting.py` | Фигуры Plotly из численных результатов |
+| `data/static/` | Четыре снимка исходной геометрии |
+| `legacy/` | Прежний код и копии необходимых TXT; архив в `optimis_code/` |
+| `tests/` | Новые численные, протокольные и интерфейсные проверки |
+| `tools/` | Воспроизводимый экспорт старых конфигураций |
+
+Исходные XLSX/TXT и старые HTML/CSV результатов остаются в корне.
+Пользовательские изменения файла уравнений сохранены. Старый запуск, например:
+`python legacy/из-к+_идеальная.py --no-open-plot`.
+Аудит физики, рендера и изменений: [ядро](docs/engine.md).
+
+## Заглушки и сервер динамики
+
+Распределения и динамический анализ представлены отдельными вкладками
+и интерфейсами модулей. Динамическая юстировка и постобработка пока не выполняются.
+
+Для одного рабочего места достаточно текущего Python-процесса со стандартными
+потоками. Для интерактивной многопользовательской версии предлагается
+[FastAPI + WebSocket](https://fastapi.tiangolo.com/advanced/websockets/)
+с отдельными вычислительными процессами. Для длительной оптимизации — тот же
+API и очередь [Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html)
+на Linux с Redis/RabbitMQ. Celery не поддерживает Windows как рабочую платформу.
+Тяжёлую трассировку следует выполнять вне цикла обработки WebSocket.
+
+## Проверки
+
+```powershell
+python -m unittest discover -s tests -p 'test_*.py' -v
+npm run test:desktop
+npm run test:ui
 ```
 
-## Quick start
-
-```python
-from raytrace import GaussianBeamSource, RayTracer, build_demo_scene
-
-source = GaussianBeamSource(
-    waist_position=(-0.34448, -0.80321, 3.3199),
-    axis=(0.0, 0.0, -1.0),
-    waist_radius=0.01,
-    peak_intensity=8.49e10,
-    wavelength_m=266e-9,
-    polarization_reference=(0.0, 1.0, 0.0),
-    radial_positions=15,
-    cutoff_ratio=1.0,
-    n_medium=1.0,
-    backend="numpy",
-)
-
-scene = build_demo_scene(n_glass=1.50)  # placeholder value
-tracer = RayTracer(scene=scene, backend="numpy", max_interactions=8)
-result = tracer.trace(source.emit())
-
-print(result.detector_power_summary())
-```
-
-## Demo script
-
-```bash
-python example_comsol_like.py --backend numpy
-```
-
-This writes:
-
-- `segments.csv`
-- `detector_hits.csv`
-- `trajectories.html`
-
-By default the demo also opens the saved Plotly file in your browser.
-
-## Notes
-
-- The scene in `build_demo_scene()` is only a clean primitive-based demonstration.
-- It is **not** the imported SAT geometry.
-- The report does not contain enough information to reconstruct every surface automatically with exact labels and material tables, so the intended workflow is to build the optical scheme directly in code from primitives.
-- For the uploaded COMSOL report, the source settings already match the exported Gaussian beam: waist position `(-0.34448, -0.80321, 3.3199) m`, axis `(0, 0, -1)`, `w0 = 10 mm`, 15 radial positions and 721 total rays, peak intensity `8.49e10 W/m^2`, polarization reference `(0, 1, 0)`.
-- `SemiTransparentMirror` accepts `reflectance`, `transmittance`, and an optional `refractive_index` convenience alias for `n_plus` (the side pointed to by the surface normal).
-
-## Limitations of this first version
-
-- no imported CAD/mesh intersections,
-- no BVH or triangle-mesh accelerator yet,
-- no full Stokes/Jones phase tracking,
-- no wave optics,
-- no exact COMSOL parametric-sweep recreation,
-- material dispersion must be supplied by the user.
-
-## Recommended next steps
-
-1. Replace placeholder refractive indices by your measured or tabulated values.
-2. Translate the main optical bench into primitives directly in Python.
-3. Validate each arm against COMSOL one subsystem at a time.
-4. Only after profiling, move hot kernels to a native extension if needed.
+Последняя команда запускает настоящее скрытое окно Electron через Playwright:
+Plotly, обе стороны, геодезия, лавсан, заглушки и перезапуск рабочего процесса.
+Снимки сохраняются в игнорируемую `artifacts/ui/`. Проверен NumPy;
+CuPy сохранён как необязательный backend ядра, CUDA здесь не проверялась.

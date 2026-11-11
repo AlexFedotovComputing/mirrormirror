@@ -1,0 +1,8 @@
+numpy
+scipy
+matplotlib
+plotly
+
+# Optional GPU backend: install the CuPy build matching your CUDA version.
+# Example:
+# cupy-cuda12x

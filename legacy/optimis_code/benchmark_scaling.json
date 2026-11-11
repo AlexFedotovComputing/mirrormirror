@@ -1,0 +1,68 @@
+{
+  "ray_scaling_full_trace": [
+    {
+      "initial_rays": 5000,
+      "trace_seconds": 3.049921700032428,
+      "segment_rows": 166978,
+      "detector_rows": 19360
+    },
+    {
+      "initial_rays": 10000,
+      "trace_seconds": 6.249344199895859,
+      "segment_rows": 334028,
+      "detector_rows": 38703
+    },
+    {
+      "initial_rays": 20000,
+      "trace_seconds": 13.726500399876386,
+      "segment_rows": 668104,
+      "detector_rows": 77399
+    }
+  ],
+  "surface_scaling_single_find_nearest": [
+    {
+      "rays": 20000,
+      "surfaces": 46,
+      "seconds_samples": [
+        0.07554570003412664,
+        0.07829020009376109,
+        0.07564770011231303
+      ],
+      "seconds_min": 0.07554570003412664,
+      "ray_surface_tests": 920000
+    },
+    {
+      "rays": 20000,
+      "surfaces": 92,
+      "seconds_samples": [
+        0.16268600011244416,
+        0.15839489991776645,
+        0.1588006999809295
+      ],
+      "seconds_min": 0.15839489991776645,
+      "ray_surface_tests": 1840000
+    },
+    {
+      "rays": 20000,
+      "surfaces": 138,
+      "seconds_samples": [
+        0.2361760998610407,
+        0.23598500015214086,
+        0.2317161001265049
+      ],
+      "seconds_min": 0.2317161001265049,
+      "ray_surface_tests": 2760000
+    },
+    {
+      "rays": 20000,
+      "surfaces": 184,
+      "seconds_samples": [
+        0.32268190011382103,
+        0.31451969989575446,
+        0.30772939999587834
+      ],
+      "seconds_min": 0.30772939999587834,
+      "ray_surface_tests": 3680000
+    }
+  ]
+}

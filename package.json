@@ -1,0 +1,21 @@
+{
+  "name": "mirrorlab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static laser mirror configuration analysis with Python and Plotly",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "start": "node desktop/launch.cjs",
+    "setup:electron": "node node_modules/electron/install.js",
+    "test:desktop": "node --test tests/desktop.test.cjs",
+    "test:ui": "node tests/electron_smoke.cjs"
+  },
+  "devDependencies": {
+    "electron": "^45.3.0",
+    "playwright-core": "^1.65.0"
+  },
+  "dependencies": {
+    "plotly.js-dist-min": "^3.3.0"
+  }
+}

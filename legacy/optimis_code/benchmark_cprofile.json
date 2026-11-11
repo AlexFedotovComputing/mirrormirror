@@ -1,0 +1,114 @@
+{
+  "mode": "trace",
+  "parameters": {
+    "backend": "numpy",
+    "initial_rays": 20000,
+    "max_interactions": 20,
+    "max_time_s": 5e-08,
+    "beam_radial_positions": 55,
+    "cutoff_ratio": 1.0
+  },
+  "environment": {
+    "python": "3.13.12 (tags/v3.13.12:1cbe481, Feb  3 2026, 18:22:25) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logical_cpus": 16,
+    "numpy": "2.4.3"
+  },
+  "import_seconds": 0.07650450011715293,
+  "total_seconds": 16.517755300039425,
+  "peak_working_set_bytes": 168251392,
+  "timings": {
+    "source_object": {
+      "seconds": 9.770016185939312e-05,
+      "calls": 1
+    },
+    "ray_generation": {
+      "seconds": 2.5292288998607546,
+      "calls": 1
+    },
+    "scene_build": {
+      "seconds": 0.0061350001487880945,
+      "calls": 1
+    },
+    "geometry_compile": {
+      "seconds": 0.05638700001873076,
+      "calls": 1
+    },
+    "nearest_intersections": {
+      "seconds": 12.479545199777931,
+      "calls": 19
+    },
+    "surface_interactions": {
+      "seconds": 0.4611444000620395,
+      "calls": 241
+    },
+    "trace_total": {
+      "seconds": 13.922885600011796,
+      "calls": 1
+    },
+    "result_summaries": {
+      "seconds": 0.0002463997807353735,
+      "calls": 2
+    }
+  },
+  "trace_metrics": {
+    "compiled_surfaces": 184,
+    "iterations": 19,
+    "active_rays_by_iteration": [
+      20000,
+      20000,
+      20000,
+      20000,
+      40000,
+      40000,
+      60000,
+      80000,
+      80000,
+      61890,
+      42026,
+      40514,
+      40049,
+      40003,
+      40000,
+      21779,
+      1511,
+      303,
+      29
+    ],
+    "produced_rays_by_iteration": [
+      20000,
+      20000,
+      20000,
+      40000,
+      40000,
+      60000,
+      80000,
+      80000,
+      61890,
+      42026,
+      40514,
+      40049,
+      40003,
+      40000,
+      21779,
+      1511,
+      303,
+      29,
+      0
+    ],
+    "ray_surface_intersection_tests": 122931136,
+    "final_rays": 0,
+    "segment_blocks": 28,
+    "segment_rows": 668104,
+    "detector_blocks": 12,
+    "detector_rows": 77399,
+    "subset_calls": 753,
+    "subset_input_rays": 13307732,
+    "subset_output_rays": 3317919,
+    "concat_calls": 20,
+    "concat_input_chunks": 232,
+    "to_numpy_calls": 11562,
+    "to_numpy_input_bytes": 99057614
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "implementation": "legacy_emit_initial_rays",
+  "target_count": 20000,
+  "selected_radial_positions": 82,
+  "generated_count_before_trim": 20419,
+  "n_rays": 20000,
+  "total_power": 11295153.303177167,
+  "fields": {
+    "position": {
+      "dtype": "<f8",
+      "shape": [
+        20000,
+        3
+      ],
+      "sha256": "d94aab913ea4eefd9bcfabfee0415e80b3a9d42820da59c8b71fd5c2ae696835"
+    },
+    "direction": {
+      "dtype": "<f8",
+      "shape": [
+        20000,
+        3
+      ],
+      "sha256": "6f23d77a6052e9ce519b7eaf8eaab7a999a5e40c6ef5f9e42875648dbde2ae21"
+    },
+    "power": {
+      "dtype": "<f8",
+      "shape": [
+        20000
+      ],
+      "sha256": "8d3fabe646a603d3bd7cbb16cf87b56e9066a707939fc23d49b5ff8c12f1c7f4"
+    },
+    "wavelength_m": {
+      "dtype": "<f8",
+      "shape": [
+        20000
+      ],
+      "sha256": "8fcbd3740ebac1bdcb60c9abf099ba1889dd19fccfe817aa173aad7d68eedd5c"
+    },
+    "refractive_index": {
+      "dtype": "<f8",
+      "shape": [
+        20000
+      ],
+      "sha256": "f2ecba1422688d03453ac76c5f917c3dcea29edce573a4a000e8bac86cd42c1a"
+    },
+    "polarization": {
+      "dtype": "<f8",
+      "shape": [
+        20000,
+        3
+      ],
+      "sha256": "1ce0a77a5cd984d4828045d28da924c6fe1a644055d11d6a4b7be2b644b39360"
+    },
+    "intensity": {
+      "dtype": "<f8",
+      "shape": [
+        20000
+      ],
+      "sha256": "a09cdd6900cc40ee458a095656c5e5273185ed24f2b7f4a4e59104a111cf5730"
+    },
+    "time_s": {
+      "dtype": "<f8",
+      "shape": [
+        20000
+      ],
+      "sha256": "483003bba7a388237cbc7ab0c6e3beb317431edb3cd64ca76647560c496e9819"
+    },
+    "ray_id": {
+      "dtype": "<i8",
+      "shape": [
+        20000
+      ],
+      "sha256": "e4ea277f03257db3e21fa4f1324c02df1a3b8446c7ae994001b8aa106eaf6b67"
+    },
+    "parent_id": {
+      "dtype": "<i8",
+      "shape": [
+        20000
+      ],
+      "sha256": "16057a1802fcaf0a64d7aeddcc0b7a0ecdaf95932ea726f832c1158364235c38"
+    },
+    "depth": {
+      "dtype": "<i8",
+      "shape": [
+        20000
+      ],
+      "sha256": "28a04d107f0c4cc326660fca0a02bad06002e74f01f430f013e31bb14eb5ec40"
+    },
+    "bundle_reflected": {
+      "dtype": "|b1",
+      "shape": [
+        20000
+      ],
+      "sha256": "7612c701d290cb58a00880ef86d9da7f920deb334c7eecebb3218ac62392d5bf"
+    }
+  }
+}

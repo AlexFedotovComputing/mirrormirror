@@ -1,0 +1,133 @@
+{
+  "mode": "trace",
+  "parameters": {
+    "backend": "numpy",
+    "initial_rays": 20000,
+    "max_interactions": 20,
+    "max_time_s": 5e-08,
+    "beam_radial_positions": 55,
+    "cutoff_ratio": 1.0
+  },
+  "environment": {
+    "python": "3.13.12 (tags/v3.13.12:1cbe481, Feb  3 2026, 18:22:25) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "logical_cpus": 16,
+    "numpy": "2.4.3"
+  },
+  "import_seconds": 0.12432149983942509,
+  "total_seconds": 10.411363599821925,
+  "peak_working_set_bytes": 167383040,
+  "timings": {
+    "source_object": {
+      "seconds": 0.00015320000238716602,
+      "calls": 1
+    },
+    "raybundle_subset": {
+      "seconds": 0.6930226031690836,
+      "calls": 753
+    },
+    "ray_generation": {
+      "seconds": 3.6006055001635104,
+      "calls": 1
+    },
+    "scene_build": {
+      "seconds": 0.008863599970936775,
+      "calls": 1
+    },
+    "geometry_compile": {
+      "seconds": 0.08799630007706583,
+      "calls": 1
+    },
+    "nearest_intersections": {
+      "seconds": 4.908799600088969,
+      "calls": 19
+    },
+    "bundle_boundary_checks": {
+      "seconds": 0.09262429922819138,
+      "calls": 19
+    },
+    "segment_collection": {
+      "seconds": 0.0015290991868823767,
+      "calls": 28
+    },
+    "surface_interactions": {
+      "seconds": 0.564428397687152,
+      "calls": 241
+    },
+    "raybundle_concat": {
+      "seconds": 0.10122379986569285,
+      "calls": 20
+    },
+    "trace_total": {
+      "seconds": 6.70666899997741,
+      "calls": 1
+    },
+    "result_summaries": {
+      "seconds": 0.00047009997069835663,
+      "calls": 2
+    }
+  },
+  "trace_metrics": {
+    "compiled_surfaces": 184,
+    "iterations": 19,
+    "active_rays_by_iteration": [
+      20000,
+      20000,
+      20000,
+      20000,
+      40000,
+      40000,
+      60000,
+      80000,
+      80000,
+      61890,
+      42026,
+      40514,
+      40049,
+      40003,
+      40000,
+      21779,
+      1511,
+      303,
+      29
+    ],
+    "produced_rays_by_iteration": [
+      20000,
+      20000,
+      20000,
+      40000,
+      40000,
+      60000,
+      80000,
+      80000,
+      61890,
+      42026,
+      40514,
+      40049,
+      40003,
+      40000,
+      21779,
+      1511,
+      303,
+      29,
+      0
+    ],
+    "ray_surface_intersection_tests": 15137963,
+    "exhaustive_ray_surface_intersection_tests": 122931136,
+    "bundle_ray_surface_intersection_tests": 160195,
+    "broad_phase_aabb_ray_tests": 17370704,
+    "final_rays": 0,
+    "segment_blocks": 28,
+    "segment_rows": 668104,
+    "detector_blocks": 12,
+    "detector_rows": 77399,
+    "subset_calls": 753,
+    "subset_input_rays": 13307732,
+    "subset_output_rays": 3317919,
+    "concat_calls": 20,
+    "concat_input_chunks": 232,
+    "to_numpy_calls": 11562,
+    "to_numpy_input_bytes": 99057614
+  }
+}

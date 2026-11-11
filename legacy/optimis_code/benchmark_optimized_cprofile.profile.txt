@@ -1,0 +1,88 @@
+         5344011 function calls (5330253 primitive calls) in 10.404 seconds
+
+   Ordered by: cumulative time
+   List reduced from 347 to 80 due to restriction <80>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   10.408   10.408 из+к-_оптимизация.py:1186(main)
+        1    0.000    0.000    6.707    6.707 benchmark_performance.py:221(trace_wrapper)
+        1    0.198    0.198    6.707    6.707 raytrace.py:2083(trace)
+       19    0.000    0.000    4.910    0.258 benchmark_performance.py:177(find_wrapper)
+       19    0.000    0.000    4.909    0.258 raytrace.py:1750(find_nearest)
+       19    0.166    0.009    4.909    0.258 raytrace.py:1713(find_nearest_broad_phase)
+       24    0.001    0.000    3.703    0.154 benchmark_performance.py:107(wrapper)
+        1    0.058    0.058    3.600    3.600 из+к-_оптимизация.py:843(emit_initial_rays)
+       28    2.111    0.075    3.539    0.126 raytrace.py:1806(emit)
+    27663    2.432    0.000    2.432    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+      494    1.098    0.002    2.369    0.005 raytrace.py:1617(_ray_aabb_candidates)
+      817    0.089    0.000    2.270    0.003 raytrace.py:1656(_update_nearest)
+    27169    0.049    0.000    2.267    0.000 fromnumeric.py:66(_wrapreduction)
+     3496    0.018    0.000    2.134    0.001 benchmark_performance.py:194(intersect_wrapper)
+     3477    0.607    0.000    1.930    0.001 raytrace.py:724(intersect)
+    17083    0.563    0.000    1.492    0.000 raytrace.py:78(dot)
+    26108    0.032    0.000    1.261    0.000 fromnumeric.py:2304(sum)
+      136    0.722    0.005    0.821    0.006 shape_base.py:378(stack)
+     1706    0.023    0.000    0.809    0.000 raytrace.py:234(__post_init__)
+      753    0.002    0.000    0.696    0.001 benchmark_performance.py:254(subset_wrapper)
+      753    0.271    0.000    0.691    0.001 raytrace.py:300(subset)
+     1963    0.122    0.000    0.584    0.000 raytrace.py:132(project_to_transverse)
+      241    0.001    0.000    0.565    0.002 benchmark_performance.py:207(interact_wrapper)
+      241    0.010    0.000    0.563    0.002 raytrace.py:479(interact)
+     6518    0.199    0.000    0.559    0.000 raytrace.py:93(normalize)
+      531    0.001    0.000    0.531    0.001 fromnumeric.py:3011(max)
+      530    0.001    0.000    0.516    0.001 fromnumeric.py:3149(min)
+     8937    0.142    0.000    0.494    0.000 raytrace.py:84(norm)
+      216    0.056    0.000    0.445    0.002 raytrace.py:582(_refract_like)
+  2032032    0.272    0.000    0.272    0.000 {method 'append' of 'list' objects}
+      494    0.001    0.000    0.222    0.000 fromnumeric.py:2548(all)
+      494    0.002    0.000    0.221    0.000 fromnumeric.py:86(_wrapreduction_any_all)
+       19    0.085    0.004    0.183    0.010 raytrace.py:841(intersect)
+      216    0.002    0.000    0.154    0.001 raytrace.py:666(_polarization_frames)
+       13    0.006    0.000    0.107    0.008 raytrace.py:539(_mirror)
+       20    0.000    0.000    0.101    0.005 benchmark_performance.py:269(concat_wrapper)
+       20    0.019    0.001    0.101    0.005 raytrace.py:387(concat)
+  1216570    0.099    0.000    0.099    0.000 {built-in method numpy.asanyarray}
+     1306    0.003    0.000    0.095    0.000 raytrace.py:99(cross)
+       19    0.013    0.001    0.092    0.005 raytrace.py:1960(_nearest_bundle_cylinder_clip)
+     7882    0.018    0.000    0.091    0.000 raytrace.py:146(count_nonzero)
+      232    0.003    0.000    0.090    0.000 raytrace.py:512(_with_new_state)
+     1306    0.032    0.000    0.090    0.000 numeric.py:1567(cross)
+        1    0.000    0.000    0.088    0.088 raytrace.py:1911(__post_init__)
+        1    0.000    0.000    0.088    0.088 benchmark_performance.py:157(compile_wrapper)
+        1    0.000    0.000    0.088    0.088 raytrace.py:1781(compile)
+    63789    0.068    0.000    0.087    0.000 raytrace.py:22(get_array_module)
+      241    0.001    0.000    0.081    0.000 raytrace.py:354(propagate)
+      232    0.000    0.000    0.081    0.000 raytrace.py:338(replace_ids)
+   405428    0.072    0.000    0.072    0.000 {built-in method math.cos}
+      494    0.052    0.000    0.065    0.000 raytrace.py:316(subset_preserving_values)
+   405428    0.064    0.000    0.064    0.000 {built-in method math.sin}
+   405412    0.064    0.000    0.064    0.000 {built-in method math.exp}
+    52279    0.057    0.000    0.057    0.000 {built-in method numpy.asarray}
+       18    0.039    0.002    0.055    0.003 raytrace.py:1998(consider_boundary)
+      241    0.049    0.000    0.049    0.000 raytrace.py:450(subset)
+      221    0.002    0.000    0.048    0.000 raytrace.py:105(orthonormal_basis)
+     7882    0.013    0.000    0.048    0.000 raytrace.py:58(scalar_to_python)
+     3533    0.003    0.000    0.046    0.000 _stride_tricks_impl.py:400(broadcast_to)
+        1    0.000    0.000    0.045    0.045 raytrace.py:1775(build_surfaces)
+     1919    0.025    0.000    0.045    0.000 function_base.py:27(linspace)
+     3918    0.012    0.000    0.044    0.000 numeric.py:1493(moveaxis)
+     3533    0.030    0.000    0.043    0.000 _stride_tricks_impl.py:373(_broadcast_to)
+      183    0.001    0.000    0.041    0.000 raytrace.py:694(__post_init__)
+    11562    0.011    0.000    0.041    0.000 benchmark_performance.py:282(to_numpy_wrapper)
+ 1082/706    0.004    0.000    0.038    0.000 copy.py:248(_reconstruct)
+      183    0.001    0.000    0.037    0.000 raytrace.py:713(to_backend)
+13218/212    0.016    0.000    0.035    0.000 copy.py:119(deepcopy)
+      115    0.001    0.000    0.031    0.000 raytrace.py:1152(build_surfaces)
+  588/212    0.004    0.000    0.031    0.000 copy.py:218(_deepcopy_dict)
+     3458    0.029    0.000    0.029    0.000 raytrace.py:1738(<genexpr>)
+     7836    0.017    0.000    0.027    0.000 numeric.py:1431(normalize_axis_tuple)
+    11562    0.008    0.000    0.026    0.000 raytrace.py:48(to_numpy)
+      200    0.001    0.000    0.019    0.000 raytrace.py:370(with_bundle_reflected)
+    92715    0.018    0.000    0.018    0.000 {method 'split' of 'str' objects}
+     9845    0.004    0.000    0.015    0.000 numeric.py:483(count_nonzero)
+     1033    0.012    0.000    0.015    0.000 numeric.py:323(full)
+      494    0.004    0.000    0.013    0.000 copy.py:62(copy)
+     4569    0.011    0.000    0.011    0.000 {method 'astype' of 'numpy.ndarray' objects}
+     9845    0.011    0.000    0.011    0.000 {built-in method numpy._core._multiarray_umath.count_nonzero}
+
+

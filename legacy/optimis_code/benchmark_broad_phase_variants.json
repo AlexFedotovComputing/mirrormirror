@@ -1,0 +1,92 @@
+[
+  {
+    "ray_surface_tests": 122931136,
+    "intersect_calls": 3496,
+    "find_seconds": 15.207647799747065,
+    "trace_seconds": 16.810684600146487,
+    "variant": "exhaustive",
+    "search_plan_entries": 43,
+    "segment_rows": 668104,
+    "detector_rows": 77399,
+    "detector_power": {
+      "Screen 2": 2401455.9271380035,
+      "Screen 3": 2525894.3390914975,
+      "Cylindrical Screen 1": 706334.4769054182,
+      "Screen 1": 2523670.916879203,
+      "Screen 4": 2642618.081657089
+    },
+    "peak_working_set_bytes_so_far": 173174784
+  },
+  {
+    "ray_surface_tests": 48350931,
+    "intersect_calls": 3496,
+    "find_seconds": 6.34341030032374,
+    "trace_seconds": 7.8958769999444485,
+    "variant": "bundle_groups",
+    "search_plan_entries": 88,
+    "segment_rows": 668104,
+    "detector_rows": 77399,
+    "detector_power": {
+      "Screen 2": 2401455.9271380035,
+      "Screen 3": 2525894.3390914975,
+      "Cylindrical Screen 1": 706334.4769054182,
+      "Screen 1": 2523670.916879203,
+      "Screen 4": 2642618.081657089
+    },
+    "peak_working_set_bytes_so_far": 173174784
+  },
+  {
+    "ray_surface_tests": 15137963,
+    "intersect_calls": 3496,
+    "find_seconds": 4.752492299769074,
+    "trace_seconds": 6.4222478999290615,
+    "variant": "components_aabb",
+    "search_plan_entries": 43,
+    "segment_rows": 668104,
+    "detector_rows": 77399,
+    "detector_power": {
+      "Screen 2": 2401455.9271380035,
+      "Screen 3": 2525894.3390914975,
+      "Cylindrical Screen 1": 706334.4769054182,
+      "Screen 1": 2523670.916879203,
+      "Screen 4": 2642618.081657089
+    },
+    "peak_working_set_bytes_so_far": 173174784
+  },
+  {
+    "ray_surface_tests": 15225211,
+    "intersect_calls": 3496,
+    "find_seconds": 2.8972275007981807,
+    "trace_seconds": 4.380801700055599,
+    "variant": "components_sphere",
+    "search_plan_entries": 43,
+    "segment_rows": 668104,
+    "detector_rows": 77399,
+    "detector_power": {
+      "Screen 2": 2401455.9271380035,
+      "Screen 3": 2525894.3390914975,
+      "Cylindrical Screen 1": 706334.4769054182,
+      "Screen 1": 2523670.916879203,
+      "Screen 4": 2642618.081657089
+    },
+    "peak_working_set_bytes_so_far": 174387200
+  },
+  {
+    "ray_surface_tests": 2348466,
+    "intersect_calls": 3496,
+    "find_seconds": 17.651971499901265,
+    "trace_seconds": 19.16131110000424,
+    "variant": "individual_aabb",
+    "search_plan_entries": 184,
+    "segment_rows": 668104,
+    "detector_rows": 77399,
+    "detector_power": {
+      "Screen 2": 2401455.9271380035,
+      "Screen 3": 2525894.3390914975,
+      "Cylindrical Screen 1": 706334.4769054182,
+      "Screen 1": 2523670.916879203,
+      "Screen 4": 2642618.081657089
+    },
+    "peak_working_set_bytes_so_far": 174387200
+  }
+]

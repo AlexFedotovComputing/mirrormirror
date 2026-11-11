@@ -2,10 +2,20 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "MirrorLab",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "program": "${workspaceFolder}/run.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
       "name": "Run Demo Raytrace",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/example_comsol_like.py",
+      "program": "${workspaceFolder}/legacy/example_comsol_like.py",
       "console": "integratedTerminal",
       "justMyCode": true,
       "args": [
@@ -17,7 +27,7 @@
       "name": "Run Gaussian 35ns Scene",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/scene_gaussian_35ns.py",
+      "program": "${workspaceFolder}/legacy/из+к-_идеальная.py",
       "console": "integratedTerminal",
       "justMyCode": true,
       "args": [
