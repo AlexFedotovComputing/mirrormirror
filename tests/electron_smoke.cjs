@@ -37,8 +37,14 @@ const { _electron } = require('playwright-core');
     assert.equal(plotted.axis, 'x, м');
     assert.equal(plotted.scale[0][1], '#4c416f');
     assert.equal(plotted.dragmode, 'orbit');
-    assert.equal(plotted.aspectmode, 'data');
-    assert.equal(plotted.projection, 'orthographic');
+    assert.equal(plotted.aspectmode, 'manual');
+    const axisScales = await page.evaluate(() => {
+      const scene = document.querySelector('#scene')._fullLayout.scene;
+      return ['x', 'y', 'z'].map(axis => scene.aspectratio[axis] /
+        Math.abs(scene[axis + 'axis'].range[1] - scene[axis + 'axis'].range[0]));
+    });
+    assert.ok(Math.max(...axisScales) - Math.min(...axisScales) < 1e-12);
+    assert.equal(plotted.projection, 'perspective');
     const sources = await page.evaluate(() => document.querySelector('#scene').data
       .filter(trace => trace.name?.includes('Лазер')).map(trace => trace.name));
     assert.deepEqual(sources.sort(), ['Лазер EAST → ввод WEST', 'Лазер WEST → ввод EAST']);
@@ -79,14 +85,26 @@ const { _electron } = require('playwright-core');
     }));
     assert.ok(layout.top < 190 && layout.height > layout.viewport * .7, JSON.stringify(layout));
     assert.ok(layout.labels.every(label => !/[.·]/.test(label)));
-    assert.deepEqual(layout.range, [-1.95, 1.95]);
+    assert.ok(layout.range[0] < -5.08537 && layout.range[1] > 5.08537);
+    const laserPathsVisible = await page.evaluate(() => {
+      const plot = document.querySelector('#scene');
+      const lines = plot.data.filter(t => t.name?.endsWith('· Лучи'));
+      return plot.data.filter(t => t.name?.includes('Лазер')).every(laser =>
+        ['x', 'y', 'z'].every(a => laser[a][0] >= plot._fullLayout.scene[a + 'axis'].range[0] &&
+          laser[a][0] <= plot._fullLayout.scene[a + 'axis'].range[1]) &&
+        lines.some(t => t.z.some((z, i) => i % 3 === 0 && Math.hypot(
+          t.x[i] - laser.x[0], t.y[i] - laser.y[0], z - laser.z[0]) < .02)));
+    });
+    assert.ok(laserPathsVisible, 'Laser-to-periscope paths must be present inside the visible bounds');
     await page.locator('#scene-extent').click();
-    await page.waitForFunction(() => document.querySelector('#scene-extent').textContent === 'К объёму' &&
+    await page.waitForFunction(() => document.querySelector('#scene-extent').textContent === 'Вся схема' &&
       document.querySelector('#scene')._fullLayout.scene.zaxis.range[1] > 5);
-    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'data');
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.zaxis.range), layout.range);
+    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'manual');
     await page.locator('#reset-camera').click();
-    await page.waitForFunction(() => document.querySelector('#scene')._fullLayout.scene.zaxis.range[1] === 1.95);
-    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'data');
+    await page.waitForFunction(() => document.querySelector('#scene-extent').textContent === 'К объёму');
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.zaxis.range), layout.range);
+    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'manual');
     await page.screenshot({ path: path.join(output, 'static.png'), fullPage: true });
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1100, 820));
     await page.waitForFunction(() => window.innerWidth < 1200);
@@ -124,7 +142,7 @@ const { _electron } = require('playwright-core');
       const scene = document.querySelector('#measurement-plot')._fullLayout.scene;
       return { dragmode: scene.dragmode, aspectmode: scene.aspectmode, projection: scene.camera.projection.type };
     });
-    assert.deepEqual(measurementScene, { dragmode: 'orbit', aspectmode: 'data', projection: 'orthographic' });
+    assert.deepEqual(measurementScene, { dragmode: 'orbit', aspectmode: 'manual', projection: 'perspective' });
     for (const direction of ['east_to_west', 'west_to_east']) {
       await page.locator(`#measurement-sides [data-direction="${direction}"]`).click();
       await page.waitForFunction(dir => document.querySelector(`#measurement-sides [data-direction="${dir}"]`).getAttribute('aria-pressed') === 'true', direction);

@@ -31,6 +31,8 @@ class CoordinateTests(unittest.TestCase):
                 self.assertEqual(frame.report["survey_window_to_legacy_window"], {"1": 4, "2": 3, "3": 2, "4": 1})
                 self.assertEqual(len(frame.report["groups"]), 16)
                 source = frame.points(config.source.waist_position)
+                self.assertEqual(frame.report["survey_z_signs"],
+                                 dict(laser=-injection_sign, ring=-injection_sign, injection=injection_sign))
                 self.assertLess(injection_sign * source[2], 0)
                 self.assertAlmostEqual(frame.report["ring_center_m"][2], -injection_sign * 1.7905)
                 for reference in configuration_ray_references(config).values():

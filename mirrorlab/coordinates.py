@@ -144,7 +144,13 @@ def _fit_frames(signature):
         caps = [s.center[2] for s in side["config"].scene.build_surfaces()
                 if getattr(s, "shape", None) == "triangle"]
         ring = rotation @ [0., 0., float(np.mean(caps))] + translation
+        laser = rotation @ side["config"].source.waist_position + translation
+        # These are results of registration, never parsed from archive names
+        # or inferred from EAST/WEST designations.
+        survey_z_signs = dict(laser=int(np.sign(laser[2])), ring=int(np.sign(ring[2])),
+                              injection=int(np.sign(np.median(predicted[:, 2]))))
         report = dict(status="estimated", method="measured_ray_intersections_shared_gas_axis",
+                      survey_z_signs=survey_z_signs,
                       source=FILES[direction], source_signature=[list(x) for x in signature],
                       gas_axis_point_m=[*fit.x[2:].tolist(), 0.], ring_center_m=ring.tolist(),
                       rms_mm=float(np.sqrt(np.mean(distances**2))), max_mm=float(distances.max()),

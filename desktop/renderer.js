@@ -5,14 +5,15 @@ const session = {};
 let busy = false;
 let camera = null;
 let defaultCamera = null;
-let overview = false;
+let overview = true;
 const volumeRanges = { xaxis: [-1.5, 1.5], yaxis: [-1.5, 1.5], zaxis: [-1.95, 1.95] };
 let elapsedTimer;
 let capabilities = [];
 let measurementReports = [];
 let measurementContext = null;
-const sideNames = { east_to_west: 'WEST +', west_to_east: 'EAST −' };
-const directions = ['east_to_west', 'west_to_east'];
+const sideNames = {};
+const routes = {};
+let directions = [];
 const directionLabel = (direction) => direction === 'both' ? 'WEST и EAST' : sideNames[direction];
 const labels = {
   ray_count: 'Исходных лучей', initial_rays: 'Исходных лучей', rays: 'Исходных лучей',
@@ -62,7 +63,7 @@ function showSideStatus() {
     card.dataset.direction = direction;
     card.dataset.included = String(included);
     const title = document.createElement('strong');
-    title.textContent = `${sideNames[direction]} (${included ? 'лазер ' + (direction === 'east_to_west' ? 'EAST' : 'WEST') : 'не выбрана'})`;
+    title.textContent = `${sideNames[direction]} (${included ? 'лазер ' + routes[direction].laser_side : 'не выбрана'})`;
     card.append(title);
     if (included && status?.available) {
       const badge = document.createElement('span');
@@ -127,35 +128,69 @@ function themedPlotData(data) {
       ...(Array.isArray(trace.marker.colorscale) ? {
         colorscale: trace.marker.colorscale.map(([value, color]) => [value, themedPlotColor(color)]),
       } : {}),
+      ...(trace.marker.colorbar ? { colorbar: { ...trace.marker.colorbar,
+        outlinewidth: 0, tickfont: { size: 12, color: '#55565b' },
+        title: { ...trace.marker.colorbar.title, font: { size: 12, color: '#55565b' } },
+      } } : {}),
     } } : {}),
   }));
 }
 function lightSceneAxis(axis = {}) {
-  return { ...axis, gridcolor: '#e5dfe8', zerolinecolor: '#cfc4d3',
-    backgroundcolor: '#fcfafc', tickfont: { ...axis.tickfont, color: '#625968' },
-    title: { ...axis.title, font: { ...axis.title?.font, color: '#514956' } } };
+  return { ...axis, gridcolor: '#e7e5e8', zerolinecolor: '#c8c4cb',
+    backgroundcolor: '#ffffff', tickfont: { ...axis.tickfont, color: '#696965', size: 12 },
+    title: { ...axis.title, font: { ...axis.title?.font, color: '#55565b', size: 12 } } };
+}
+
+async function equalAxisScale(plot) {
+  // Use displayed ranges: data extents can differ from the cropped volume view.
+  const spans = ['x', 'y', 'z'].map(axis => {
+    const range = plot._fullLayout.scene[axis + 'axis'].range;
+    return Math.abs(range[1] - range[0]);
+  });
+  if (!spans.every(value => Number.isFinite(value) && value > 0)) return;
+  const largest = Math.max(...spans);
+  const changes = { 'scene.aspectmode': 'manual',
+    'scene.aspectratio': Object.fromEntries(['x', 'y', 'z'].map((axis, i) => [axis, spans[i] / largest])) };
+  // Freeze the fitted full-scene bounds before setting proportions: otherwise
+  // Plotly recalculates its padding and the physical axis scales diverge.
+  for (const axis of ['xaxis', 'yaxis', 'zaxis']) {
+    if (plot._fullLayout.scene[axis].autorange !== false) {
+      changes[`scene.${axis}.range`] = [...plot._fullLayout.scene[axis].range];
+      changes[`scene.${axis}.autorange`] = false;
+    }
+  }
+  await Plotly.relayout(plot, changes);
+  if (!plot.dataset.scaleListener) {
+    plot.on('plotly_relayout', event => {
+      if (Object.keys(event).some(key => /^scene\.[xyz]axis\.(range|autorange)/.test(key))) equalAxisScale(plot);
+    });
+    plot.dataset.scaleListener = 'true';
+  }
 }
 
 async function drawScene(figure) {
   if (!window.Plotly) throw new Error('Plotly не загружен. Выполните npm install и перезапустите приложение.');
   if (!figure || !Array.isArray(figure.data)) throw new Error('Расчёт не вернул трёхмерную сцену.');
   defaultCamera = { eye: { x: 1.5, y: 1.5, z: 1.1 }, ...figure.layout?.scene?.camera,
-    projection: { type: 'orthographic' } };
+    projection: { type: 'perspective' } };
   const sourceLayout = figure.layout || {};
-  const axes = Object.fromEntries(Object.entries(volumeRanges).map(([axis, range]) =>
-    [axis, { ...lightSceneAxis(sourceLayout.scene?.[axis]), autorange: overview, ...(overview ? {} : { range }) }]));
+  const axes = Object.fromEntries(Object.keys(volumeRanges).map(axis =>
+    [axis, { ...lightSceneAxis(sourceLayout.scene?.[axis]), autorange: true }]));
   const layout = { ...sourceLayout, autosize: true, width: undefined, height: undefined,
-    template: {}, paper_bgcolor: '#fcfafc', plot_bgcolor: '#fcfafc',
-    legend: { ...sourceLayout.legend, bgcolor: 'rgba(255,255,255,0.88)' },
-    font: { ...sourceLayout.font, color: '#514956', family: 'Segoe UI, sans-serif', size: 10 },
+    template: {}, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+    legend: { ...sourceLayout.legend, bgcolor: 'rgba(255,255,255,0.92)', font: { size: 12, color: '#55565b' } },
+    hoverlabel: { bgcolor: '#ffffff', bordercolor: '#c9c7c5', font: { family: 'Segoe UI, sans-serif', size: 12, color: '#303136' } },
+    font: { ...sourceLayout.font, color: '#55565b', family: 'Segoe UI, sans-serif', size: 12 },
     margin: { l: 0, r: 0, t: 15, b: 0 }, uirevision: 'mirrorlab-camera',
     scene: { ...sourceLayout.scene, ...axes, dragmode: 'orbit', aspectmode: 'data',
-      bgcolor: '#fcfafc', camera: camera || defaultCamera },
+      bgcolor: '#ffffff', camera: camera || defaultCamera },
   };
   await Plotly.react($('scene'), themedPlotData(figure.data), layout, {
     responsive: true, displaylogo: false, scrollZoom: true,
     toImageButtonOptions: { format: 'png', filename: 'mirrorlab-scene', scale: 2 },
   });
+  await equalAxisScale($('scene'));
+  if (!camera) await setSceneExtent();
   if (!$('scene').dataset.cameraListener) {
     $('scene').on('plotly_relayout', (event) => { if (event['scene.camera']) camera = event['scene.camera']; });
     $('scene').dataset.cameraListener = 'true';
@@ -212,7 +247,8 @@ async function showMeasurementSide(result) {
   const counts = result.counts || {};
   const summary = $('calibration-summary');
   summary.replaceChildren();
-  paragraph(summary, `Направление: ${result.direction === 'east_to_west' ? 'EAST → WEST · файл «из+к−»' : 'WEST → EAST · файл «из−к+»'}.`);
+  const route = routes[result.direction];
+  paragraph(summary, `Лазер: ${route.laser_side}; кольцо: ${route.ring_side}; ввод: ${route.injection_side}. Геодезия: ${route.survey_file}.`);
   paragraph(summary, screensLabel(result.additional_screens));
   paragraph(summary, 'Измерения и статическая сцена отображаются в общей геодезической системе координат. Привязка сцены по лучам не заменяет юстировку отдельных зеркал.');
   paragraph(summary, `Лучей: ${counts.total ?? '—'}; полных измерений: ${counts.complete ?? '—'}; с одним экраном: ${counts.single_screen ?? '—'}; без измерений: ${counts.missing ?? '—'}.`);
@@ -258,13 +294,15 @@ async function showMeasurementSide(result) {
     await Plotly.react($('measurement-plot'), themedPlotData(result.figure.data), {
       ...sourceLayout, autosize: true, width: undefined, height: undefined,
       template: {}, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-      legend: { ...sourceLayout.legend, bgcolor: 'rgba(255,255,255,0.88)' },
-      font: { color: '#514956', family: 'Segoe UI, sans-serif', size: 10 },
+      legend: { ...sourceLayout.legend, bgcolor: 'rgba(255,255,255,0.92)', font: { size: 12, color: '#55565b' } },
+      hoverlabel: { bgcolor: '#ffffff', bordercolor: '#c9c7c5', font: { family: 'Segoe UI, sans-serif', size: 12, color: '#303136' } },
+      font: { color: '#55565b', family: 'Segoe UI, sans-serif', size: 12 },
       margin: { l: 0, r: 0, t: 15, b: 0 }, uirevision: 'survey-' + result.direction,
       scene: { ...sourceLayout.scene, dragmode: 'orbit', aspectmode: 'data', bgcolor: '#ffffff',
-        camera: { ...sourceLayout.scene?.camera, projection: { type: 'orthographic' } },
+        camera: { ...sourceLayout.scene?.camera, projection: { type: 'perspective' } },
         ...Object.fromEntries(['xaxis', 'yaxis', 'zaxis'].map(axis => [axis, lightSceneAxis(sourceLayout.scene?.[axis])])) },
     }, { responsive: true, displaylogo: false, scrollZoom: true });
+    await equalAxisScale($('measurement-plot'));
   }
 }
 
@@ -319,13 +357,23 @@ $('cancel').addEventListener('click', async () => {
   try { await bridge.request('cancel'); } catch (error) { notify(error.message, true); }
 });
 async function setSceneExtent() {
-  const changes = { 'scene.aspectmode': 'data' };
-  for (const [axis, range] of Object.entries(volumeRanges)) {
-    changes[`scene.${axis}.autorange`] = overview;
-    if (!overview) changes[`scene.${axis}.range`] = range;
+  // Keep every ray inside the axis bounds. A close-up changes the camera,
+  // never the clipping box (which previously hid the laser-to-periscope path).
+  const scene = $('scene')._fullLayout.scene;
+  let view = structuredClone(defaultCamera);
+  if (!overview) {
+    const center = {};
+    const spans = Object.keys(volumeRanges).map(axis => Math.abs(scene[axis].range[1] - scene[axis].range[0]));
+    const zoom = Math.min(1, 3.9 / Math.max(...spans));
+    for (const axis of ['x', 'y', 'z']) {
+      const range = scene[axis + 'axis'].range;
+      center[axis] = -(range[0] + range[1]) / (range[1] - range[0]) * scene.aspectratio[axis];
+    }
+    view.center = center;
+    view.eye = Object.fromEntries(['x', 'y', 'z'].map(axis => [axis, center[axis] + defaultCamera.eye[axis] * zoom]));
   }
   $('scene-extent').textContent = overview ? 'К объёму' : 'Вся схема';
-  await Plotly.relayout($('scene'), changes);
+  await Plotly.relayout($('scene'), { 'scene.camera': view });
 }
 $('scene-extent').addEventListener('click', async () => {
   overview = !overview;
@@ -333,7 +381,7 @@ $('scene-extent').addEventListener('click', async () => {
 });
 $('reset-camera').addEventListener('click', async () => {
   camera = null;
-  overview = false;
+  overview = true;
   await setSceneExtent();
   await Plotly.relayout($('scene'), { 'scene.camera': defaultCamera });
 });
@@ -358,6 +406,17 @@ updateControls();
   try {
     const catalog = await bridge.request('catalog');
     capabilities = catalog.additional_screens || [];
+    directions = catalog.directions.filter(item => item.id !== 'both').map(item => item.id);
+    for (const item of catalog.directions) {
+      routes[item.id] = item;
+      sideNames[item.id] = item.injection_side;
+    }
+    $('direction').replaceChildren(...catalog.directions.map(item => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = item.id === 'both' ? 'Обе: WEST и EAST' : item.injection_side;
+      return option;
+    }));
     const defaults = catalog.defaults || {};
     for (const [key, id] of Object.entries({ direction: 'direction', kind: 'kind', collision_mode: 'collision-mode', ray_count: 'ray-count', max_interactions: 'max-interactions' })) {
       if (defaults[key] !== undefined) $(id).value = defaults[key];

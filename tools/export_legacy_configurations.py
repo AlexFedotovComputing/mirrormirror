@@ -17,6 +17,12 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "legacy")]
 
+from mirrorlab.directions import ROUTES
+
+# Translate PR3 by 0.5 mm to clear side_0 while preserving the outgoing
+# beam line in XY. Coordinates are in the legacy local calculation frame.
+PR3_CLEARANCE_SHIFT_M = (-0.0004951097591004524, -0.00006975905993841897, 0.0)
+
 
 def encode(value):
     if isinstance(value, Enum):
@@ -53,6 +59,10 @@ def export(direction, kind, filename):
         surfaces = []
         for surface in element.build_surfaces():
             record = encode(surface)
+            if direction == "east_to_west" and kind == "ideal" and element.name == "PR3":
+                record["parameters"]["center"] = (
+                    np.asarray(record["parameters"]["center"]) + PR3_CLEARANCE_SHIFT_M
+                ).tolist()
             # This legacy builder faces the coating away from the +z incident
             # beam after reconstructing and reflecting the bundle normals.
             if direction == "west_to_east" and kind == "ideal" and surface.name.startswith("BUNDLE_"):
@@ -97,6 +107,11 @@ def export(direction, kind, filename):
         },
     }
     corrections = []
+    if direction == "east_to_west" and kind == "ideal":
+        corrections.append({
+            "description": "Translate PR3 to clear the beam edge without rotating it; preserve the outgoing beam line in XY.",
+            "element": "PR3", "translation_local_m": PR3_CLEARANCE_SHIFT_M,
+        })
     if coating_surfaces:
         corrections.append({
             "description": "Face the ideal bundle coating toward the incident +z beam: reflect from the normal's minus side.",
@@ -125,8 +140,6 @@ def export(direction, kind, filename):
 
 
 if __name__ == "__main__":
-    for direction, prefix in (("west_to_east", "из-к+"), ("east_to_west", "из+к-")):
-        for kind, label in (("ideal", "идеальная"), ("real", "реальная")):
-            filename = ("legacy/variants/из+к-_идеальная.txt" if (direction, kind) == ("east_to_west", "ideal")
-                        else f"{prefix}_{label}.py")
-            export(direction, kind, filename)
+    for direction, route in ROUTES.items():
+        for kind in ("ideal", "real"):
+            export(direction, kind, getattr(route, f"legacy_{kind}"))

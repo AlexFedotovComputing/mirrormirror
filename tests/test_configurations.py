@@ -1,6 +1,8 @@
 import dataclasses
 import json
 import unittest
+from unittest.mock import patch
+from collections import Counter
 
 import numpy as np
 
@@ -8,9 +10,45 @@ from mirrorlab.configurations import (
     apply_fitted_rays, configuration_ray_references, load_configuration,
 )
 from mirrorlab.engine import RayTracer
+from mirrorlab.directions import ROUTES
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_laser_to_periscope_segments_are_preserved(self):
+        from mirrorlab.coordinates import survey_frames
+        from mirrorlab.plotting import PlotlyRenderer
+
+        for direction in ROUTES:
+            for kind in ("ideal", "real"):
+                with self.subTest(direction=direction, kind=kind):
+                    config = load_configuration(direction, kind)
+                    result = RayTracer(config.scene, max_interactions=1,
+                                       max_time_s=config.integration_time_s).trace(config.emit(217))
+                    initial = result.segments[0]
+                    self.assertEqual(len(initial["surface"]), 217)
+                    self.assertTrue(np.all(initial["surface"] == "MP1"))
+                    frame = survey_frames()[direction]
+                    figure, displayed = PlotlyRenderer().render(config, result, frame)
+                    self.assertEqual(displayed, 217)
+                    starts = np.array([[t[a][i] for a in "xyz"] for t in figure["data"]
+                                       if t.get("legendgroup") == "rays" for i in range(0, len(t["x"]), 3)])
+                    expected = frame.points(config.source.waist_position)
+                    self.assertLess(np.linalg.norm(starts - expected, axis=1).min(), 1e-12)
+                    self.assertTrue(np.all(np.abs(starts[:, 2]) > 5))
+
+    def test_archive_names_and_side_labels_do_not_control_geometry(self):
+        baseline = load_configuration("east_to_west")
+        route = ROUTES["east_to_west"]
+        renamed = dataclasses.replace(route, laser_side="WEST", ring_side="WEST",
+                                      injection_side="EAST", legacy_ideal="из-к+_renamed.py")
+        with patch.dict(ROUTES, {"east_to_west": renamed}):
+            actual = load_configuration("east_to_west")
+            self.assertEqual(actual.metadata["laser_side"], "WEST")
+            self.assertEqual(actual.metadata["legacy_ideal"], "из-к+_renamed.py")
+            self.assertEqual(configuration_ray_references(actual), configuration_ray_references(baseline))
+            np.testing.assert_array_equal(actual.source.waist_position, baseline.source.waist_position)
+            np.testing.assert_array_equal(actual.source.axis, baseline.source.axis)
+
     def test_all_four_snapshots_and_collision_modes(self):
         for direction in ("west_to_east", "east_to_west"):
             for kind in ("ideal", "real"):
@@ -73,6 +111,11 @@ class ConfigurationTests(unittest.TestCase):
                     result = RayTracer(config.scene, collision_mode=mode, max_interactions=48,
                                        max_time_s=config.integration_time_s,
                                        **config.tracer_options).trace(config.emit(721))
+                    # The supplied PR2 position and common PR3 correction
+                    # keep both prisms on their intended entrance/exit route.
+                    hits = Counter(name for block in result.segments for name in block["surface"])
+                    for face in ("PR2:side_0", "PR2:side_1", "PR3:side_1", "PR3:side_2"):
+                        self.assertEqual(hits[face], 721, face)
                     first_hits = {}
                     for block in result.segments:
                         for i, name in enumerate(block["surface"]):
@@ -111,6 +154,27 @@ class ConfigurationTests(unittest.TestCase):
         for invalid in (0, 50001, 1.5, True):
             with self.assertRaises(ValueError):
                 config.emit(invalid)
+
+    def test_ring_passes_beam_perimeter_to_all_four_channels(self):
+        count = 512
+        theta = np.linspace(0, 2 * np.pi, count, endpoint=False)
+        for direction in ("east_to_west", "west_to_east"):
+            for kind in ("ideal", "real"):
+                with self.subTest(direction=direction, kind=kind):
+                    config = load_configuration(direction, kind)
+                    rays = config.emit(count)
+                    # Both sources are parallel to Z; sample the entire outer
+                    # circle instead of relying on a sparse interior grid.
+                    radius = config.source.waist_radius * config.source.cutoff_ratio
+                    rays.position[:] = np.asarray(config.source.waist_position) + radius * np.column_stack(
+                        [np.cos(theta), np.sin(theta), np.zeros(count)])
+                    result = RayTracer(config.scene, max_interactions=22,
+                                       max_time_s=config.integration_time_s,
+                                       collision_mode="expected", **config.tracer_options).trace(rays)
+                    hits = Counter(name for block in result.segments for name in block["surface"])
+                    self.assertEqual(hits["PR3:side_0"], 0)
+                    for face in ("PR3:side_1", "PR3:side_2", "MS1", "MS2", "MS3", "MS4"):
+                        self.assertEqual(hits[face], count, face)
 
     def test_fitted_axes_update_normals_and_bound_translation(self):
         config = load_configuration(kind="real")

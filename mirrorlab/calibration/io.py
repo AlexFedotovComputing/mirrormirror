@@ -10,8 +10,9 @@ from .models import Measurement
 
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-FILES = {"west_to_east": "Геодезические измерения из-к+.xlsx",
-         "east_to_west": "Геодезические измерения из+к-.xlsx"}
+from ..directions import ROUTES
+
+FILES = {key: route.survey_file for key, route in ROUTES.items()}
 
 
 def number(value):

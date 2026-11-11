@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
+from .directions import DIRECTIONS, ROUTES
 
 from .engine import (
     CylinderSurface, GaussianBeamSource, Material, OpticalElement, PlaneSurface,
@@ -20,10 +21,6 @@ TYPES = {cls.__name__: cls for cls in (
     CylinderSurface, GaussianBeamSource, Material, PlaneSurface,
     SphericalCapSurface, SurfaceOptics,
 )}
-DIRECTIONS = {
-    "west_to_east": {"source_side": "WEST", "source_sign": "+", "injection_side": "EAST", "injection_sign": "−"},
-    "east_to_west": {"source_side": "EAST", "source_sign": "−", "injection_side": "WEST", "injection_sign": "+"},
-}
 
 
 def _decode(value):
@@ -92,7 +89,7 @@ def load_configuration(direction: str = "west_to_east", kind: str = "ideal", bac
         expected = {item["name"] for item in base["elements"] if item["name"].startswith("BUNDLE_")}
         if set(overrides) != expected or len(overrides) != len(data["elements"]):
             raise ValueError("Real configuration must override exactly the ideal microassemblies")
-        data = {**base, **data,
+        data = {**base, "kind": kind,
                 "elements": [overrides.get(item["name"], item) for item in base["elements"]],
                 "provenance": {**data["provenance"], "common_optics_file": base_name,
                                "common_optics_provenance": base["provenance"]}}
@@ -103,7 +100,7 @@ def load_configuration(direction: str = "west_to_east", kind: str = "ideal", bac
         direction=direction, kind=kind, scene=Scene(elements), source=source,
         integration_time_s=data["integration_time_s"], max_interactions=data["max_interactions"],
         tracer_options=data["tracer_options"],
-        metadata={**DIRECTIONS[direction], "coordinate_frame": "legacy",
+        metadata={**ROUTES[direction].metadata(), "coordinate_frame": "legacy",
                   "units": "m", "provenance": data["provenance"]},
     )
 
@@ -117,7 +114,7 @@ def _bundle_surfaces(config):
 
 def configuration_ray_references(config: StaticConfiguration) -> dict:
     """Expected outgoing axes in the application's world frame (metres)."""
-    incoming = np.array((0., 0., 1. if config.direction == "west_to_east" else -1.))
+    incoming = np.array(ROUTES[config.direction].local_incoming)
     references = {}
     for ray_id, surface in _bundle_surfaces(config):
         normal = to_numpy(surface.normal)
@@ -136,7 +133,7 @@ def apply_fitted_rays(config: StaticConfiguration, rays: list, max_shift_m: floa
     if not math.isfinite(max_shift_m) or max_shift_m < 0:
         raise ValueError("max_shift_m must be finite and nonnegative")
     surfaces = dict(_bundle_surfaces(config))
-    incoming = np.array((0., 0., 1. if config.direction == "west_to_east" else -1.))
+    incoming = np.array(ROUTES[config.direction].local_incoming)
     updates = []
     seen = set()
     for ray in rays:

@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from .configurations import DIRECTIONS, load_configuration
+from .directions import ROUTES, SIDE_DESIGNATIONS
 from .coordinates import survey_frames
 from .engine import RayTracer, to_numpy
 from .plotting import PlotlyRenderer, measurement_figure
@@ -20,7 +21,7 @@ def selected_directions(direction):
 
 
 def additional_screens(direction, report=None):
-    source = "лавсан_из+к-.txt" if direction == "east_to_west" else None
+    source = ROUTES[direction].additional_screens_file
     available = bool(source and (ROOT / source).is_file())
     status = "available" if available else "not_available"
     used, rejected = [], []
@@ -63,6 +64,7 @@ def catalog():
         directions=[dict(id="both", label="Обе стороны · WEST и EAST")] + [dict(id=key, label=f"{value['source_side']} → {value['injection_side']}", **value)
                     for key, value in DIRECTIONS.items()],
         additional_screens=[additional_screens(key) for key in DIRECTIONS],
+        side_designations=SIDE_DESIGNATIONS,
         configurations=["ideal", "real"], collision_modes=["exhaustive", "expected"],
         defaults=asdict(TraceRequest()), units="m", separator_z_m=0, coordinate_frame="survey",
         modules={"static": "ready", "distributions": "stub", "dynamic": "stub"},
@@ -88,7 +90,7 @@ def _trace_one(request):
     if request.ray_count < 721:
         warnings.append("Предварительная сетка: малые зеркала могут оказаться между лучами. Увеличьте число лучей для проверки сходимости.")
     if request.kind == "real":
-        warnings.append("Геометрия зеркал загружена из сохранённой реальной конфигурации. Измерения обработаны автоматически; их отчёт не подменяет положения зеркал без привязки систем координат.")
+        warnings.append("Общая оптика взята из идеальной конфигурации; реальные положения сохранены только у микросборок. Измерения обработаны автоматически; их отчёт не подменяет положения зеркал без привязки систем координат.")
     unfinished = result.diagnostics.get("unfinished_count", 0)
     if unfinished:
         warnings.append(f"Лимит взаимодействий достигнут для {unfinished} лучей. Увеличьте лимит.")

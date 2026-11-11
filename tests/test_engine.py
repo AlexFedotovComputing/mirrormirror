@@ -8,7 +8,7 @@ import numpy as np
 
 from mirrorlab.engine import (
     CylinderSurface, Detector, GaussianBeamSource, InteractionMode, PlaneMirror,
-    PlaneSurface, RayTracer, Scene, SemiTransparentMirror, SphericalCapSurface,
+    PlaneSurface, RayBundle, RayTracer, Scene, SemiTransparentMirror, SphericalCapSurface,
     SurfaceOptics,
 )
 
@@ -32,6 +32,35 @@ def assert_same_trace(test, left, right):
 
 
 class EngineTests(unittest.TestCase):
+    def test_uncoated_dielectric_preserves_total_internal_reflection(self):
+        tracer = RayTracer(Scene())
+        for side in (-1, 1):
+            for fresnel in (False, True):
+                for degrees in (20, 70):
+                    with self.subTest(side=side, fresnel=fresnel, angle=degrees):
+                        theta = np.radians(degrees)
+                        surface = PlaneSurface("uncoated", SurfaceOptics(
+                            InteractionMode.REFRACT,
+                            n_minus=1.5 if side > 0 else 1., n_plus=1. if side > 0 else 1.5,
+                            reflectance=0., transmittance=1., use_fresnel=fresnel,
+                            reflect_from_minus_side=False, reflect_from_plus_side=False,
+                            release_reflected=False, allow_total_internal_reflection=True,
+                        ), (0, 0, 0), (0, 0, 1), shape="infinite")
+                        rays = RayBundle(np.array([[0., 0., -side]]),
+                                         np.array([[np.sin(theta), 0., side * np.cos(theta)]]),
+                                         np.array([2.]), np.array([266e-9]), np.array([1.5]))
+                        children, _ = surface.interact(rays, surface.intersect(rays), tracer)
+                        self.assertEqual(len(children), 1)
+                        child = children[0]
+                        np.testing.assert_allclose(child.power, rays.power)
+                        if degrees == 70:
+                            np.testing.assert_allclose(child.direction, rays.direction * [1, 1, -1])
+                            np.testing.assert_allclose(child.refractive_index, 1.5)
+                        else:
+                            self.assertGreater(side * child.direction[0, 2], 0)
+                            self.assertAlmostEqual(child.direction[0, 0], 1.5 * np.sin(theta))
+                            np.testing.assert_allclose(child.refractive_index, 1.)
+
     def test_split_power_and_reflection_match_legacy_engine(self):
         path = Path(__file__).resolve().parents[1] / "legacy" / "raytrace.py"
         spec = importlib.util.spec_from_file_location("legacy_physics_baseline", path)

@@ -183,7 +183,10 @@ class Surface:
             if self.optics.allow_total_internal_reflection:
                 R = xp.where(tir, 1.0, R)
 
-        R = xp.where(reflect_allowed, R, 0.0)
+        # A coating's sidedness does not suppress total internal reflection
+        # at the dielectric boundary (including uncoated prism faces).
+        R = xp.where(tir & self.optics.allow_total_internal_reflection,
+                     1.0, xp.where(reflect_allowed, R, 0.0))
         T = xp.where(reflect_allowed, T, xp.where(tir, 0.0, 1.0))
 
         out: List[RayBundle] = []

@@ -2085,8 +2085,8 @@
               }
             },
             "center": [
-              0.3117431697355989,
-              0.10132352550066877,
+              0.31124805997649846,
+              0.10125376644073035,
               0.0
             ],
             "normal": [
@@ -2148,8 +2148,8 @@
               }
             },
             "center": [
-              0.3117431697355989,
-              0.10132352550066877,
+              0.31124805997649846,
+              0.10125376644073035,
               0.05
             ],
             "normal": [
@@ -2211,8 +2211,8 @@
               }
             },
             "center": [
-              0.298799578776052,
-              0.09800220787877763,
+              0.29830446901695157,
+              0.09793244881883921,
               0.025
             ],
             "normal": [
@@ -2261,8 +2261,8 @@
               }
             },
             "center": [
-              0.32152623593121216,
-              0.09007974738416648,
+              0.3210311261721117,
+              0.09000998832422806,
               0.025
             ],
             "normal": [
@@ -2311,8 +2311,8 @@
               }
             },
             "center": [
-              0.3149036944995325,
-              0.1158886212390622,
+              0.31440858474043204,
+              0.11581886217912378,
               0.025
             ],
             "normal": [
@@ -11758,6 +11758,15 @@
     },
     "description": "Built legacy geometry snapshot; survey fits are applied separately.",
     "corrections": [
+      {
+        "description": "Translate PR3 to clear the beam edge without rotating it; preserve the outgoing beam line in XY.",
+        "element": "PR3",
+        "translation_local_m": [
+          -0.0004951097591004524,
+          -6.975905993841897e-05,
+          0.0
+        ]
+      },
       {
         "description": "Negate the prism top cap's local v coordinates to compensate its reversed normal and close the solid.",
         "surfaces": [

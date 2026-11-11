@@ -128,8 +128,8 @@ class PlotlyRenderer:
         layout = dict(template="plotly_dark", paper_bgcolor="#101922", plot_bgcolor="#101922",
                       font=dict(family="Segoe UI, sans-serif", color="#c5d3df"),
                       margin=dict(l=0, r=0, t=10, b=0), uirevision="mirrorlab-static",
-                      scene=dict(aspectmode="data", dragmode="orbit", camera=dict(projection=dict(type="orthographic")), xaxis=dict(title=dict(text="x, м")), yaxis=dict(title=dict(text="y, м")),
-                                 zaxis=dict(title=dict(text="z, м · WEST + / EAST −" if frame else "z, м · локальная СК"))),
+                      scene=dict(aspectmode="data", dragmode="orbit", camera=dict(projection=dict(type="perspective")), xaxis=dict(title=dict(text="x, м")), yaxis=dict(title=dict(text="y, м")),
+                                 zaxis=dict(title=dict(text="z, м · геодезическая СК" if frame else "z, м · локальная СК"))),
                       legend=dict(x=0.01, y=0.99, bgcolor="rgba(16,25,34,0.7)"))
         return dict(data=data, layout=layout), displayed
 
@@ -169,5 +169,5 @@ def measurement_figure(report):
                            hovertemplate="Луч %{text}<br>%{x:.4f}, %{y:.4f}, %{z:.4f} м<extra></extra>"))
     return dict(data=traces, layout=dict(template="plotly_dark", paper_bgcolor="#101928",
                 margin=dict(l=0, r=0, t=15, b=0), uirevision=report["direction"],
-                scene=dict(aspectmode="data", dragmode="orbit", camera=dict(projection=dict(type="orthographic")), xaxis=dict(title=dict(text="x, м")), yaxis=dict(title=dict(text="y, м")), zaxis=dict(title=dict(text="z, м"))),
+                scene=dict(aspectmode="data", dragmode="orbit", camera=dict(projection=dict(type="perspective")), xaxis=dict(title=dict(text="x, м")), yaxis=dict(title=dict(text="y, м")), zaxis=dict(title=dict(text="z, м"))),
                 legend=dict(orientation="h", y=1.08)))
