@@ -96,13 +96,35 @@ def load_configuration(direction: str = "west_to_east", kind: str = "ideal", bac
     source = _decode(data["source"])
     source.backend = backend
     elements = [StaticElement(item["name"], [_decode(s) for s in item["surfaces"]]) for item in data["elements"]]
-    return StaticConfiguration(
+    config = StaticConfiguration(
         direction=direction, kind=kind, scene=Scene(elements), source=source,
         integration_time_s=data["integration_time_s"], max_interactions=data["max_interactions"],
         tracer_options=data["tracer_options"],
         metadata={**ROUTES[direction].metadata(), "coordinate_frame": "legacy",
                   "units": "m", "provenance": data["provenance"]},
     )
+    # Historic files mix the geometric normal and the coating side. Preserve
+    # their planes, but use one physical convention: outward normal opposes
+    # the fully traced incident branch; coating reflects from its plus side.
+    from .calibration.physical import incoming_at_mirrors
+    incident = incoming_at_mirrors(config)
+    repaired = []
+    for key, surface in _bundle_surfaces(config):
+        item = incident.get(key, {})
+        if "direction" not in item:
+            continue
+        projection = float(np.dot(item["direction"], surface.normal))
+        allowed = surface.optics.reflect_from_minus_side if projection > 0 else surface.optics.reflect_from_plus_side
+        if not allowed:
+            repaired.append(key)
+        if projection > 0:
+            surface.normal = -np.asarray(surface.normal)
+            surface.__post_init__()
+        surface.optics.reflect_from_plus_side = True
+        surface.optics.reflect_from_minus_side = False
+    config.metadata["historical_coating_repairs"] = repaired
+    config.metadata["normal_convention"] = "physical_outward_reflecting_cut"
+    return config
 
 
 def _bundle_surfaces(config):
@@ -114,9 +136,13 @@ def _bundle_surfaces(config):
 
 def configuration_ray_references(config: StaticConfiguration) -> dict:
     """Expected outgoing axes in the application's world frame (metres)."""
-    incoming = np.array(ROUTES[config.direction].local_incoming)
+    from .calibration.physical import incoming_at_mirrors
+    field = incoming_at_mirrors(config)
     references = {}
     for ray_id, surface in _bundle_surfaces(config):
+        if "direction" not in field.get(ray_id, {}):
+            raise ValueError(f"No traced incident branch for mirror {ray_id}")
+        incoming = np.asarray(field[ray_id]["direction"])
         normal = to_numpy(surface.normal)
         outgoing = incoming - 2 * np.dot(incoming, normal) * normal
         references[ray_id] = {"point_m": to_numpy(surface.center).tolist(), "direction": outgoing.tolist()}
@@ -133,7 +159,8 @@ def apply_fitted_rays(config: StaticConfiguration, rays: list, max_shift_m: floa
     if not math.isfinite(max_shift_m) or max_shift_m < 0:
         raise ValueError("max_shift_m must be finite and nonnegative")
     surfaces = dict(_bundle_surfaces(config))
-    incoming = np.array(ROUTES[config.direction].local_incoming)
+    from .calibration.physical import incoming_at_mirrors, reflecting_normal
+    incident = incoming_at_mirrors(config)
     updates = []
     seen = set()
     for ray in rays:
@@ -156,12 +183,9 @@ def apply_fitted_rays(config: StaticConfiguration, rays: list, max_shift_m: floa
         nearest = point + np.dot(old - point, outgoing) * outgoing
         requested_shift = nearest - old
         requested_distance = float(np.linalg.norm(requested_shift))
-        normal = incoming - outgoing
-        if np.linalg.norm(normal) < 1e-12:
-            raise ValueError(f"Fitted ray does not define a reflective normal: {key}")
-        normal /= np.linalg.norm(normal)
-        if np.dot(normal, surface.normal) < 0:
-            normal *= -1
+        if "direction" not in incident.get(key, {}):
+            raise ValueError(f"No traced incident branch for mirror {key}")
+        normal = reflecting_normal(incident[key]["direction"], outgoing)
         scale = min(1., max_shift_m / max(requested_distance, 1e-15))
         if abs(normal[2]) > 1e-12:
             chief_offset = np.r_[-requested_shift[:2], np.dot(normal[:2], requested_shift[:2]) / normal[2]]
@@ -176,6 +200,8 @@ def apply_fitted_rays(config: StaticConfiguration, rays: list, max_shift_m: floa
     report = []
     for surface, center, normal, reference, key, requested, scale in updates:
         surface.center, surface.normal, surface.in_plane_reference = center, normal, reference
+        surface.optics.reflect_from_plus_side = True
+        surface.optics.reflect_from_minus_side = False
         surface.__post_init__()
         report.append({"ray_id": key, "requested_shift_m": requested, "applied_shift_m": requested * scale,
                        "remaining_line_distance_m": requested * (1 - scale)})

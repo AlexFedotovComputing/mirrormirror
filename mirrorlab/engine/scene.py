@@ -13,6 +13,7 @@ from .rays import RayBundle, NearestHit
 
 
 from .surfaces import Surface, PlaneSurface
+from .bodies import CutCylinderSurface
 
 
 from .elements import OpticalElement
@@ -41,7 +42,7 @@ class CompiledScene:
 
     @staticmethod
     def _bundle_group_name(surface: Surface) -> Optional[str]:
-        if not isinstance(surface, PlaneSurface) or not surface.name.startswith("BUNDLE_"):
+        if not (isinstance(surface, PlaneSurface) or hasattr(surface, "body")) or not surface.name.startswith("BUNDLE_"):
             return None
         marker = " Mirror "
         if marker not in surface.name:
@@ -60,6 +61,12 @@ class CompiledScene:
     @staticmethod
     def _plane_bounds(surface: PlaneSurface) -> Tuple[Any, Any]:
         """Return an AABB guaranteed to contain a finite plane primitive."""
+        if hasattr(surface, "body"):
+            # The exact support extrema enclose every cut/side/back point. The
+            # renderer's polygon approximation is never used for ray culling.
+            minimum, maximum = surface.body.bounds()
+            padding = 1e-10 + 64.0 * np.finfo(float).eps * np.maximum(1., np.maximum(abs(minimum), abs(maximum)))
+            return minimum - padding, maximum + padding
         xp = get_array_module(surface.center)
         center = xp.asarray(surface.center, dtype=float)
         u = xp.asarray(surface._u, dtype=float)
@@ -163,7 +170,7 @@ class CompiledScene:
             self.intersection_tests += rays.n_rays
             hit = surface.intersect(rays)
             valid = hit.valid
-            if skip_repeated_bundle_reflections and surface.name.startswith("BUNDLE_"):
+            if skip_repeated_bundle_reflections and surface.name.startswith("BUNDLE_") and not isinstance(surface, CutCylinderSurface):
                 valid = valid & ~rays.bundle_reflected
             better = valid & (hit.distance < best_t)
             if count_nonzero(better) == 0:
@@ -227,7 +234,7 @@ class CompiledScene:
 
             candidate_mask = self._ray_group_candidates(rays, entry, arrays[0])
             is_bundle_group = self.surfaces[entry.surface_indices[0]].name.startswith("BUNDLE_")
-            if skip_repeated_bundle_reflections and is_bundle_group:
+            if skip_repeated_bundle_reflections and is_bundle_group and not hasattr(self.surfaces[entry.surface_indices[0]], "body"):
                 candidate_mask = candidate_mask & ~rays.bundle_reflected
             candidate_indices = xp.nonzero(candidate_mask)[0]
             if candidate_indices.size == 0:

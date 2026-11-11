@@ -19,7 +19,7 @@
       <button class="nav-button" data-tab="distributions" title="Распределения"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M4 4v16h16M8 16v-4m5 4V7m5 9v-6"/></svg></span><span class="nav-text">Распределения</span></button>
     </nav>
     <div class="sidebar-note"><span class="status-dot"></span><span id="connection-label">Подключение к расчёту…</span></div>
-    <div class="coordinate-note"><strong>Геодезические XYZ · метры</strong><p>Знак Z — по измерениям.<br>Центральная плоскость объёма: z = 0.</p></div>
+    <div class="coordinate-note"><strong id="coordinate-title">Геодезические XYZ · метры</strong><p id="coordinate-note">Знак Z — по измерениям.<br>Центральная плоскость объёма: z = 0.</p></div>
     <div class="sidebar-footer">Геометрическая оптика<span>Python + Plotly</span></div>
   </aside>
 
@@ -38,7 +38,7 @@
               <label for="direction">Сторона ввода</label>
               <select id="direction"><option value="both">Обе: WEST и EAST</option><option value="east_to_west">WEST</option><option value="west_to_east">EAST</option></select>
               <label for="kind">Конфигурация</label>
-              <select id="kind"><option value="ideal">Идеальная</option><option value="real">Реальная</option></select>
+              <select id="kind"><option value="ideal">Историческая идеальная</option><option value="real">Историческая реальная</option></select>
               <label for="collision-mode">Поиск пересечений</label>
               <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
               <div class="input-pair"><div><label for="ray-count">Лучей на лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div><div><label for="max-interactions">Взаимодействий</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required></div></div>
@@ -51,6 +51,23 @@
             <div class="card-heading"><h2>Геодезические измерения</h2><span class="step">02</span></div>
             <button id="calibrate" class="secondary-button full-width">Восстановить по измерениям</button>
           </section>
+          <section class="card calibration-card reconstruction-controls">
+            <div class="card-heading"><h2>Восстановление зеркал</h2></div>
+            <button id="optimize" type="button" class="primary-button">Оптимизировать положение недостающих лучей</button>
+            <p id="active-state" aria-live="polite">Историческая конфигурация</p>
+            <button id="use-historical" type="button" class="text-button" hidden>Вернуться к исторической</button>
+            <label id="save-source-label" for="save-source" hidden>Сохранить</label>
+            <select id="save-source" hidden><option value="active">Принятая конфигурация</option><option value="candidate">Диагностический кандидат</option></select>
+            <div class="file-actions"><button id="save-configuration" type="button" class="secondary-button">Сохранить</button><button id="load-configuration" type="button" class="secondary-button">Загрузить</button></div>
+            <button id="load-legacy" type="button" class="secondary-button full-width">Загрузить легаси</button>
+            <div id="legacy-context" hidden>
+              <p>Для файла без метаданных укажите сторону ввода выше и систему координат исходных данных.</p>
+              <label for="legacy-frame">Система координат</label>
+              <select id="legacy-frame"><option value="unknown">Не установлена</option><option value="legacy">Историческая сцена</option><option value="survey">Геодезическая</option></select>
+              <button id="choose-legacy" type="button" class="secondary-button full-width">Выбрать файл</button>
+            </div>
+            <div id="reconstruction-progress" aria-live="polite" hidden><span id="progress-stage"></span><progress id="progress-bar"></progress></div>
+          </section>
         </div>
 
         <div class="result-column">
@@ -61,6 +78,16 @@
             <div class="scene-footer"><span>Вращение: мышь · масштаб: колесо</span><span>Переключайте слои в легенде Plotly</span></div>
           </section>
           <div id="metrics" class="metrics" aria-live="polite"></div>
+          <section id="reconstruction-result" class="card details-card" hidden>
+            <div class="card-heading"><h2>Реконструкция микрозеркал</h2><span id="reconstruction-status" class="tag"></span></div>
+            <p id="candidate-note"></p>
+            <button id="accept-candidate" class="secondary-button" hidden>Использовать частичный результат</button>
+            <div id="reconstruction-sides" class="reconstruction-sides" aria-live="polite"></div>
+            <label for="mirror-select">Зеркало</label><select id="mirror-select"></select>
+            <dl id="mirror-details" class="mirror-details"></dl>
+            <details><summary>Неопределённости, гипотезы и ограничения выбранного зеркала</summary><pre id="mirror-technical"></pre></details>
+            <details><summary>Источники, соответствия и диагностика</summary><pre id="reconstruction-json"></pre></details>
+          </section>
           <section id="result-details" class="card details-card" hidden><div class="card-heading"><h2>Результат расчёта</h2><span id="result-direction" class="muted"></span></div><div id="result-notes"></div><details><summary>Параметры и численные результаты</summary><pre id="result-json"></pre></details></section>
           <section id="calibration-result" class="card details-card" hidden><div class="card-heading"><h2>Восстановление по измерениям</h2><span class="tag">Отчёт</span></div><div id="measurement-sides" class="measurement-sides" aria-label="Сторона измерений"></div><div id="calibration-summary"></div><div id="measurement-figure" hidden><h3 class="measurement-heading">Геодезическая система координат</h3><p>Измеренные точки и восстановленные лучи · координаты в метрах</p><div id="measurement-plot"></div></div><div id="calibration-table" class="table-wrap"></div><details><summary>Преобразования, уравнения и исходные данные</summary><pre id="calibration-json"></pre></details></section>
         </div>

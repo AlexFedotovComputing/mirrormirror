@@ -71,32 +71,58 @@ def catalog():
     )
 
 
-def _trace_one(request):
+def _dataset_frame(dataset):
+    """A loaded document never re-fits its coordinates against local files."""
+    from .coordinates import SurveyFrame
+    from .calibration.models import Measurement
+    frame = dataset.get("display_frame")
+    if frame is None:
+        return None
+    registry = dataset.get("observations", [])
+    rows = registry.get("records", []) if isinstance(registry, dict) else registry
+    measurements = []
+    for row in rows:
+        if row.get("screens_m") is not None:
+            parts = [int(x) for x in row.get("old_id", "1_1_1").split("_")]
+            measurements.append(Measurement(*parts, row["screens_m"], row.get("source_file", "embedded")))
+    return SurveyFrame(np.asarray(frame["rotation"]), np.asarray(frame["translation_m"]),
+                       {k: v for k, v in frame.items() if k not in {
+                           "rotation", "translation_m", "coordinate_frame", "calculation_frame"}}, tuple(measurements))
+
+
+def _trace_one(request, dataset=None):
     started = time.perf_counter()
-    configuration = load_configuration(request.direction, request.kind)
+    if dataset is None:
+        configuration = load_configuration(request.direction, request.kind)
+    else:
+        from .state import configuration_from_dataset
+        configuration = configuration_from_dataset(dataset)
     rays = configuration.emit(request.ray_count)
     tracer = RayTracer(scene=configuration.scene, collision_mode=request.collision_mode,
                        max_interactions=request.max_interactions, max_time_s=configuration.integration_time_s,
                        **configuration.tracer_options)
     result = tracer.trace(rays)
-    frame = survey_frames()[request.direction]
+    frame = survey_frames()[request.direction] if dataset is None else _dataset_frame(dataset)
     figure, displayed = PlotlyRenderer().render(configuration, result, frame=frame)
     compiled = tracer.compiled_scene
     segment_count = sum(len(block["x0"]) for block in result.segments)
-    warnings = [f"{configuration.metadata['injection_side']}: привязка к геодезии по лучам — RMS {frame.report['rms_mm']:.1f} мм, максимум {frame.report['max_mm']:.1f} мм по центрам микросборок. Это оценка положения системы, без переюстировки зеркал.",
-                "Исходные геодезические точки можно включить в легенде сцены."]
+    warnings = ["Исходные геодезические точки можно включить в легенде сцены."]
+    if dataset is None:
+        warnings.insert(0, f"{configuration.metadata['injection_side']}: привязка к геодезии по лучам — RMS {frame.report['rms_mm']:.1f} мм, максимум {frame.report['max_mm']:.1f} мм по центрам микросборок. Это оценка положения системы, без переюстировки зеркал.")
+    else:
+        warnings.insert(0, f"Трассируется активная физическая конфигурация: {dataset['status']}. Оптика и тела взяты из её сохранённого состояния.")
     if displayed < segment_count:
         warnings.append(f"На графике показано {displayed} из {segment_count} сегментов; расчёт выполнен для всех лучей.")
     if request.ray_count < 721:
         warnings.append("Предварительная сетка: малые зеркала могут оказаться между лучами. Увеличьте число лучей для проверки сходимости.")
-    if request.kind == "real":
+    if request.kind == "real" and dataset is None:
         warnings.append("Общая оптика взята из идеальной конфигурации; реальные положения сохранены только у микросборок. Измерения обработаны автоматически; их отчёт не подменяет положения зеркал без привязки систем координат.")
     unfinished = result.diagnostics.get("unfinished_count", 0)
     if unfinished:
         warnings.append(f"Лимит взаимодействий достигнут для {unfinished} лучей. Увеличьте лимит.")
     return dict(
-        figure=figure, request=asdict(request), metadata={**configuration.metadata, "coordinate_frame": "survey", "separator_z_m": 0,
-                                                        "frame_registration": frame.metadata()}, warnings=warnings,
+        figure=figure, request=asdict(request), metadata={**configuration.metadata, "coordinate_frame": "survey" if frame else "legacy", "separator_z_m": 0,
+                                                        "frame_registration": frame.metadata() if frame else None}, warnings=warnings,
         summary=dict(ray_count=rays.n_rays, surface_count=len(compiled.surfaces), segment_count=segment_count,
                      displayed_segments=displayed, detector_hits=sum(len(b["position"]) for b in result.detector_hits),
                      source_power_w=float(np.sum(to_numpy(rays.power))),
@@ -109,10 +135,21 @@ def _trace_one(request):
 
 
 def trace(payload):
+    payload = dict(payload)
+    document = payload.pop("active_configuration", None)
+    payload.pop("configuration_version", None)
+    if document is not None:
+        from .state import validate_document
+        validate_document(document)
     request = TraceRequest(**payload)
     started = time.perf_counter()
-    results = [_trace_one(TraceRequest(**{**asdict(request), "direction": direction}))
-               for direction in selected_directions(request.direction)]
+    directions = selected_directions(request.direction)
+    if document is not None and any(d not in document["datasets"] for d in directions):
+        raise ValueError("В активной конфигурации нет выбранной стороны. Выберите сохранённую сторону или явно вернитесь к исторической конфигурации.")
+    if document is not None and len(directions) > 1 and any(not document["datasets"][d].get("display_frame") for d in directions):
+        raise ValueError("Для общей сцены обеих сторон нужны сохранённые преобразования в общую геодезическую систему. Трассируйте стороны отдельно.")
+    results = [_trace_one(TraceRequest(**{**asdict(request), "direction": direction}),
+                          document["datasets"][direction] if document else None) for direction in directions]
     if len(results) == 1:
         result = results[0]
     else:
@@ -143,7 +180,7 @@ def trace(payload):
                       warnings=list(dict.fromkeys(warning for item in results for warning in item["warnings"])))
     result["sides"] = [dict(direction=item["request"]["direction"], metadata=item["metadata"],
                             summary=item["summary"]) for item in results]
-    if request.kind == "real":
+    if request.kind == "real" and document is None:
         result["measurements"] = calibrate(dict(direction=request.direction))
     result["summary"]["elapsed_s"] = round(time.perf_counter() - started, 3)
     return result
@@ -152,6 +189,7 @@ def trace(payload):
 def calibrate(payload):
     from .calibration import analyze_measurements
 
+    payload = {k: v for k, v in payload.items() if k not in {"active_configuration", "configuration_version"}}
     if set(payload) - {"direction", "use_lavsan"}:
         raise ValueError("Неизвестные параметры расчёта измерений.")
     direction = payload.get("direction", "both")
@@ -172,7 +210,112 @@ def calibrate(payload):
     return dict(direction="both", reports=reports) if direction == "both" else reports[0]
 
 
-def dispatch(method, payload):
+def _historical_document(payload):
+    from .legacy_import import historical_dataset
+    from .state import new_document
+    direction = payload.get("direction", "both")
+    if direction not in {*DIRECTIONS, "both"}:
+        raise ValueError("Неизвестная сторона")
+    datasets = {}
+    for d in selected_directions(direction):
+        config = load_configuration(d, payload.get("kind", "ideal"))
+        dataset = historical_dataset(config)
+        frame = survey_frames()[d]
+        dataset["display_frame"] = {**frame.metadata(), "handedness_change": bool(np.linalg.det(frame.rotation) < 0)}
+        datasets[d] = dataset
+    return new_document(datasets, payload.get("configuration_version", 0))
+
+
+def document_result(document):
+    """Preview uses embedded state only; no Monte Carlo sampling required."""
+    from .state import configuration_from_dataset, validate_document
+    from .engine.tracer import TraceResult
+    from .engine.bodies import MirrorBody
+    from .plotting import _surface_traces
+    validate_document(document)
+    figures, reports = [], []
+    can_activate = True
+    for direction, dataset in document["datasets"].items():
+        if dataset.get("optics_snapshot") is not None:
+            config = configuration_from_dataset(dataset)
+            empty = TraceResult(config.emit(1), [], [], [])
+            figure, _ = PlotlyRenderer().render(config, empty, frame=_dataset_frame(dataset))
+        else:
+            can_activate = False
+            data = []
+            for m in dataset.get("mirrors", []):
+                body = MirrorBody.from_dict(m)
+                data.extend(_surface_traces(body.build_surfaces()[0]))
+            figure = dict(data=data, layout=dict(template="plotly_dark", scene=dict(aspectmode="data"),
+                title=dict(text="Частичный импорт: общая оптика отсутствует")))
+        for layer in figure["data"]:
+            layer["name"] = f"{ROUTES[direction].injection_side} · {layer.get('name', '')}"
+            if layer.get("meta", {}).get("mirror_id"):
+                layer["meta"]["direction"] = direction
+                for item in layer.get("customdata", []):
+                    item["direction"] = direction
+        figures.append(figure)
+        reports.append(dataset)
+    shared_frame = len(figures) == 1 or all(d.get("display_frame") for d in document["datasets"].values())
+    combined = (dict(data=[x for f in figures for x in f["data"]], layout=figures[0]["layout"])
+                if shared_frame else figures[0])
+    warnings = [f"{d}: {dataset['status']}" for d, dataset in document["datasets"].items()]
+    if not shared_frame:
+        warnings.append("Системы координат сторон не совмещены: показана только первая сторона. Для трассировки выберите одну сторону.")
+    return dict(document=document, status=document["status"], figure=combined, reports=reports,
+                scene_direction="both" if shared_frame and len(figures) > 1 else next(iter(document["datasets"])),
+                coordinate_frame=("survey" if all(d.get("display_frame") for d in document["datasets"].values())
+                                  else next(iter(document["datasets"].values())).get("coordinate_frame", "legacy")),
+                can_activate=can_activate and all(d["status"] != "infeasible" for d in document["datasets"].values()),
+                warnings=warnings)
+
+
+def optimize(payload, progress=None):
+    from .state import new_document, dataset_from_config, validate_document, configuration_from_dataset
+    from .calibration.reconstruction import reconstruct
+    document = payload.get("active_configuration")
+    if document is not None:
+        validate_document(document)
+    direction = payload.get("direction", "both")
+    if direction not in {*DIRECTIONS, "both"}:
+        raise ValueError("Неизвестная сторона")
+    datasets = {}
+    for d in selected_directions(direction):
+        if document is not None:
+            if d not in document["datasets"]:
+                raise ValueError("Выбранная сторона отсутствует в активной конфигурации")
+            config = configuration_from_dataset(document["datasets"][d])
+        else:
+            config = load_configuration(d, payload.get("kind", "real"))
+        def report(*args, **kwargs):
+            if progress:
+                value = args[0] if args else kwargs
+                progress({"direction": d, **(value if isinstance(value, dict) else {"stage": str(value)})})
+        report({"stage": "Проверка данных"})
+        try:
+            result = reconstruct(config, ROOT, options=payload.get("options"), progress=report)
+            datasets[d] = dataset_from_config(config, result, result.get("display_frame"))
+        except (ValueError, RuntimeError, np.linalg.LinAlgError) as error:
+            # Failure on one side is recorded without discarding another side.
+            # Keep 112 explicit diagnostic poses; these are never accepted.
+            from .legacy_import import historical_dataset
+            result = historical_dataset(config)
+            result.update(status="infeasible", model_kind="failed_reconstruction")
+            for m in result["mirrors"]:
+                m.update(status="infeasible", violations=["reconstruction_failed"])
+            result["counts"] = dict(total=len(result["mirrors"]), measured=0, partial=0,
+                                     predicted=len(result["mirrors"]), ambiguous=0, failed=len(result["mirrors"]))
+            result["diagnostics"]["failure"] = dict(type=type(error).__name__, message=str(error))
+            datasets[d] = result
+            report({"stage": "Реконструкция стороны завершилась ошибкой", "error": str(error)})
+    # Preserve an existing opposite side without blending its IDs or metrics.
+    if document is not None:
+        datasets = {**document["datasets"], **datasets}
+    candidate = new_document(datasets, payload.get("configuration_version", 0))
+    return document_result(candidate)
+
+
+def dispatch(method, payload, progress=None):
     if not isinstance(payload, dict):
         raise ValueError("Параметры должны быть JSON-объектом.")
     if method == "catalog":
@@ -181,4 +324,17 @@ def dispatch(method, payload):
         return trace(payload)
     if method == "calibrate":
         return calibrate(payload)
+    if method == "optimize":
+        return optimize(payload, progress)
+    if method == "save_configuration":
+        from .state import save_document
+        document = payload.get("document") or payload.get("active_configuration") or _historical_document(payload)
+        return save_document(document, payload["path"])
+    if method == "load_configuration":
+        from .state import load_document
+        return document_result(load_document(payload["path"]))
+    if method == "import_legacy":
+        from .legacy_import import import_legacy
+        return document_result(import_legacy(payload["path"], payload.get("direction"),
+                                             payload.get("coordinate_frame"), payload.get("kind", "real")))
     raise ValueError(f"Неизвестная операция: {method}")

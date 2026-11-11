@@ -14,6 +14,24 @@ def _line(points, name, color, **options):
 
 
 def _surface_traces(surface):
+    if hasattr(surface, "body"):
+        if surface.part != "cut":
+            return []
+        body = surface.body
+        mesh = body.mesh()
+        p = np.asarray(mesh["vertices_m"])
+        traces = []
+        for faces, color, label in ((mesh["body_faces"], "#63788c", "Тело"),
+                                     (mesh["cut_faces"], "#e2b767", "Отражающий срез")):
+            faces = np.asarray(faces)
+            traces.append(dict(type="mesh3d", name=f"{label} {body.mirror_id}",
+                x=p[:, 0].tolist(), y=p[:, 1].tolist(), z=p[:, 2].tolist(),
+                i=faces[:, 0].tolist(), j=faces[:, 1].tolist(), k=faces[:, 2].tolist(),
+                color=color, opacity=1., showlegend=False,
+                meta=dict(mirror_id=body.mirror_id),
+                customdata=[dict(mirror_id=body.mirror_id)] * len(p),
+                hovertemplate=f"{label} {body.mirror_id}<br>%{{x:.6f}}, %{{y:.6f}}, %{{z:.6f}} м<extra></extra>"))
+        return traces
     color = "#c58ad4" if surface.name.startswith("BUNDLE_") else "#72afbb"
     if surface.optics.detector:
         color = "#e2b767"
@@ -64,6 +82,41 @@ class PlotlyRenderer:
         data = []
         for surface in configuration.scene.build_surfaces():
             data.extend(_surface_traces(surface))
+        reconstruction = getattr(configuration, "reconstruction", {})
+        mirror_by_id = {m.get("mirror_id", m["canonical_id"]): m for m in reconstruction.get("mirrors", [])}
+        for trace in data:
+            if trace.get("meta", {}).get("mirror_id"):
+                trace["meta"]["direction"] = configuration.direction
+                mirror = mirror_by_id.get(trace["meta"]["mirror_id"], {})
+                if mirror.get("status") == "infeasible":
+                    trace["color"] = "#f27171"
+                elif mirror.get("status") == "ambiguous":
+                    trace["color"] = "#d397ee"
+                for item in trace.get("customdata", []):
+                    item["direction"] = configuration.direction
+        colors = {"measured": "#65d6bd", "partial": "#ffcf76", "predicted": "#82aaff",
+                  "ambiguous": "#d397ee", "failed": "#f27171"}
+        for mirror in reconstruction.get("mirrors", []):
+            trajectory = mirror.get("trajectory")
+            if not trajectory or trajectory.get("direction") is None:
+                continue
+            p = np.asarray(trajectory.get("point_m", mirror["center_m"]))
+            d = np.asarray(trajectory["direction"])
+            endpoints = trajectory.get("points_m") or trajectory.get("segment_m")
+            if not endpoints:
+                # A direction alone is not a verified optical path. Show its
+                # origin only; never extend a line across unknown media.
+                endpoints = [p.tolist(), p.tolist()]
+            status = mirror.get("observation_status", "predicted")
+            if mirror.get("status") in {"infeasible", "failed"}:
+                status = "failed"
+            elif mirror.get("status") == "ambiguous":
+                status = "ambiguous"
+            oid = mirror["old_id"]
+            data.append(_line(endpoints, f"{status} · {oid}", colors.get(status, "#82aaff"),
+                showlegend=False, meta=dict(mirror_id=oid, direction=configuration.direction),
+                customdata=[dict(mirror_id=oid, direction=configuration.direction)] * len(endpoints),
+                hovertemplate=f"{oid} → {mirror['canonical_id']} · {status}<extra></extra>"))
         total = sum(len(block["x0"]) for block in result.segments)
         stride = max(1, int(np.ceil(total / self.segment_budget)))
         blocks, offset = [], 0
@@ -116,7 +169,7 @@ class PlotlyRenderer:
                     if point is not None and all(v is not None for v in point):
                         points.append(point)
                         labels.append(f"{row.id} · экран {screen}")
-            p = np.asarray(points)
+            p = np.asarray(points).reshape(-1, 3)
             data.append(dict(type="scatter3d", mode="markers", name="Геодезические точки",
                              x=p[:, 0].tolist(), y=p[:, 1].tolist(), z=p[:, 2].tolist(), text=labels,
                              marker=dict(size=4, color="#ffffff", symbol="circle-open"),

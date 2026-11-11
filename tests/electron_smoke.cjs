@@ -18,12 +18,21 @@ const { _electron } = require('playwright-core');
   });
   try {
     const page = await app.firstWindow();
+    page.setDefaultTimeout(120000);
+    const waitForStatus = async (expected, timeout = 120000) => {
+      await page.waitForFunction(text => [text, 'Расчёт не завершён'].includes(document.querySelector('#run-status').textContent), expected, { timeout });
+      assert.equal(await page.locator('#run-status').innerText(), expected, await page.locator('#notice').innerText());
+    };
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setBackgroundThrottling(false));
     page.on('pageerror', error => errors.push(error.message));
     await page.waitForFunction(() => document.querySelector('#connection-label')?.textContent.includes('подключён'));
     assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
     assert.equal(await page.locator('#direction').inputValue(), 'both');
     assert.equal(await page.locator('#use-lavsan').count(), 0);
+    assert.equal(await page.locator('#optimize').innerText(), 'Оптимизировать положение недостающих лучей');
+    for (const [id, label] of [['save-configuration', 'Сохранить'], ['load-configuration', 'Загрузить'], ['load-legacy', 'Загрузить легаси']]) {
+      assert.equal(await page.locator('#' + id).innerText(), label);
+    }
     await page.locator('#run').click();
     await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
     assert.ok(await page.locator('#scene .gl-container').count());
@@ -181,7 +190,145 @@ const { _electron } = require('playwright-core');
     assert.deepEqual(exported, { application: 'MirrorLab', format_version: 1 });
     await page.evaluate(() => window.mirrorlab.request('cancel'));
     assert.equal((await page.evaluate(() => window.mirrorlab.request('catalog'))).modules.static, 'ready');
+    // Physical configuration persistence uses the actual buttons and Python schema validation.
+    const configurationPath = path.join(output, 'configuration.json');
+    await app.evaluate(({ dialog }, filePath) => {
+      dialog.showSaveDialog = async () => ({ canceled: false, filePath });
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] });
+    }, configurationPath);
+    await page.locator('#direction').selectOption('west_to_east');
+    await page.locator('#save-configuration').click();
+    await waitForStatus('Конфигурация сохранена');
+    const savedConfiguration = JSON.parse(await fs.readFile(configurationPath, 'utf8'));
+    assert.ok(savedConfiguration.schema_version);
+    assert.ok(savedConfiguration.datasets.west_to_east);
+    await page.locator('#load-configuration').click();
+    await waitForStatus('Реконструкция обработана');
+    assert.match(await page.locator('#active-state').innerText(), /Принятая конфигурация/);
+    assert.equal(await page.locator('#mirror-select option').count(), 112);
+    const selectedGeometry = await page.evaluate(() => {
+      const result = JSON.parse(document.querySelector('#reconstruction-json').textContent);
+      const dataset = result.document.datasets.west_to_east;
+      const mirror = dataset.mirrors[0];
+      const c = mirror.center_m;
+      const expected = dataset.display_frame.rotation.map((row, i) => row.reduce((sum, x, j) => sum + x * c[j], 0) + dataset.display_frame.translation_m[i]);
+      const entry = [...document.querySelectorAll('#mirror-details dt')].find(node => node.textContent === 'Центр отражающего среза, м');
+      return { expected, displayed: entry.nextElementSibling.textContent.split(';').map(x => Number(x.trim().replace(/\s/g, '').replace(',', '.'))) };
+    });
+    assert.ok(selectedGeometry.expected.every((value, i) => Math.abs(value - selectedGeometry.displayed[i]) < 1e-9));
+    const mirrorClicked = await page.evaluate(() => {
+      const plot = document.querySelector('#scene');
+      const target = plot.data.find(trace => trace.meta?.mirror_id === '1_1_2' && trace.meta?.direction === 'west_to_east');
+      if (!target) return null;
+      plot.emit('plotly_click', { points: [{ data: target }] });
+      return document.querySelector('#mirror-select').selectedOptions[0].textContent;
+    });
+    assert.match(mirrorClicked, /1_1_2/);
+    const activeBeforeFailure = await page.locator('#active-state').innerText();
+    const badPath = path.join(output, 'invalid-configuration.json');
+    await fs.writeFile(badPath, JSON.stringify({ ...savedConfiguration, schema_version: 999999 }));
+    await app.evaluate(({ dialog }, filePath) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] }); }, badPath);
+    await page.locator('#load-configuration').click();
+    await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Расчёт не завершён');
+    assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
+    // Killing and restarting Python must retain the accepted document in the app.
+    await page.evaluate(() => window.mirrorlab.request('cancel'));
+    await page.locator('#run').click();
+    await waitForStatus('Конфигурация построена');
+    assert.match(await page.locator('#scene-label').innerText(), /принятая реконструкция/);
+    assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
+    await page.screenshot({ path: path.join(output, 'loaded-configuration.png'), fullPage: true });
+    // Opt-in long integration run: full reconstruction, candidate save, reload, exact dataset round trip.
+    if (process.env.MIRRORLAB_EXTENDED_UI === '1') {
+      await page.locator('#optimize').click();
+      await page.waitForFunction(() => !document.querySelector('#reconstruction-progress').hidden ||
+        document.querySelector('#run-status').textContent === 'Расчёт не завершён');
+      assert.equal(await page.locator('#reconstruction-progress').isVisible(), true, await page.locator('#notice').innerText());
+      await page.locator('#cancel').click();
+      await waitForStatus('Расчёт не завершён');
+      assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
+      await page.locator('#run').click();
+      await waitForStatus('Конфигурация построена');
+      assert.match(await page.locator('#scene-label').innerText(), /принятая реконструкция/);
+      await page.locator('#optimize').click();
+      await page.waitForFunction(() => !document.querySelector('#reconstruction-progress').hidden ||
+        document.querySelector('#run-status').textContent === 'Расчёт не завершён');
+      assert.equal(await page.locator('#reconstruction-progress').isVisible(), true, await page.locator('#notice').innerText());
+      await waitForStatus('Реконструкция обработана', 600000);
+      assert.equal(await page.locator('#mirror-select option').count(), 112);
+      const candidate = await page.evaluate(() => JSON.parse(document.querySelector('#reconstruction-json').textContent));
+      assert.ok(candidate.document.datasets.west_to_east.template);
+      if (!candidate.active) assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
+      const candidatePath = path.join(output, 'reconstruction.json');
+      await app.evaluate(({ dialog }, filePath) => {
+        dialog.showSaveDialog = async () => ({ canceled: false, filePath });
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] });
+      }, candidatePath);
+      await page.locator('#save-configuration').click();
+      await waitForStatus('Конфигурация сохранена');
+      const reconstructed = JSON.parse(await fs.readFile(candidatePath, 'utf8'));
+      assert.deepEqual(reconstructed.datasets, candidate.document.datasets);
+      await page.locator('#load-configuration').click();
+      await waitForStatus('Реконструкция обработана');
+      const loaded = await page.evaluate(() => JSON.parse(document.querySelector('#reconstruction-json').textContent));
+      assert.deepEqual(loaded.document.datasets, reconstructed.datasets);
+      const empiricalFrameError = await page.evaluate(() => {
+        const dataset = JSON.parse(document.querySelector('#reconstruction-json').textContent).document.datasets.west_to_east;
+        const point = dataset.mirrors[0].center_m;
+        const expected = dataset.display_frame.rotation.map((row, i) => row.reduce((sum, x, j) => sum + x * point[j], 0) + dataset.display_frame.translation_m[i]);
+        const label = [...document.querySelectorAll('#mirror-details dt')].find(node => node.textContent === 'Центр отражающего среза, м');
+        const displayed = label.nextElementSibling.textContent.split(';').map(value => Number(value.trim().replace(/\s/g, '').replace(',', '.')));
+        return Math.max(...expected.map((value, i) => Math.abs(value - displayed[i])));
+      });
+      assert.ok(empiricalFrameError < 1e-9, 'Empirical scene_to_survey operation is also applied to mirror details');
+      await page.screenshot({ path: path.join(output, 'reconstruction.png'), fullPage: true });
+    }
+    // Legacy JSON is an explicit diagnostic import; accepting it is a separate action.
+    const activeBeforeImport = await page.locator('#active-state').innerText();
+    await app.evaluate(({ dialog }, filePath) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] });
+    }, path.join(root, 'data', 'static', 'west_to_east_real.json'));
+    await page.locator('#load-legacy').click();
+    await page.locator('#choose-legacy').click();
+    await waitForStatus('Реконструкция обработана');
+    assert.equal(await page.locator('#active-state').innerText(), activeBeforeImport);
+    assert.match(await page.locator('#reconstruction-status').innerText(), /не проверена/);
+    assert.ok(await page.locator('#accept-candidate').isVisible());
+    await page.locator('#accept-candidate').click();
+    await waitForStatus('Реконструкция обработана');
+    const activeLegacy = await page.locator('#active-state').innerText();
+    assert.notEqual(activeLegacy, activeBeforeImport);
+    assert.match(await page.locator('#coordinate-title').innerText(), /Расчётная сцена/);
+    // A geometry-only table cannot silently replace an accepted full optical configuration.
+    await app.evaluate(({ dialog }, filePath) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] });
+    }, path.join(root, 'Восстановленные_микросборки.txt'));
+    await page.locator('#legacy-frame').selectOption('legacy');
+    await page.locator('#choose-legacy').click();
+    await waitForStatus('Реконструкция обработана');
+    assert.equal(await page.locator('#active-state').innerText(), activeLegacy);
+    assert.equal(await page.locator('#accept-candidate').isVisible(), false);
+    const tableImport = await page.evaluate(() => JSON.parse(document.querySelector('#reconstruction-json').textContent));
+    assert.equal(tableImport.can_activate, false);
+    assert.equal(tableImport.document.datasets.west_to_east.optics_snapshot, null);
+    assert.ok(await page.locator('#mirror-select option').count() > 0);
+    await page.screenshot({ path: path.join(output, 'legacy-table.png'), fullPage: true });
+    const permutedSelection = await page.evaluate(async () => {
+      const original = JSON.parse(document.querySelector('#reconstruction-json').textContent);
+      const candidate = structuredClone(original);
+      const mirrors = candidate.document.datasets.west_to_east.mirrors;
+      [mirrors[0].old_id, mirrors[1].old_id] = [mirrors[1].canonical_id, mirrors[0].canonical_id];
+      candidate.reports = [candidate.document.datasets.west_to_east];
+      await showReconstruction(candidate);
+      document.querySelector('#scene').emit('plotly_click', { points: [{ data: { meta: {
+        direction: 'west_to_east', mirror_id: mirrors[1].canonical_id,
+      } } }] });
+      const selected = JSON.parse(document.querySelector('#mirror-technical').textContent).mirror.canonical_id;
+      await showReconstruction(original);
+      return { selected, expected: mirrors[1].canonical_id };
+    });
+    assert.equal(permutedSelection.selected, permutedSelection.expected, 'Plot selection resolves canonical identity before conflicting old numbering');
     assert.deepEqual(errors, []);
-    console.log('Electron smoke passed: native UI, Plotly, real traces, both surveys, lavsan, stubs, IPC, worker restart.');
+    console.log('Electron smoke passed: native UI, Plotly, real traces, both surveys, lavsan, configuration save/load, malformed load, worker restart.');
   } finally { await app.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

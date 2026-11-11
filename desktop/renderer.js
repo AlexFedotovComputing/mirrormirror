@@ -11,6 +11,12 @@ let elapsedTimer;
 let capabilities = [];
 let measurementReports = [];
 let measurementContext = null;
+let configurationVersion = 0;
+let activeConfiguration = false;
+let reconstructionResult = null;
+let mirrorRecords = [];
+let currentJob = null;
+let busyText = '';
 const sideNames = {};
 const routes = {};
 let directions = [];
@@ -35,6 +41,9 @@ function updateControls() {
   const real = $('kind').value === 'real';
   $('calibration-card').hidden = !real;
   $('calibrate').disabled = busy;
+  for (const id of ['optimize', 'save-configuration', 'load-configuration', 'load-legacy',
+    'choose-legacy', 'accept-candidate', 'use-historical', 'save-source', 'legacy-frame']) $(id).disabled = busy;
+  $('kind').disabled = busy || activeConfiguration;
   showSideStatus();
 }
 
@@ -85,12 +94,13 @@ function setBusy(active, label = 'Трассировка лучей') {
   $('cancel').hidden = !active;
   $('busy-overlay').hidden = !active;
   $('busy-label').textContent = label;
+  busyText = label;
   clearInterval(elapsedTimer);
   if (active) {
     const start = Date.now();
     $('run-status').textContent = label + '…';
     elapsedTimer = setInterval(() => {
-      $('run-status').textContent = `${label} · ${Math.floor((Date.now() - start) / 1000)} с`;
+      $('run-status').textContent = `${busyText} · ${Math.floor((Date.now() - start) / 1000)} с`;
     }, 1000);
   }
   updateControls();
@@ -105,6 +115,13 @@ function paragraph(parent, text) {
 function metadata(result) {
   const { figure, ...rest } = result;
   return rest;
+}
+
+function showCoordinateFrame(frame) {
+  const survey = frame === 'survey';
+  $('coordinate-title').textContent = survey ? 'Геодезические XYZ · метры' : 'Расчётная сцена · метры';
+  $('coordinate-note').textContent = survey ? 'Знак Z — по измерениям. Центральная плоскость объёма: z = 0.'
+    : 'Координаты сохранённого источника. Привязка к геодезии не установлена.';
 }
 
 // Apply the same palette to traces and the intensity legend without changing the data.
@@ -175,13 +192,16 @@ async function drawScene(figure) {
     projection: { type: 'perspective' } };
   const sourceLayout = figure.layout || {};
   const axes = Object.fromEntries(Object.keys(volumeRanges).map(axis =>
-    [axis, { ...lightSceneAxis(sourceLayout.scene?.[axis]), autorange: true }]));
+    [axis, { ...lightSceneAxis({ ...sourceLayout.scene?.[axis],
+      title: sourceLayout.scene?.[axis]?.title ?? { text: `${axis[0]}, м` } }), autorange: true }]));
   const layout = { ...sourceLayout, autosize: true, width: undefined, height: undefined,
     template: {}, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
     legend: { ...sourceLayout.legend, bgcolor: 'rgba(255,255,255,0.92)', font: { size: 12, color: '#55565b' } },
     hoverlabel: { bgcolor: '#ffffff', bordercolor: '#c9c7c5', font: { family: 'Segoe UI, sans-serif', size: 12, color: '#303136' } },
     font: { ...sourceLayout.font, color: '#55565b', family: 'Segoe UI, sans-serif', size: 12 },
-    margin: { l: 0, r: 0, t: 15, b: 0 }, uirevision: 'mirrorlab-camera',
+    ...(sourceLayout.title?.text ? { title: { ...sourceLayout.title, x: .02, y: .98, xanchor: 'left',
+      font: { size: 13, color: '#55565b' } } } : {}),
+    margin: { l: 0, r: 0, t: sourceLayout.title?.text ? 45 : 15, b: 0 }, uirevision: 'mirrorlab-camera',
     scene: { ...sourceLayout.scene, ...axes, dragmode: 'orbit', aspectmode: 'data',
       bgcolor: '#ffffff', camera: camera || defaultCamera },
   };
@@ -195,12 +215,28 @@ async function drawScene(figure) {
     $('scene').on('plotly_relayout', (event) => { if (event['scene.camera']) camera = event['scene.camera']; });
     $('scene').dataset.cameraListener = 'true';
   }
+  if (!$('scene').dataset.mirrorListener) {
+    $('scene').on('plotly_click', event => {
+      const point = event.points?.[0];
+      const info = point?.customdata && typeof point.customdata === 'object' && !Array.isArray(point.customdata)
+        ? point.customdata : point?.data?.meta;
+      const id = info?.mirror_id ?? info?.canonical_id;
+      if (!id) return;
+      let selected = mirrorRecords.findIndex(item => (item.mirror.canonical_id === id || item.mirror.mirror_id === id)
+        && (!info.direction || item.direction === info.direction));
+      if (selected < 0) selected = mirrorRecords.findIndex(item => item.mirror.old_id === id &&
+        (!info.direction || item.direction === info.direction));
+      if (selected >= 0) { $('mirror-select').value = String(selected); showMirror(); }
+    });
+    $('scene').dataset.mirrorListener = 'true';
+  }
   $('empty-scene').hidden = true;
   $('reset-camera').disabled = false;
   $('scene-extent').disabled = false;
 }
 
 function showSummary(result, request) {
+  showCoordinateFrame(result.metadata?.coordinate_frame ?? 'survey');
   $('metrics').replaceChildren();
   const summary = result.summary || {};
   for (const [key, value] of Object.entries(summary)) {
@@ -217,7 +253,7 @@ function showSummary(result, request) {
   $('result-notes').replaceChildren();
   const direction = directionLabel(request.direction);
   $('result-direction').textContent = direction;
-  $('scene-label').textContent = `${direction} · ${request.kind === 'ideal' ? 'идеальная' : 'реальная'}`;
+  $('scene-label').textContent = `${direction} · ${result.active ? 'принятая реконструкция' : request.kind === 'ideal' ? 'историческая идеальная' : 'историческая реальная'}`;
   paragraph($('result-notes'), `Поиск пересечений: ${request.collision_mode === 'exhaustive' ? 'полный перебор' : 'ожидаемые объекты'}. Лучей на лазер: ${request.ray_count}; максимум взаимодействий: ${request.max_interactions}.`);
   for (const warning of result.warnings || []) paragraph($('result-notes'), warning);
   $('result-json').textContent = JSON.stringify(metadata(result), null, 2);
@@ -306,17 +342,190 @@ async function showMeasurementSide(result) {
   }
 }
 
+const reconstructionStatuses = { validated: 'Проверено', partial: 'Частичный результат',
+  infeasible: 'Недопустимо', legacy_unvalidated: 'Историческая геометрия · не проверена',
+  needs_context: 'Нужны сведения об источнике' };
+const basisStatuses = { data_supported: 'По измерениям', data_and_mechanics: 'Измерения и механика',
+  prior_dominated: 'Определено предположениями', ambiguous: 'Неоднозначно', infeasible: 'Недопустимо',
+  measured: 'Измерено', partial: 'Частичные измерения', predicted: 'Предсказано', failed: 'Не восстановлено' };
+const precise = value => typeof value === 'number'
+  ? value !== 0 && Math.abs(value) < 1e-7 ? value.toExponential(4) : value.toLocaleString('ru-RU', { maximumFractionDigits: 9 })
+  : String(value);
+const describe = value => value === undefined || value === null ? 'Не определено'
+  : Array.isArray(value) ? value.map(item => typeof item === 'number' ? precise(item) : describe(item)).join('; ')
+    : typeof value === 'object' ? JSON.stringify(value, null, 2) : precise(value);
+
+function reconstructionReports(result) {
+  if (Array.isArray(result.reports)) return result.reports;
+  const datasets = result.document?.datasets ?? result.document?.directions;
+  if (Array.isArray(datasets)) return datasets.filter(item => item && typeof item === 'object');
+  if (datasets && typeof datasets === 'object') return Object.entries(datasets).map(([direction, item]) => ({ direction, ...item }));
+  return [];
+}
+
+function showMirror() {
+  const selected = mirrorRecords[Number($('mirror-select').value)];
+  $('mirror-details').replaceChildren();
+  $('mirror-technical').textContent = '';
+  if (!selected) return;
+  const mirror = selected.mirror;
+  const body = mirror.body ?? mirror;
+  const frame = selected.displayFrame;
+  const hasTransform = (frame?.coordinate_frame === 'survey' || frame?.coordinate_operation === 'scene_to_survey') &&
+    Array.isArray(frame.rotation) && Array.isArray(frame.translation_m);
+  const transform = (vector, point = false) => !hasTransform || !Array.isArray(vector) ? vector
+    : frame.rotation.map((row, i) => row.reduce((sum, v, j) => sum + v * vector[j], 0) + (point ? frame.translation_m[i] : 0));
+  const uncertainty = mirror.uncertainty ?? {};
+  const constraint = value => ({ not_evaluated: 'Не проверено', passed: 'Проверено', violated: 'Нарушение' }[value?.status ?? value] ?? value?.status ?? value);
+  const alternatives = mirror.assignment_alternatives ?? mirror.alternatives ?? selected.assignment?.alternatives ?? [];
+  const fields = [
+    ['Сторона', sideNames[selected.direction] ?? selected.direction],
+    ['Исходный номер', mirror.old_id ?? mirror.mirror_id], ['Каноническое место', mirror.canonical_id],
+    ['Статус', basisStatuses[mirror.status] ?? mirror.status],
+    ['Наблюдение', selected.datasetStatus === 'legacy_unvalidated'
+      ? 'Исторический источник; первичные измерения не привязаны' : basisStatuses[mirror.observation_status] ?? mirror.observation_status],
+    ['Идентификаторы измерений', mirror.observation_old_ids ?? mirror.observation_ids],
+    ['Основание', basisStatuses[mirror.support_status ?? mirror.basis ?? mirror.confidence_status ?? mirror.status] ?? mirror.support_status ?? mirror.basis ?? mirror.confidence_status],
+    ['Система координат', hasTransform ? 'Геодезическая · сохранённое преобразование'
+      : selected.calculationFrame === 'survey' ? 'Геодезическая · исходные координаты' : 'Расчётная сцена'],
+    ['Центр отражающего среза, м', transform(body.center_m ?? mirror.center_m, true)],
+    ['Физическая нормаль', transform(body.normal ?? body.normal_world)], ['Ось цилиндра', transform(body.axis ?? body.axis_world)],
+    ['Сдвиг от шаблона, мм', mirror.template_deviation?.center_m?.map(value => value * 1000)],
+    ['Поворот от шаблона, мрад', mirror.template_deviation?.angular_rad == null ? null : mirror.template_deviation.angular_rad * 1000],
+    ['Остаток по измерениям, м', mirror.measurement_residual_m ?? mirror.residual_m ?? mirror.residuals],
+    ['Зазор, м', mirror.clearance_m ?? mirror.minimum_clearance_m],
+    ['Неопределённость центра, мм', uncertainty.center_sigma_m == null ? null : uncertainty.center_sigma_m * 1000],
+    ['Предиктивный угловой разброс, мрад', uncertainty.predictive_angle_sigma_rad == null ? null : uncertainty.predictive_angle_sigma_rad * 1000],
+    ['Ошибка среднего шаблона, мрад', uncertainty.mean_template_sigma_rad == null ? null : uncertainty.mean_template_sigma_rad * 1000],
+    ['Размещение на стержне', constraint(mirror.rod_containment)], ['Сторона перетяжки', constraint(mirror.waist_side)],
+    ['Допустимые гипотезы соответствия', alternatives.length || null],
+  ];
+  for (const [label, value] of fields) {
+    const dt = document.createElement('dt'); dt.textContent = label;
+    const dd = document.createElement('dd'); dd.textContent = describe(value);
+    $('mirror-details').append(dt, dd);
+  }
+  $('mirror-technical').textContent = JSON.stringify({ mirror, assignment: selected.assignment,
+    coordinate_frame: { displayed: hasTransform ? 'survey' : selected.calculationFrame, stored: selected.calculationFrame,
+      note: 'Компоненты неопределённости и параметры тела сохранены в расчётной системе координат. Стоимости гипотез не являются вероятностями.' } }, null, 2);
+}
+
+async function showReconstruction(result) {
+  reconstructionResult = result;
+  $('metrics').replaceChildren();
+  $('result-details').hidden = true;
+  $('calibration-result').hidden = true;
+  measurementReports = [];
+  measurementContext = null;
+  configurationVersion = result.configuration_version ?? configurationVersion;
+  if (result.active) activeConfiguration = true;
+  const reports = reconstructionReports(result);
+  if (result.active && reports.length === 1) $('direction').value = reports[0].direction;
+  if (result.figure) await drawScene(result.figure);
+  if (result.figure) showCoordinateFrame(result.coordinate_frame ??
+    (reports.every(report => report.display_frame?.coordinate_frame === 'survey') ? 'survey' : 'legacy'));
+  const status = reconstructionStatuses[result.status] ?? result.status ?? 'Диагностический результат';
+  $('reconstruction-status').textContent = status;
+  const missingOptics = reports.some(report => report.optics_snapshot === null);
+  $('candidate-note').textContent = result.active
+    ? 'Эта конфигурация принята. Построение сцены и сохранение используют её геометрию и оптику.'
+    : result.can_activate === false && result.status !== 'infeasible'
+      ? missingOptics ? 'Кандидат неполон: общая оптика не установлена. Доступны просмотр геометрии и сохранение.'
+        : 'В конфигурации есть недопустимые части. Причины показаны отдельно для каждой стороны; доступны просмотр и сохранение кандидата.'
+    : result.figure ? 'Показан диагностический кандидат. Принятая конфигурация сохранена; непроверенные условия перечислены в отчёте.'
+      : 'Импорт доступен как данные для просмотра и сохранения. Полная оптическая сцена не определена; текущая сцена сохранена.';
+  $('accept-candidate').hidden = result.active || !result.document || result.status === 'infeasible' || result.can_activate === false;
+  $('accept-candidate').textContent = result.status === 'legacy_unvalidated' ? 'Использовать исторический импорт' : 'Использовать частичный результат';
+  $('save-source').hidden = $('save-source-label').hidden = result.active || !result.document;
+  $('save-source').value = result.active ? 'active' : 'candidate';
+  $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}` : 'Историческая конфигурация';
+  $('use-historical').hidden = !activeConfiguration;
+  if (result.figure) $('scene-label').textContent = `${(result.scene_direction
+    ? [sideNames[result.scene_direction] ?? result.scene_direction]
+    : reports.map(report => sideNames[report.direction] ?? report.direction)).join(' и ')} · ${result.active ? 'принятая реконструкция' : 'диагностический кандидат'}`;
+  $('reconstruction-sides').replaceChildren();
+  mirrorRecords = [];
+  for (const report of reports) {
+    const card = document.createElement('div'); card.className = 'reconstruction-side'; card.dataset.status = report.status;
+    const title = document.createElement('strong');
+    title.textContent = `${sideNames[report.direction] ?? report.direction}: ${reconstructionStatuses[report.status] ?? report.status ?? '—'}`;
+    card.append(title);
+    const mirrors = report.mirrors ?? [];
+    const count = state => mirrors.filter(mirror => (mirror.observation_status ?? mirror.measurement_status ?? mirror.trajectory_status ?? mirror.status) === state).length;
+    const counts = report.counts ?? {};
+    paragraph(card, report.status === 'legacy_unvalidated'
+      ? `Зеркал: ${mirrors.length}. Геометрия из исторического источника; независимые первичные измерения к этому импорту не привязаны.`
+      : `Зеркал: ${mirrors.length || counts.total || '—'} · полные: ${counts.complete ?? counts.measured ?? count('measured')} · частичные: ${counts.partial ?? counts.single_screen ?? count('partial')} · предсказанные: ${counts.predicted ?? count('predicted')}`);
+    const ambiguous = mirrors.filter(mirror => mirror.status === 'ambiguous' || mirror.support_status === 'ambiguous').length;
+    const failed = mirrors.filter(mirror => ['failed', 'infeasible'].includes(mirror.status)).length;
+    paragraph(card, `Неоднозначные: ${counts.ambiguous ?? ambiguous} · недопустимые: ${counts.failed ?? failed}`);
+    const heldout = report.diagnostics?.withheld;
+    if (heldout?.status === 'evaluated') {
+      paragraph(card, `Скрытые лучи: ${heldout.predicted}/${heldout.planned}; медианная угловая ошибка ${format(heldout.angular_error_mrad?.median)} мрад, 90-й процентиль ${format(heldout.angular_error_mrad?.p90)} мрад. Жёсткий эмпирический шаблон: ${format(heldout.rigid_empirical_error_mrad?.median)} мрад.`);
+      if (heldout.conditional_interval_coverage != null) paragraph(card,
+        `Покрытие условных 95% интервалов: ${format(heldout.conditional_interval_coverage * 100)}%. Оценка по малой выборке; метрологическая точность не подтверждена.`);
+    }
+    for (const warning of report.warnings ?? report.limitations ?? report.diagnostics?.limitations ?? []) paragraph(card, warning);
+    $('reconstruction-sides').append(card);
+    for (const mirror of mirrors) mirrorRecords.push({ direction: report.direction, mirror, displayFrame: report.display_frame, datasetStatus: report.status,
+      calculationFrame: report.display_frame?.calculation_frame ?? report.coordinate_frame ?? 'legacy',
+      assignment: (Array.isArray(report.assignments) ? report.assignments : []).find(item =>
+        item.canonical_id === mirror.canonical_id || item.old_id === mirror.old_id ||
+        item.physical_group === mirror.canonical_id?.split('_').slice(0, 2).join('_')) });
+  }
+  $('mirror-select').replaceChildren(...mirrorRecords.map(({ direction, mirror }, index) => {
+    const option = document.createElement('option'); option.value = String(index);
+    option.textContent = `${sideNames[direction] ?? direction} · ${mirror.old_id ?? mirror.mirror_id ?? '—'} → ${mirror.canonical_id ?? '—'}`;
+    return option;
+  }));
+  showMirror();
+  $('reconstruction-json').textContent = JSON.stringify(metadata(result), null, 2);
+  $('reconstruction-result').hidden = false;
+  for (const warning of result.warnings ?? []) paragraph($('reconstruction-sides'), warning);
+  showSideStatus();
+}
+
+const stageLabels = { data: 'Проверка данных', checking_data: 'Проверка данных', observations: 'Проверка данных',
+  template: 'Построение шаблона', matching: 'Сопоставление', correspondence: 'Сопоставление',
+  fitting: 'Подгонка сборок', assembly_fit: 'Подгонка сборок', individual: 'Индивидуальная подстройка',
+  geometry: 'Проверка геометрии', validation: 'Оценка качества', quality: 'Оценка качества' };
+bridge?.onProgress(message => {
+  if (!busy || message.configuration_version !== configurationVersion) return;
+  if (currentJob && currentJob !== message.job_id) return;
+  currentJob = message.job_id;
+  const progress = message.progress ?? message;
+  const stage = progress.label ?? stageLabels[progress.stage] ?? progress.stage ?? 'Вычисление';
+  busyText = progress.direction ? `${sideNames[progress.direction] ?? progress.direction} · ${stage}` : stage;
+  $('busy-label').textContent = busyText;
+  $('progress-stage').textContent = busyText;
+  $('reconstruction-progress').hidden = false;
+  const total = progress.total;
+  const completed = progress.completed ?? progress.current;
+  if (Number.isFinite(total) && total > 0 && Number.isFinite(completed)) {
+    $('progress-bar').max = total; $('progress-bar').value = completed;
+  } else $('progress-bar').removeAttribute('value');
+});
+
 async function run(method, payload) {
   if (busy) return;
   if (!bridge) { notify('Откройте приложение через npm start: требуется соединение Electron с Python.', true); return; }
   notify('');
-  setBusy(true, method === 'trace' ? 'Трассировка лучей' : 'Обработка измерений');
+  currentJob = null;
+  const actionLabels = { trace: 'Трассировка лучей', calibrate: 'Обработка измерений', optimize: 'Проверка данных',
+    save_configuration: 'Сохранение конфигурации', load_configuration: 'Проверка файла конфигурации',
+    import_legacy: 'Проверка исторических данных', accept_candidate: 'Применение результата', use_historical: 'Историческая конфигурация' };
+  setBusy(true, actionLabels[method]);
   try {
     const result = await bridge.request(method, payload);
+    if (result.canceled || result.saved === false) { $('run-status').textContent = 'Действие отменено'; return; }
+    configurationVersion = result.configuration_version ?? configurationVersion;
     session[method] = { parameters: payload, ...result };
     if (method === 'trace') {
       await drawScene(result.figure);
       showSummary(result, payload);
+      if (reconstructionResult && !reconstructionResult.active) {
+        $('candidate-note').textContent = 'Отчёт ниже относится к диагностическому кандидату. Сцена показывает текущую принятую конфигурацию.';
+      }
       if (result.measurements) {
         session.calibrate = result.measurements;
         await showCalibration(result.measurements);
@@ -326,14 +535,26 @@ async function run(method, payload) {
         delete session.calibrate;
         $('calibration-result').hidden = true;
       }
-    } else await showCalibration(result);
-    $('run-status').textContent = method === 'trace' ? 'Конфигурация построена' : 'Измерения обработаны';
+    } else if (method === 'calibrate') await showCalibration(result);
+    else if (method === 'save_configuration') notify(`Конфигурация сохранена${result.path ? ': ' + result.path : ''}`);
+    else if (method === 'use_historical') {
+      activeConfiguration = false;
+      reconstructionResult = null;
+      $('reconstruction-result').hidden = true;
+      $('active-state').textContent = 'Историческая конфигурация';
+      $('use-historical').hidden = true;
+      $('save-source').hidden = $('save-source-label').hidden = true;
+      $('save-source').value = 'active';
+      notify('Выбрана историческая конфигурация. Нажмите «Построить конфигурацию» для обновления сцены.');
+    } else await showReconstruction(result);
+    $('run-status').textContent = method === 'trace' ? 'Конфигурация построена' : method === 'calibrate'
+      ? 'Измерения обработаны' : method === 'save_configuration' ? 'Конфигурация сохранена' : 'Реконструкция обработана';
     $('connection-label').textContent = 'Расчётный модуль подключён';
     if (method === 'calibrate') $('calibration-result').scrollIntoView({ block: 'start', behavior: 'smooth' });
   } catch (error) {
     notify(error.message || String(error), true);
     $('run-status').textContent = 'Расчёт не завершён';
-  } finally { setBusy(false); }
+  } finally { setBusy(false); $('reconstruction-progress').hidden = true; currentJob = null; }
 }
 
 $('trace-form').addEventListener('submit', (event) => {
@@ -346,10 +567,24 @@ $('trace-form').addEventListener('submit', (event) => {
 $('calibrate').addEventListener('click', () => run('calibrate', {
   direction: $('direction').value,
 }));
+const configurationSelection = () => ({ direction: $('direction').value, kind: $('kind').value });
+$('optimize').addEventListener('click', () => run('optimize', configurationSelection()));
+$('save-configuration').addEventListener('click', () => run('save_configuration', {
+  ...configurationSelection(), source: $('save-source').value,
+}));
+$('load-configuration').addEventListener('click', () => run('load_configuration', configurationSelection()));
+$('load-legacy').addEventListener('click', () => { $('legacy-context').hidden = !$('legacy-context').hidden; });
+$('choose-legacy').addEventListener('click', () => run('import_legacy', {
+  ...configurationSelection(), coordinate_frame: $('legacy-frame').value,
+}));
+$('accept-candidate').addEventListener('click', () => run('accept_candidate', { configuration_version: configurationVersion }));
+$('use-historical').addEventListener('click', () => run('use_historical', configurationSelection()));
+$('mirror-select').addEventListener('change', showMirror);
 for (const id of ['direction', 'kind', 'collision-mode']) $(id).addEventListener('change', () => {
   if (id !== 'collision-mode') {
     measurementContext = null;
     $('calibration-result').hidden = true;
+    if ($('scene').data) notify('Параметры изменены. Сцена показывает последний результат; нажмите «Построить конфигурацию», чтобы применить выбранные параметры.');
   }
   updateControls();
 });
