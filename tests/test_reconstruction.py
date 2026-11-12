@@ -179,7 +179,10 @@ class EmpiricalTemplateTests(unittest.TestCase):
         ledger = synthetic_registry(3)
         report = validate_withheld(ForbiddenGeometry(), ledger, _options(dict(template_iterations=1, max_nfev=20)))
         self.assertEqual(3, report["predicted"])
+        self.assertEqual("geometric_matching", report["primary_metric"])
+        self.assertEqual(3, report["geometric_matching"]["observation_count"])
         for fold in report["folds"]:
+            self.assertTrue(fold["geometric_matching"]["numbering_ignored"])
             self.assertNotIn(fold["hidden_observation_id"], fold["target_visible_observation_ids"])
             self.assertFalse(set(fold["training_observation_ids"]) & set(fold["excluded_independent_sources"]))
             self.assertEqual("not_required_raw_survey_frame", fold["coordinate_registration"])

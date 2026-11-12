@@ -4,6 +4,7 @@ from __future__ import annotations
 import numpy as np
 
 from .engine import CylinderSurface, PlaneSurface, to_numpy
+from .directions import ROUTES
 
 
 def _line(points, name, color, **options):
@@ -82,6 +83,8 @@ class PlotlyRenderer:
         data = []
         for surface in configuration.scene.build_surfaces():
             data.extend(_surface_traces(surface))
+        for trace in data:
+            trace.setdefault("meta", {})["layer"] = "optics"
         reconstruction = getattr(configuration, "reconstruction", {})
         mirror_by_id = {m.get("mirror_id", m["canonical_id"]): m for m in reconstruction.get("mirrors", [])}
         for trace in data:
@@ -96,27 +99,38 @@ class PlotlyRenderer:
                     item["direction"] = configuration.direction
         colors = {"measured": "#65d6bd", "partial": "#ffcf76", "predicted": "#82aaff",
                   "ambiguous": "#d397ee", "failed": "#f27171"}
+        legend_statuses = set()
+        status_names = {"measured": "Измеренные", "partial": "Частичные", "predicted": "Предсказанные",
+                        "ambiguous": "Неоднозначные", "failed": "Не прошли проверку"}
         for mirror in reconstruction.get("mirrors", []):
             trajectory = mirror.get("trajectory")
             if not trajectory or trajectory.get("direction") is None:
                 continue
             p = np.asarray(trajectory.get("point_m", mirror["center_m"]))
-            d = np.asarray(trajectory["direction"])
             endpoints = trajectory.get("points_m") or trajectory.get("segment_m")
+            has_path = bool(endpoints and len(endpoints) > 1)
             if not endpoints:
                 # A direction alone is not a verified optical path. Show its
                 # origin only; never extend a line across unknown media.
-                endpoints = [p.tolist(), p.tolist()]
+                endpoints = [p.tolist()]
             status = mirror.get("observation_status", "predicted")
             if mirror.get("status") in {"infeasible", "failed"}:
                 status = "failed"
             elif mirror.get("status") == "ambiguous":
                 status = "ambiguous"
             oid = mirror["old_id"]
-            data.append(_line(endpoints, f"{status} · {oid}", colors.get(status, "#82aaff"),
-                showlegend=False, meta=dict(mirror_id=oid, direction=configuration.direction),
-                customdata=[dict(mirror_id=oid, direction=configuration.direction)] * len(endpoints),
-                hovertemplate=f"{oid} → {mirror['canonical_id']} · {status}<extra></extra>"))
+            group = f"reconstruction:{configuration.direction}:{status}:{has_path}"
+            label = status_names.get(status, status) + (" · траектории" if has_path else " · путь не рассчитан")
+            trace = _line(endpoints, label, colors.get(status, "#82aaff"),
+                showlegend=group not in legend_statuses, legendgroup=group,
+                meta=dict(mirror_id=mirror["canonical_id"], direction=configuration.direction, kind="reconstructed_ray", layer="reconstructed_rays"),
+                customdata=[dict(mirror_id=mirror["canonical_id"], direction=configuration.direction)] * len(endpoints),
+                hovertemplate=f"{oid} → {mirror['canonical_id']} · {label}<extra></extra>")
+            trace["line"].update(width=4, dash="dash")
+            if not has_path:
+                trace.update(mode="markers", marker=dict(size=4, color=colors.get(status, "#82aaff"), symbol="x"))
+            data.append(trace)
+            legend_statuses.add(group)
         total = sum(len(block["x0"]) for block in result.segments)
         stride = max(1, int(np.ceil(total / self.segment_budget)))
         blocks, offset = [], 0
@@ -145,9 +159,11 @@ class PlotlyRenderer:
                         values.extend((float(start), float(end), None))
                     coords[axis] = values
                 data.append(dict(type="scatter3d", mode="lines", name="Лучи",
+                                 meta=dict(layer="traced_rays"),
                                  legendgroup="rays", showlegend=i == int(bins.min()),
                                  line=dict(width=2, color=color), hoverinfo="skip", **coords))
             data.append(dict(type="scatter3d", mode="markers", x=[None, None], y=[None, None], z=[None, None],
+                             meta=dict(layer="traced_rays"),
                              marker=dict(color=[lower, max(lower + 1e-9, upper)],
                                          colorscale=[[i / 7, color] for i, color in enumerate(colors)],
                                          autocolorscale=False, showscale=True,
@@ -156,10 +172,12 @@ class PlotlyRenderer:
         for block in result.detector_hits:
             p = to_numpy(block["position"])
             data.append(dict(type="scatter3d", x=p[:, 0].tolist(), y=p[:, 1].tolist(), z=p[:, 2].tolist(),
+                             meta=dict(layer="detector_hits"),
                              mode="markers", marker=dict(size=2, color="#f4cc78"), name=str(block["surface"]),
                              showlegend=False, hovertemplate=str(block["surface"]) + "<br>%{x:.4f}, %{y:.4f}, %{z:.4f} м<extra></extra>"))
         p = to_numpy(configuration.source.waist_position)
         data.append(dict(type="scatter3d", x=[float(p[0])], y=[float(p[1])], z=[float(p[2])], mode="markers",
+                         meta=dict(layer="sources"),
                          name="Лазер", marker=dict(size=5, color="#ffad66", symbol="diamond")))
         if frame is not None:
             frame.transform_traces(data)
@@ -173,11 +191,15 @@ class PlotlyRenderer:
             data.append(dict(type="scatter3d", mode="markers", name="Геодезические точки",
                              x=p[:, 0].tolist(), y=p[:, 1].tolist(), z=p[:, 2].tolist(), text=labels,
                              marker=dict(size=4, color="#ffffff", symbol="circle-open"),
-                             visible="legendonly", legendgroup="survey", meta=dict(kind="survey"),
+                             visible="legendonly", legendgroup="survey", meta=dict(kind="survey", layer="measurement_points"),
                              hovertemplate="%{text}<br>%{x:.4f}, %{y:.4f}, %{z:.4f} м<extra></extra>"))
         data.append(dict(type="mesh3d", x=[-1.4, 1.4, 1.4, -1.4], y=[-1.4, -1.4, 1.4, 1.4], z=[0] * 4,
+                         meta=dict(layer="boundary"),
                          i=[0, 0], j=[1, 2], k=[2, 3], color="#98a7bc", opacity=0.08,
                          name="Граница EAST / WEST: z = 0", hoverinfo="name", showlegend=True))
+        for trace in data:
+            if trace["meta"]["layer"] != "boundary":
+                trace["meta"].update(direction=configuration.direction, side=ROUTES[configuration.direction].injection_side)
         layout = dict(template="plotly_dark", paper_bgcolor="#101922", plot_bgcolor="#101922",
                       font=dict(family="Segoe UI, sans-serif", color="#c5d3df"),
                       margin=dict(l=0, r=0, t=10, b=0), uirevision="mirrorlab-static",
@@ -188,7 +210,7 @@ class PlotlyRenderer:
 
 
 def measurement_figure(report):
-    """Survey-frame comparison, deliberately separate from the optical scene."""
+    """Survey-frame layers for both the measurement report and scene comparison."""
     traces = []
     points = [[], []]
     names = [[], []]
@@ -214,12 +236,39 @@ def measurement_figure(report):
                                marker=dict(size=3, color=("#8ab2ff", "#e2b767")[i]),
                                hovertemplate="Луч %{text}<br>%{x:.4f}, %{y:.4f}, %{z:.4f} м<extra></extra>"))
     refined = report.get("lavsan", {}).get("refined_rays", [])
+    by_id = {ray["id"]: ray for ray in refined}
+    fitted_groups = set()
+    for original in report["rays"]:
+        ray = {**original, **by_id.get(original["id"], {})}
+        if ray.get("point_m") is None or ray.get("direction") is None:
+            continue
+        samples = [point for point in original["screens_m"] if point is not None and all(v is not None for v in point)]
+        if ray.get("lavsan_point_m") is not None:
+            samples.append(ray["lavsan_point_m"])
+        if len(samples) < 2:
+            continue
+        origin, direction = np.asarray(ray["point_m"]), np.asarray(ray["direction"])
+        direction = direction / np.linalg.norm(direction)
+        distances = (np.asarray(samples) - origin) @ direction
+        endpoints = origin + np.array([distances.min(), distances.max()])[:, None] * direction
+        group = "refined" if ray["id"] in by_id else "fitted"
+        label = "Уточнённые по лавсану лучи" if group == "refined" else "Восстановленные лучи"
+        fitted = _line(endpoints, label, "#69dac7" if group == "refined" else "#8ab2ff",
+                      legendgroup=group, showlegend=group not in fitted_groups,
+                      meta=dict(kind="measurement_ray", ray_id=ray["id"], direction=report["direction"]),
+                      hovertemplate=f"Луч {ray['id']} · {label}<br>%{{x:.4f}}, %{{y:.4f}}, %{{z:.4f}} м<extra></extra>")
+        fitted["line"].update(width=4, dash="dot")
+        traces.append(fitted)
+        fitted_groups.add(group)
     if refined:
         p = np.array([ray["lavsan_point_m"] for ray in refined])
         traces.append(dict(type="scatter3d", x=p[:, 0].tolist(), y=p[:, 1].tolist(), z=p[:, 2].tolist(),
                            mode="markers", text=[ray["id"] for ray in refined], name="Лавсан после преобразования",
                            marker=dict(size=4, symbol="diamond", color="#69dac7"),
                            hovertemplate="Луч %{text}<br>%{x:.4f}, %{y:.4f}, %{z:.4f} м<extra></extra>"))
+    for trace in traces:
+        trace.setdefault("meta", {}).update(direction=report["direction"], side=ROUTES[report["direction"]].injection_side,
+                                            layer="measurement_rays" if trace["mode"] == "lines" else "measurement_points")
     return dict(data=traces, layout=dict(template="plotly_dark", paper_bgcolor="#101928",
                 margin=dict(l=0, r=0, t=15, b=0), uirevision=report["direction"],
                 scene=dict(aspectmode="data", dragmode="orbit", camera=dict(projection=dict(type="perspective")), xaxis=dict(title=dict(text="x, м")), yaxis=dict(title=dict(text="y, м")), zaxis=dict(title=dict(text="z, м"))),

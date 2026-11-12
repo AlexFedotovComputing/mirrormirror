@@ -7,6 +7,7 @@
   <title>MirrorLab · Конфигурация зеркал</title>
   <link rel="stylesheet" href="styles.css">
   <script defer src="../node_modules/plotly.js-dist-min/plotly.min.js"></script>
+  <script defer src="scene-layers.js"></script>
   <script defer src="renderer.js"></script>
 </head>
 <body>
@@ -15,11 +16,11 @@
     <p class="nav-label">Рабочая область</p>
     <nav aria-label="Модули приложения">
       <button class="nav-button active" data-tab="static" aria-current="page" title="Статическая конфигурация"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></svg></span><span class="nav-text">Статическая конфигурация</span></button>
-      <button class="nav-button" data-tab="dynamic" title="Динамический анализ"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M3 12h3l3-7 6 14 3-7h3"/></svg></span><span class="nav-text">Динамический анализ</span></button>
-      <button class="nav-button" data-tab="distributions" title="Распределения"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M4 4v16h16M8 16v-4m5 4V7m5 9v-6"/></svg></span><span class="nav-text">Распределения</span></button>
+      <button class="nav-button" data-tab="dynamic" title="Динамический анализ — в разработке"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M3 12h3l3-7 6 14 3-7h3"/></svg></span><span class="nav-text">Динамический анализ<small>В разработке</small></span></button>
+      <button class="nav-button" data-tab="distributions" title="Распределения — в разработке"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M4 4v16h16M8 16v-4m5 4V7m5 9v-6"/></svg></span><span class="nav-text">Распределения<small>В разработке</small></span></button>
     </nav>
     <div class="sidebar-note"><span class="status-dot"></span><span id="connection-label">Подключение к расчёту…</span></div>
-    <div class="coordinate-note"><strong id="coordinate-title">Геодезические XYZ · метры</strong><p id="coordinate-note">Знак Z — по измерениям.<br>Центральная плоскость объёма: z = 0.</p></div>
+    <div class="coordinate-note"><strong id="coordinate-title">Координаты сцены · метры</strong><p id="coordinate-note">Система координат будет указана после расчёта или загрузки.</p></div>
     <div class="sidebar-footer">Геометрическая оптика<span>Python + Plotly</span></div>
   </aside>
 
@@ -32,64 +33,118 @@
 
       <div class="workspace">
         <div class="controls-column">
+          <section class="card file-card" aria-label="Файл конфигурации">
+            <div class="file-actions"><button id="load-configuration" type="button" class="secondary-button">Открыть конфигурацию</button><button id="save-configuration" type="button" class="secondary-button">Сохранить</button></div>
+            <label id="save-source-label" for="save-source" hidden>Что сохранить</label>
+            <select id="save-source" hidden><option value="active">Текущая конфигурация</option><option value="candidate">Диагностический кандидат</option></select>
+            <button id="load-legacy" type="button" class="text-button" aria-expanded="false" aria-controls="legacy-context">Импорт старого формата…</button>
+            <div id="legacy-context" hidden>
+              <p class="field-note">Для файла без метаданных выберите сторону ввода в параметрах ниже и систему координат исходных данных.</p>
+              <label for="legacy-frame">Система координат файла</label>
+              <select id="legacy-frame"><option value="unknown">Не установлена</option><option value="legacy">Историческая сцена</option><option value="survey">Геодезическая</option></select>
+              <button id="choose-legacy" type="button" class="secondary-button full-width">Выбрать файл для импорта</button>
+            </div>
+          </section>
           <form id="trace-form" class="card control-card">
-            <div class="card-heading"><h2>Параметры расчёта</h2></div>
+            <div class="card-heading"><h2>Трассировка</h2><span class="step">Расчёт лучей</span></div>
             <fieldset id="controls">
               <label for="direction">Сторона ввода</label>
               <select id="direction"><option value="both">Обе: WEST и EAST</option><option value="east_to_west">WEST</option><option value="west_to_east">EAST</option></select>
-              <label for="kind">Конфигурация</label>
-              <select id="kind"><option value="ideal">Историческая идеальная</option><option value="real">Историческая реальная</option></select>
-              <label for="collision-mode">Поиск пересечений</label>
-              <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
-              <div class="input-pair"><div><label for="ray-count">Лучей на лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div><div><label for="max-interactions">Взаимодействий</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required></div></div>
-              <button id="run" type="submit" class="primary-button">Построить конфигурацию</button>
+              <div id="historical-kind"><label for="kind">Исходная геометрия</label>
+                <select id="kind"><option value="ideal">Историческая идеальная</option><option value="real">Историческая реальная</option></select>
+              </div>
+              <div id="calculation-source" class="configuration-context" hidden><span>Для следующего расчёта</span><p id="active-state" aria-live="polite">Историческая идеальная</p><button id="use-historical" type="button" class="text-button" hidden>Вернуться к исторической</button></div>
+              <div class="ray-count-field"><label for="ray-count">Лучей на каждый лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div>
+              <details id="trace-settings" class="trace-settings"><summary>Параметры трассировки</summary>
+                <label for="collision-mode">Поиск пересечений</label>
+                <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
+                <label for="max-interactions">Максимум взаимодействий</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required>
+                <p class="field-note">Полный перебор проверяет все объекты. Лимит взаимодействий ограничивает длину цепочки трассировки.</p>
+              </details>
+              <button id="run" type="submit" class="primary-button">Рассчитать лучи</button>
             </fieldset>
             <button id="cancel" type="button" class="secondary-button full-width" hidden>Остановить расчёт</button>
-            <div id="run-status" class="sr-only" aria-live="polite">Готово к построению</div>
+            <div id="run-status" class="run-status" aria-live="polite">Подключение к расчётному модулю…</div>
           </form>
-          <section id="calibration-card" class="card calibration-card" hidden>
-            <div class="card-heading"><h2>Геодезические измерения</h2><span class="step">02</span></div>
-            <button id="calibrate" class="secondary-button full-width">Восстановить по измерениям</button>
+          <section id="calibration-card" class="card calibration-card">
+            <div class="card-heading"><h2>Лучи по измерениям</h2></div>
+            <p>Восстановление направлений по геодезии для сравнения с расчётом.</p>
+            <button id="calibrate" class="secondary-button full-width">Восстановить лучи</button>
           </section>
           <section class="card calibration-card reconstruction-controls">
-            <div class="card-heading"><h2>Восстановление зеркал</h2></div>
-            <button id="optimize" type="button" class="primary-button">Оптимизировать положение недостающих лучей</button>
-            <p id="active-state" aria-live="polite">Историческая конфигурация</p>
-            <button id="use-historical" type="button" class="text-button" hidden>Вернуться к исторической</button>
-            <label id="save-source-label" for="save-source" hidden>Сохранить</label>
-            <select id="save-source" hidden><option value="active">Принятая конфигурация</option><option value="candidate">Диагностический кандидат</option></select>
-            <div class="file-actions"><button id="save-configuration" type="button" class="secondary-button">Сохранить</button><button id="load-configuration" type="button" class="secondary-button">Загрузить</button></div>
-            <button id="load-legacy" type="button" class="secondary-button full-width">Загрузить легаси</button>
-            <div id="legacy-context" hidden>
-              <p>Для файла без метаданных укажите сторону ввода выше и систему координат исходных данных.</p>
-              <label for="legacy-frame">Система координат</label>
-              <select id="legacy-frame"><option value="unknown">Не установлена</option><option value="legacy">Историческая сцена</option><option value="survey">Геодезическая</option></select>
-              <button id="choose-legacy" type="button" class="secondary-button full-width">Выбрать файл</button>
-            </div>
+            <div class="card-heading"><h2>Реконструкция зеркал</h2></div>
+            <p>Оценка геометрии по измерениям. Результат — кандидат для сравнения и проверки.</p>
+            <button id="optimize" type="button" class="secondary-button full-width" aria-describedby="optimize-reason" disabled>Восстановить зеркала</button>
+            <p id="optimize-reason">В идеальной геометрии все лучи заданы. Выберите «Историческая реальная».</p>
+            <p id="candidate-state" class="candidate-state" aria-live="polite" hidden></p>
+            <button id="accept-candidate" type="button" class="secondary-button full-width" aria-describedby="accept-reason" hidden>Принять для расчётов</button>
+            <p id="accept-reason" aria-live="polite" hidden></p>
+            <button id="candidate-report" type="button" class="text-button" data-result-target="reconstruction-result" hidden>Отчёт и причины ограничений →</button>
             <div id="reconstruction-progress" aria-live="polite" hidden><span id="progress-stage"></span><progress id="progress-bar"></progress></div>
           </section>
         </div>
 
         <div class="result-column">
           <div id="side-status" class="side-status" aria-label="Стороны и дополнительные экраны" aria-live="polite"></div>
-          <section class="card scene-card">
-            <div class="scene-toolbar"><div><span class="status-dot"></span><h2>Оптическая сцена</h2><span id="scene-label" class="muted">3D</span></div><div><button id="scene-extent" class="text-button" disabled>К объёму</button><button id="reset-camera" class="text-button" disabled>Сбросить вид</button></div></div>
-            <div class="plot-container"><div id="scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 8 5v8l-8 5-8-5V8l8-5Zm-8 5 8 5 8-5m-8 5v8"/></svg></div><h3>Сцена готова к построению</h3><p>Выберите направление и конфигурацию.<br>После расчёта здесь появятся оптика и лучи.</p></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong><span>Выполняется расчёт</span></div></div>
-            <div class="scene-footer"><span>Вращение: мышь · масштаб: колесо</span><span>Переключайте слои в легенде Plotly</span></div>
+          <nav class="result-navigation" aria-label="Перейти к результату">
+            <button type="button" data-result-target="scene-card">Сцена</button>
+            <button type="button" data-result-target="result-details" disabled>Трассировка</button>
+            <button type="button" data-result-target="calibration-result" disabled>Измерения</button>
+            <button type="button" data-result-target="trajectory-comparison-result" disabled>Сравнение с экспериментом</button>
+            <button type="button" data-result-target="reconstruction-result" disabled>Реконструкция</button>
+          </nav>
+          <div id="trajectory-comparison-preview" class="comparison-preview" hidden>
+            <p id="trajectory-comparison-summary" aria-live="polite"></p>
+            <button type="button" class="text-button" data-result-target="trajectory-comparison-result">Показать точность и проходимость →</button>
+          </div>
+          <section id="scene-card" class="card scene-card" tabindex="-1">
+            <div class="scene-toolbar"><div class="scene-title"><h2>Оптическая сцена</h2><span id="scene-label" class="muted">Расчёт ещё не выполнен</span></div><div class="scene-actions"><button id="toggle-legend" class="text-button" aria-pressed="false" disabled>Легенда</button><button id="scene-extent" class="text-button" disabled>К объёму</button><button id="reset-camera" class="text-button" disabled>Сбросить вид</button></div></div>
+            <details id="layers-panel" class="scene-layers">
+              <summary>Слои и сравнение <span id="layers-summary">Стороны, лучи, зеркала и измерения</span></summary>
+              <p class="layers-help">Фильтры действуют совместно и меняют только отображение. WEST/EAST — стороны ввода.</p>
+              <fieldset class="scene-layer-group"><legend>Стороны ввода</legend>
+                <label><input id="show-west" data-scene-side="WEST" type="checkbox" checked> WEST</label>
+                <label><input id="show-east" data-scene-side="EAST" type="checkbox" checked> EAST</label>
+              </fieldset>
+              <fieldset class="scene-layer-group"><legend>Наборы данных</legend>
+                <label><input id="show-base" type="checkbox" checked> Построенная сцена</label>
+                <label><input id="show-reconstruction" type="checkbox" checked> Реконструкция</label>
+                <label><input id="show-measurements" type="checkbox" checked> Измерения</label>
+              </fieldset>
+              <fieldset class="scene-layer-group"><legend>Объекты</legend>
+                <label><input id="show-traced-rays" data-scene-layer="traced_rays" type="checkbox" checked> Лучи трассировки</label>
+                <label><input id="show-reconstructed-rays" data-scene-layer="reconstructed_rays" type="checkbox" checked> Реконструированные лучи</label>
+                <label><input id="show-optics" data-scene-layer="optics" type="checkbox" checked> Оптика и зеркала</label>
+                <label><input id="show-measured-rays" data-scene-layer="measurement_rays" type="checkbox" checked> Лучи по измерениям</label>
+                <label><input id="show-measured-points" data-scene-layer="measurement_points" type="checkbox" checked> Измеренные точки</label>
+                <label><input id="show-hits" data-scene-layer="detector_hits" type="checkbox" checked> Попадания на экраны</label>
+                <label><input id="show-sources" data-scene-layer="sources" type="checkbox" checked> Лазеры</label>
+                <label><input id="show-boundary" data-scene-layer="boundary" type="checkbox" checked> Граница EAST / WEST</label>
+              </fieldset>
+            </details>
+            <p id="scene-stale" class="scene-stale" aria-live="polite" hidden>Параметры изменены. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.</p>
+            <div class="plot-container"><div id="scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 8 5v8l-8 5-8-5V8l8-5Zm-8 5 8 5 8-5m-8 5v8"/></svg></div><h3>Начните с конфигурации</h3><p>Выберите историческую геометрию слева<br>или откройте сохранённую конфигурацию.</p><div class="empty-actions"><button id="start-trace" type="button" class="primary-button">Рассчитать лучи</button><button id="start-load" type="button" class="secondary-button">Открыть конфигурацию</button></div><p class="empty-hint">Затем добавьте измерения или реконструкцию.<br>Результаты можно сравнить в одной сцене.</p></div><div id="filtered-scene" class="filtered-scene" aria-live="polite" hidden><strong>Все слои скрыты</strong><span>Включите нужные слои в панели над графиком.</span><button id="restore-layers" type="button" class="secondary-button">Показать все слои</button></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong><span>Выполняется расчёт</span></div></div>
+            <p id="scene-comparison-note" class="scene-comparison-note" aria-live="polite" hidden></p>
+            <div class="scene-footer"><span>Вращение: мышь · масштаб: колесо</span><span>Отображение: «Слои и сравнение»</span></div>
           </section>
           <div id="metrics" class="metrics" aria-live="polite"></div>
-          <section id="reconstruction-result" class="card details-card" hidden>
+          <section id="trajectory-comparison-result" class="card details-card" tabindex="-1" hidden>
+            <div class="card-heading"><h2>Сравнение с экспериментом</h2><span class="tag">Без учёта номеров</span></div>
+            <p id="trajectory-comparison-context" class="comparison-context"></p>
+            <p>Каждому измеренному лучу сопоставляется отдельная расчётная траектория. Ошибка положения — большее из расстояний двух измеренных точек до неё. Угол показан отдельно и не ограничивает совпадение.</p>
+            <div id="trajectory-comparison-sides" class="comparison-sides"></div>
+          </section>
+          <section id="reconstruction-result" class="card details-card" tabindex="-1" hidden>
             <div class="card-heading"><h2>Реконструкция микрозеркал</h2><span id="reconstruction-status" class="tag"></span></div>
             <p id="candidate-note"></p>
-            <button id="accept-candidate" class="secondary-button" hidden>Использовать частичный результат</button>
             <div id="reconstruction-sides" class="reconstruction-sides" aria-live="polite"></div>
             <label for="mirror-select">Зеркало</label><select id="mirror-select"></select>
             <dl id="mirror-details" class="mirror-details"></dl>
             <details><summary>Неопределённости, гипотезы и ограничения выбранного зеркала</summary><pre id="mirror-technical"></pre></details>
             <details><summary>Источники, соответствия и диагностика</summary><pre id="reconstruction-json"></pre></details>
           </section>
-          <section id="result-details" class="card details-card" hidden><div class="card-heading"><h2>Результат расчёта</h2><span id="result-direction" class="muted"></span></div><div id="result-notes"></div><details><summary>Параметры и численные результаты</summary><pre id="result-json"></pre></details></section>
-          <section id="calibration-result" class="card details-card" hidden><div class="card-heading"><h2>Восстановление по измерениям</h2><span class="tag">Отчёт</span></div><div id="measurement-sides" class="measurement-sides" aria-label="Сторона измерений"></div><div id="calibration-summary"></div><div id="measurement-figure" hidden><h3 class="measurement-heading">Геодезическая система координат</h3><p>Измеренные точки и восстановленные лучи · координаты в метрах</p><div id="measurement-plot"></div></div><div id="calibration-table" class="table-wrap"></div><details><summary>Преобразования, уравнения и исходные данные</summary><pre id="calibration-json"></pre></details></section>
+          <section id="result-details" class="card details-card" tabindex="-1" hidden><div class="card-heading"><h2>Последняя трассировка</h2><span id="result-direction" class="muted"></span></div><div id="result-notes"></div><details><summary>Параметры и численные результаты</summary><pre id="result-json"></pre></details></section>
+          <section id="calibration-result" class="card details-card" tabindex="-1" hidden><div class="card-heading"><h2>Лучи по измерениям</h2><span class="tag">Отчёт</span></div><div id="measurement-sides" class="measurement-sides" aria-label="Сторона измерений"></div><div id="calibration-summary"></div><div id="measurement-figure" hidden><h3 class="measurement-heading">Геодезическая система координат</h3><p>Измеренные точки и восстановленные лучи · координаты в метрах</p><div id="measurement-plot"></div></div><div id="calibration-table" class="table-wrap"></div><details><summary>Преобразования, уравнения и исходные данные</summary><pre id="calibration-json"></pre></details></section>
         </div>
       </div>
     </section>

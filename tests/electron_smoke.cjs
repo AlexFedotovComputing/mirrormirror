@@ -18,6 +18,11 @@ const { _electron } = require('playwright-core');
   });
   try {
     const page = await app.firstWindow();
+    const capture = async filename => {
+      const png = await app.evaluate(async ({ BrowserWindow }) =>
+        (await BrowserWindow.getAllWindows()[0].webContents.capturePage(undefined, { stayHidden: true })).toPNG().toString('base64'));
+      await fs.writeFile(path.join(output, filename), Buffer.from(png, 'base64'));
+    };
     page.setDefaultTimeout(120000);
     const waitForStatus = async (expected, timeout = 120000) => {
       await page.waitForFunction(text => [text, 'Расчёт не завершён'].includes(document.querySelector('#run-status').textContent), expected, { timeout });
@@ -29,8 +34,16 @@ const { _electron } = require('playwright-core');
     assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
     assert.equal(await page.locator('#direction').inputValue(), 'both');
     assert.equal(await page.locator('#use-lavsan').count(), 0);
-    assert.equal(await page.locator('#optimize').innerText(), 'Оптимизировать положение недостающих лучей');
-    for (const [id, label] of [['save-configuration', 'Сохранить'], ['load-configuration', 'Загрузить'], ['load-legacy', 'Загрузить легаси']]) {
+    assert.equal(await page.locator('#optimize').innerText(), 'Восстановить зеркала');
+    await page.locator('#kind').selectOption('ideal');
+    assert.equal(await page.locator('#optimize').isDisabled(), true);
+    assert.equal(await page.locator('#optimize-reason').isVisible(), true);
+    await page.locator('#kind').selectOption('real');
+    assert.equal(await page.locator('#optimize').isEnabled(), true);
+    assert.equal(await page.locator('#optimize-reason').isVisible(), false);
+    await page.locator('#kind').selectOption('ideal');
+    assert.equal(await page.locator('#optimize').isDisabled(), true);
+    for (const [id, label] of [['save-configuration', 'Сохранить'], ['load-configuration', 'Открыть конфигурацию'], ['load-legacy', 'Импорт старого формата…']]) {
       assert.equal(await page.locator('#' + id).innerText(), label);
     }
     await page.locator('#run').click();
@@ -92,7 +105,8 @@ const { _electron } = require('playwright-core');
       labels: [...document.querySelector('#direction').options].map(option => option.textContent),
       range: document.querySelector('#scene')._fullLayout.scene.zaxis.range,
     }));
-    assert.ok(layout.top < 190 && layout.height > layout.viewport * .7, JSON.stringify(layout));
+    assert.ok(layout.top < 300 && layout.height > layout.viewport * .5, JSON.stringify(layout));
+    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.showlegend), false);
     assert.ok(layout.labels.every(label => !/[.·]/.test(label)));
     assert.ok(layout.range[0] < -5.08537 && layout.range[1] > 5.08537);
     const laserPathsVisible = await page.evaluate(() => {
@@ -114,11 +128,11 @@ const { _electron } = require('playwright-core');
     await page.waitForFunction(() => document.querySelector('#scene-extent').textContent === 'К объёму');
     assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.zaxis.range), layout.range);
     assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'manual');
-    await page.screenshot({ path: path.join(output, 'static.png'), fullPage: true });
+    await capture('static.png');
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1100, 820));
     await page.waitForFunction(() => window.innerWidth < 1200);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-    await page.screenshot({ path: path.join(output, 'static-compact.png'), fullPage: true });
+    await capture('static-compact.png');
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1480, 980));
     await page.waitForFunction(() => window.innerWidth > 1200);
     // Inspect the actual scene's prism faces at a scale where closure is visible.
@@ -147,6 +161,7 @@ const { _electron } = require('playwright-core');
     assert.match(await page.locator('#side-status [data-direction="east_to_west"]').innerText(), /использованы частично.*75/s);
     assert.equal(await page.locator('#side-status [data-direction="west_to_east"] .screen-status').count(), 0);
     assert.equal(await page.locator('#measurement-sides button').count(), 2);
+    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(trace => trace.meta?.kind === 'measurement_ray')));
     const measurementScene = await page.evaluate(() => {
       const scene = document.querySelector('#measurement-plot')._fullLayout.scene;
       return { dragmode: scene.dragmode, aspectmode: scene.aspectmode, projection: scene.camera.projection.type };
@@ -157,7 +172,35 @@ const { _electron } = require('playwright-core');
       await page.waitForFunction(dir => document.querySelector(`#measurement-sides [data-direction="${dir}"]`).getAttribute('aria-pressed') === 'true', direction);
       assert.equal(await page.locator('#calibration-table tbody tr').count(), 112);
     }
-    await page.screenshot({ path: path.join(output, 'both-real.png'), fullPage: true });
+    await capture('both-real.png');
+    await page.locator('#layers-panel > summary').click();
+    const beforeFilters = await page.evaluate(() => ({
+      count: document.querySelector('#scene').data.length,
+      camera: document.querySelector('#scene')._fullLayout.scene.camera,
+    }));
+    await page.locator('#show-east').uncheck();
+    await page.waitForFunction(() => document.querySelector('#scene').data.every(t => t.meta?.side !== 'EAST'));
+    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(t => t.meta?.side === 'WEST')));
+    await page.locator('#show-traced-rays').uncheck();
+    await page.waitForFunction(() => document.querySelector('#scene').data.every(t => t.meta?.layer !== 'traced_rays'));
+    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.every(t => !t.marker?.showscale)));
+    await page.locator('#show-optics').uncheck();
+    await page.waitForFunction(() => document.querySelector('#scene').data.every(t => t.meta?.layer !== 'optics'));
+    await page.locator('#show-east').check();
+    await page.locator('#show-traced-rays').check();
+    await page.locator('#show-optics').check();
+    await page.waitForFunction(count => document.querySelector('#scene').data.length === count, beforeFilters.count);
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.camera), beforeFilters.camera);
+    await page.locator('#show-east').uncheck();
+    await page.locator('#show-west').uncheck();
+    await page.locator('#show-boundary').uncheck();
+    await page.waitForFunction(() => document.querySelector('#scene').data.length === 0);
+    await page.locator('#show-east').check();
+    await page.locator('#show-west').check();
+    await page.locator('#show-boundary').check();
+    await page.waitForFunction(count => document.querySelector('#scene').data.length === count, beforeFilters.count);
+    assert.equal(await page.locator('#notice').innerText(), '');
+    await page.locator('#trace-settings > summary').click();
     for (const direction of ['west_to_east', 'east_to_west']) {
       await page.locator('#direction').selectOption(direction);
       await page.locator('#kind').selectOption('real');
@@ -168,7 +211,7 @@ const { _electron } = require('playwright-core');
       await page.locator('#calibrate').click();
       await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Измерения обработаны', null, { timeout: 60000 });
       assert.equal(await page.locator('#calibration-table tbody tr').count(), 112);
-      await page.screenshot({ path: path.join(output, `calibration-${direction}.png`), fullPage: true });
+      await capture(`calibration-${direction}.png`);
     }
     for (const tab of ['dynamic', 'distributions']) {
       await page.locator(`.nav-button[data-tab="${tab}"]`).click();
@@ -204,6 +247,11 @@ const { _electron } = require('playwright-core');
     assert.ok(savedConfiguration.datasets.west_to_east);
     await page.locator('#load-configuration').click();
     await waitForStatus('Реконструкция обработана');
+    assert.ok(await page.evaluate(() => {
+      const data = document.querySelector('#scene').data;
+      return data.some(trace => trace.meta?.scene_source === 'base' && trace.name?.includes('Лучи')) &&
+        data.some(trace => trace.meta?.scene_source === 'reconstruction');
+    }), 'Loading a reconstruction preserves the previous traced rays');
     assert.match(await page.locator('#active-state').innerText(), /Принятая конфигурация/);
     assert.equal(await page.locator('#mirror-select option').count(), 112);
     const selectedGeometry = await page.evaluate(() => {
@@ -237,7 +285,47 @@ const { _electron } = require('playwright-core');
     await waitForStatus('Конфигурация построена');
     assert.match(await page.locator('#scene-label').innerText(), /принятая реконструкция/);
     assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
-    await page.screenshot({ path: path.join(output, 'loaded-configuration.png'), fullPage: true });
+    await capture('loaded-configuration.png');
+    // An infeasible candidate is inspectable alongside the accepted trace, but cannot replace it.
+    const diagnosticPath = path.join(output, 'diagnostic-configuration.json');
+    const diagnostic = structuredClone(savedConfiguration);
+    diagnostic.status = diagnostic.datasets.west_to_east.status = 'infeasible';
+    const diagnosticMirror = diagnostic.datasets.west_to_east.mirrors[0];
+    diagnosticMirror.trajectory = { point_m: diagnosticMirror.center_m, direction: [0, 0, 1],
+      points_m: [diagnosticMirror.center_m, diagnosticMirror.center_m.map((x, i) => x + (i === 2 ? .1 : 0))] };
+    await fs.writeFile(diagnosticPath, JSON.stringify(diagnostic));
+    await app.evaluate(({ dialog }, filePath) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] });
+    }, diagnosticPath);
+    await page.locator('#load-configuration').click();
+    await waitForStatus('Реконструкция обработана');
+    assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
+    assert.ok(await page.locator('#accept-candidate').isVisible());
+    assert.ok(await page.locator('#accept-candidate').isDisabled());
+    assert.match(await page.locator('#accept-reason').innerText(), /infeasible/);
+    const layerState = () => page.evaluate(() => {
+      const plot = document.querySelector('#scene');
+      return { camera: plot._fullLayout.scene.camera, count: plot.data.length,
+        base: plot.data.filter(t => t.meta?.scene_source === 'base').length,
+        reconstructed: plot.data.filter(t => t.meta?.kind === 'reconstructed_ray').length };
+    });
+    const combined = await layerState();
+    assert.ok(combined.base > 0 && combined.reconstructed === 1);
+    await page.locator('#show-reconstructed-rays').uncheck();
+    await page.waitForFunction(() => !document.querySelector('#scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
+    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(t => t.meta?.scene_source === 'reconstruction' && t.meta?.layer === 'optics')));
+    await page.locator('#show-reconstructed-rays').check();
+    await page.waitForFunction(() => document.querySelector('#scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
+    await page.locator('#show-reconstruction').uncheck();
+    await page.waitForFunction(() => !document.querySelector('#scene').data.some(t => t.meta?.scene_source === 'reconstruction'));
+    assert.equal((await layerState()).base, combined.base);
+    await page.locator('#show-reconstruction').check();
+    await page.waitForFunction(() => document.querySelector('#scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
+    assert.deepEqual(await layerState(), combined);
+    await page.locator('#run').click();
+    await waitForStatus('Конфигурация построена');
+    assert.deepEqual(await layerState(), combined);
+    await capture('candidate-comparison.png');
     // Opt-in long integration run: full reconstruction, candidate save, reload, exact dataset round trip.
     if (process.env.MIRRORLAB_EXTENDED_UI === '1') {
       await page.locator('#optimize').click();
@@ -281,7 +369,7 @@ const { _electron } = require('playwright-core');
         return Math.max(...expected.map((value, i) => Math.abs(value - displayed[i])));
       });
       assert.ok(empiricalFrameError < 1e-9, 'Empirical scene_to_survey operation is also applied to mirror details');
-      await page.screenshot({ path: path.join(output, 'reconstruction.png'), fullPage: true });
+      await capture('reconstruction.png');
     }
     // Legacy JSON is an explicit diagnostic import; accepting it is a separate action.
     const activeBeforeImport = await page.locator('#active-state').innerText();
@@ -307,12 +395,14 @@ const { _electron } = require('playwright-core');
     await page.locator('#choose-legacy').click();
     await waitForStatus('Реконструкция обработана');
     assert.equal(await page.locator('#active-state').innerText(), activeLegacy);
-    assert.equal(await page.locator('#accept-candidate').isVisible(), false);
+    assert.equal(await page.locator('#accept-candidate').isVisible(), true);
+    assert.equal(await page.locator('#accept-candidate').isDisabled(), true);
+    assert.match(await page.locator('#accept-reason').innerText(), /оптика/);
     const tableImport = await page.evaluate(() => JSON.parse(document.querySelector('#reconstruction-json').textContent));
     assert.equal(tableImport.can_activate, false);
     assert.equal(tableImport.document.datasets.west_to_east.optics_snapshot, null);
     assert.ok(await page.locator('#mirror-select option').count() > 0);
-    await page.screenshot({ path: path.join(output, 'legacy-table.png'), fullPage: true });
+    await capture('legacy-table.png');
     const permutedSelection = await page.evaluate(async () => {
       const original = JSON.parse(document.querySelector('#reconstruction-json').textContent);
       const candidate = structuredClone(original);

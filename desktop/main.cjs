@@ -60,7 +60,7 @@ app.whenReady().then(() => {
       }
       if (method === 'load_configuration' || method === 'import_legacy') {
         const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-          title: method === 'import_legacy' ? 'Загрузить легаси' : 'Загрузить конфигурацию',
+          title: method === 'import_legacy' ? 'Импорт старого формата' : 'Открыть конфигурацию',
           properties: ['openFile'], filters: method === 'import_legacy'
             ? [{ name: 'Исторические данные', extensions: ['json', 'txt', 'zip'] }]
             : [{ name: 'Конфигурация MirrorLab', extensions: ['json'] }],

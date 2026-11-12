@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+import copy
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -163,7 +164,8 @@ def trace(payload):
                     continue
                 layer["name"] = (f"Лазер {item['metadata']['source_side']} → ввод {side}"
                                  if layer.get("name") == "Лазер" else f"{side} · {layer.get('name', 'Интенсивность')}")
-                layer["legendgroup"] = f"{side}:survey" if layer.get("meta", {}).get("kind") == "survey" else side
+                layer["legendgroup"] = (f"{side}:{layer['legendgroup']}" if layer.get("meta", {}).get("kind") == "reconstructed_ray"
+                                        else f"{side}:survey" if layer.get("meta", {}).get("kind") == "survey" else side)
                 if layer.get("marker", {}).get("showscale"):
                     layer["marker"]["colorbar"].update(len=.45, y=.75 - index * .5)
                     layer["marker"]["colorbar"]["title"] = dict(text=f"{side}: log₁₀ I, Вт/м²")
@@ -182,6 +184,12 @@ def trace(payload):
                             summary=item["summary"]) for item in results]
     if request.kind == "real" and document is None:
         result["measurements"] = calibrate(dict(direction=request.direction))
+    from .calibration.trajectory_matching import dataset_comparison_report
+    result["comparison_reports"] = [dataset_comparison_report(document["datasets"][d]) if document else
+        dict(direction=d, status="historical", diagnostics=dict(
+            geometric_fit=dict(status="not_evaluated", reason="reconstruction_required"),
+            trajectory_matching=dict(status="not_evaluated", reason="reconstruction_required")))
+        for d in directions]
     result["summary"]["elapsed_s"] = round(time.perf_counter() - started, 3)
     return result
 
@@ -232,10 +240,13 @@ def document_result(document):
     from .engine.tracer import TraceResult
     from .engine.bodies import MirrorBody
     from .plotting import _surface_traces
+    from .calibration.trajectory_matching import dataset_comparison_report
     validate_document(document)
+    document = copy.deepcopy(document)
     figures, reports = [], []
     can_activate = True
     for direction, dataset in document["datasets"].items():
+        dataset.setdefault("diagnostics", {}).update(dataset_comparison_report(dataset)["diagnostics"])
         if dataset.get("optics_snapshot") is not None:
             config = configuration_from_dataset(dataset)
             empty = TraceResult(config.emit(1), [], [], [])
@@ -250,6 +261,10 @@ def document_result(document):
                 title=dict(text="Частичный импорт: общая оптика отсутствует")))
         for layer in figure["data"]:
             layer["name"] = f"{ROUTES[direction].injection_side} · {layer.get('name', '')}"
+            meta = layer.setdefault("meta", {})
+            meta.setdefault("layer", "optics")
+            if meta["layer"] != "boundary":
+                meta.update(direction=direction, side=ROUTES[direction].injection_side)
             if layer.get("meta", {}).get("mirror_id"):
                 layer["meta"]["direction"] = direction
                 for item in layer.get("customdata", []):
@@ -274,6 +289,9 @@ def optimize(payload, progress=None):
     from .state import new_document, dataset_from_config, validate_document, configuration_from_dataset
     from .calibration.reconstruction import reconstruct
     document = payload.get("active_configuration")
+    if document is None and payload.get("kind", "real") == "ideal":
+        raise ValueError("В исторической идеальной конфигурации все лучи заданы. "
+                         "Для восстановления недостающих лучей выберите «Историческая реальная».")
     if document is not None:
         validate_document(document)
     direction = payload.get("direction", "both")

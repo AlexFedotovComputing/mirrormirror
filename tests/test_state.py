@@ -195,6 +195,54 @@ class PhysicalStateTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_document(doc)
 
+    def test_historical_ideal_optimization_rejected_before_reconstruction(self):
+        with patch("mirrorlab.calibration.reconstruction.reconstruct") as reconstruct:
+            with self.assertRaisesRegex(ValueError, "все лучи заданы"):
+                dispatch("optimize", dict(direction="both", kind="ideal"))
+            reconstruct.assert_not_called()
+
+    def test_loading_old_document_adds_geometric_report_without_changing_source(self):
+        doc = copy.deepcopy(self.document)
+        dataset = doc['datasets']['west_to_east']
+        q = np.asarray(dataset['display_frame']['rotation'])
+        t = np.asarray(dataset['display_frame']['translation_m'])
+        dataset['observations'] = [dict(id='experiment:unrelated_number',
+            screens_m=[(q @ np.array([x, 0., 0.]) + t).tolist() for x in (1., 2.)])]
+        dataset['mirrors'][0]['center_m'] = [0., 0., 0.]
+        dataset['mirrors'][0]['outgoing_direction'] = [1., 0., 0.]
+        dataset['diagnostics']['reflections'] = dict(mirrors={'4_4_7': dict(
+            reflected_trajectories=[dict(segments=[dict(start_m=[0., 0., 0.], end_m=[3., 0., 0.])])])})
+        before = copy.deepcopy(doc)
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / 'old.json'
+            save_document(doc, source)
+            source_bytes = source.read_bytes()
+            result = dispatch('load_configuration', dict(path=str(source)))
+            matching = result['reports'][0]['diagnostics']['trajectory_matching']
+            geometric = result['reports'][0]['diagnostics']['geometric_fit']
+            self.assertEqual(1, matching['matched_count'])
+            self.assertEqual(1, geometric['matched_count'])
+            self.assertEqual(before, doc)
+            self.assertEqual(source_bytes, source.read_bytes())
+            self.assertEqual(before['status'], result['status'])
+            saved = Path(directory) / 'with-report.json'
+            dispatch('save_configuration', dict(document=result['document'], path=str(saved)))
+            self.assertEqual(matching, load_document(saved)['datasets']['west_to_east']['diagnostics']['trajectory_matching'])
+            self.assertEqual(geometric, load_document(saved)['datasets']['west_to_east']['diagnostics']['geometric_fit'])
+            traced = dispatch('trace', dict(direction='west_to_east', kind='real', ray_count=1,
+                                            max_interactions=1, active_configuration=result['document']))
+            self.assertEqual(geometric, traced['comparison_reports'][0]['diagnostics']['geometric_fit'])
+            self.assertEqual(matching, traced['comparison_reports'][0]['diagnostics']['trajectory_matching'])
+
+    def test_active_configuration_optimization_ignores_historical_selection(self):
+        from mirrorlab.legacy_import import historical_dataset
+        with patch("mirrorlab.calibration.reconstruction.reconstruct",
+                   side_effect=lambda config, *args, **kwargs: historical_dataset(config)) as reconstruct:
+            result = dispatch("optimize", dict(direction="west_to_east", kind="ideal",
+                                               active_configuration=self.document))
+        reconstruct.assert_called_once()
+        self.assertIn("west_to_east", result["document"]["datasets"])
+
     def test_failure_of_one_side_retains_other_side_diagnostics(self):
         from mirrorlab.legacy_import import historical_dataset
         def candidate(config, *args, **kwargs):

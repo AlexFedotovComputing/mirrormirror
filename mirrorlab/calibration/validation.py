@@ -5,6 +5,7 @@ import numpy as np
 
 from .empirical import angular_distance, learn_template, unit
 from .observations import exclude_sources
+from .trajectory_matching import match_trajectories
 
 
 def _summary(values):
@@ -73,6 +74,11 @@ def validate_withheld(config, registry, options, progress=None):
             selected = free[0]
             frozen = [dict(slot=j+1, point=(relaxed["centres"][j] @ q.T + t).tolist(),
                            direction=(relaxed["directions"][j] @ q.T).tolist()) for j in free]
+            # Evaluate the frozen predicted set geometrically, not its first
+            # numbered slot. These are predictions, NOT physically traced paths.
+            geometric_match = match_trajectories([hidden], [
+                dict(id=f"slot:{p['slot']}", point_m=p["point"], direction=p["direction"]) for p in frozen],
+                distance_tolerance_m=options.get("trajectory_distance_tolerance_m", .003))
             truth_direction = unit(np.asarray(hidden["screens_m"][1]) - hidden["screens_m"][0])
             truth_point = np.asarray(hidden["screens_m"][0])
             visible_anchor = np.asarray(visible["anchor"]) @ q.T + t
@@ -93,6 +99,7 @@ def validate_withheld(config, registry, options, progress=None):
                         mode_directions.append(d)
             mode_errors = [float(angular_distance(d, truth_direction)) for d in mode_directions]
             fold.update(status="predicted", selected_slot=selected+1, candidate_count=len(frozen), predictions=frozen,
+                        geometric_matching=geometric_match,
                         selection_rule="First unmatched canonical place fixed before consulting withheld truth",
                         angular_error_mrad=distances[0] * 1000,
                         set_angular_error_mrad=min(mode_errors or distances) * 1000,
@@ -114,7 +121,18 @@ def validate_withheld(config, registry, options, progress=None):
             fold["reason"] = str(error)
         folds.append(fold)
     good = [f for f in folds if f["status"] == "predicted"]
+    geometric_pairs = [p for f in good for p in f["geometric_matching"]["matches"]]
     return dict(status="evaluated", experiment="leave_assembly_out_then_hide_primary_ray",
+                primary_metric="geometric_matching",
+                geometric_matching=dict(status="evaluated", observation_count=len(planned),
+                    matched_count=len(geometric_pairs), unmatched_observation_count=len(planned)-len(geometric_pairs),
+                    unmatched_trajectory_count=sum(f["geometric_matching"]["unmatched_trajectory_count"] for f in good),
+                    distance_tolerance_m=options.get("trajectory_distance_tolerance_m", .003),
+                    angle_tolerance_rad=None,
+                    maximum_point_distance_m=_summary([p["maximum_distance_m"] for p in geometric_pairs]),
+                    angular_error_mrad=_summary([p["angular_error_rad"]*1000 for p in geometric_pairs]),
+                    physical_paths=False, numbering_ignored=True),
+                legacy_slot_metrics_note="First-slot scores retained for compatibility; not the primary geometric score",
                 whole_assembly_prediction="not_evaluated_separate_experiment", folds=folds,
                 planned=len(planned), predicted=len(good), failures=len(folds)-len(good),
                 angular_error_mrad=_summary([f["angular_error_mrad"] for f in good]),
@@ -128,6 +146,6 @@ def validate_withheld(config, registry, options, progress=None):
                 limitations=["Only 16 assembly clusters per side; interval coverage is a small-sample empirical diagnostic",
                              "Selected missing slot may be ambiguous; set-valued metrics include cardinality and are optimistic for unique prediction",
                              "Hyperparameters are fixed scenarios, not tuned on hidden observations",
-                             "Primary score is angular/section prediction using a conditional point-fan model, not a fully physical body test",
+                             "Primary score is two-point geometric matching without an angular gate using a conditional point-fan model, not a fully physical body test",
                              "Historical body geometry and coordinate registration are excluded because they contain fitted survey information",
                              "Whole-assembly concealment is not the same experiment and is not claimed"])

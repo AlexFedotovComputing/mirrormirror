@@ -156,6 +156,33 @@ test('load preserves partial status and stale candidates cannot replace it', () 
   assert.throws(() => state.accept(1), /устарел/);
 });
 
+test('scene comparison retains base rays, replaces overlays and keeps source data immutable', () => {
+  const { composeScene } = require('../desktop/scene-layers.js');
+  const base = { frame: 'survey', direction: 'both', label: 'Base', figure: { data: [
+    { name: 'Rays', x: [1, 2], legendgroup: 'rays' }, { name: 'Optics' },
+  ] } };
+  const reconstruction = { frame: 'survey', direction: 'west_to_east', label: 'Candidate', figure: { data: [
+    { name: 'Duplicate optics' }, { name: 'Path', x: [3, 4], meta: { mirror_id: '1_1_1' } },
+  ] } };
+  const measurements = [{ direction: 'east_to_west', side: 'WEST', figure: { data: [{ name: 'Measured' }] } }];
+  const before = JSON.stringify({ base, reconstruction, measurements });
+  const first = composeScene(base, reconstruction, measurements);
+  assert.equal(first.figure.data.length, 4);
+  assert.ok(first.figure.data.every(trace => /^[a-zA-Z0-9_-]+$/.test(trace.uid)), 'Plotly uses trace UIDs in CSS selectors');
+  assert.deepEqual(first.figure.data[0].x, [1, 2]);
+  assert.equal(first.figure.data[2].meta.scene_source, 'reconstruction');
+  assert.equal(first.figure.data[3].meta.scene_source, 'measurements:east_to_west');
+  assert.deepEqual(composeScene(base, reconstruction, measurements), first);
+  assert.equal(JSON.stringify({ base, reconstruction, measurements }), before);
+  assert.equal(composeScene(base, reconstruction, measurements, { reconstruction: false, measurements: false }).figure.data.length, 2);
+  assert.equal(composeScene(base, reconstruction, [], { base: false }).figure.data.length, 1);
+  const local = { ...reconstruction, frame: 'legacy' };
+  assert.equal(composeScene(base, local, measurements).figure.data.length, 2);
+  assert.match(composeScene(base, local).note, /недоступен/);
+  assert.equal(composeScene(base, local, [], { reconstruction: false }).figure.data[0].name, 'Rays');
+  assert.equal(composeScene(null, reconstruction).figure.data.length, 2);
+});
+
 test('file operations allow documented contexts, not renderer-provided paths or state', () => {
   assert.deepEqual(validateRequest('load_configuration', { direction: 'both', kind: 'real', path: 'arbitrary', active_configuration: {} }), { direction: 'both', kind: 'real' });
   assert.deepEqual(validateRequest('import_legacy', { direction: 'east_to_west', kind: 'real', coordinate_frame: 'survey' }), {
@@ -163,4 +190,32 @@ test('file operations allow documented contexts, not renderer-provided paths or 
   });
   assert.throws(() => validateRequest('import_legacy', { direction: 'east_to_west', kind: 'real', coordinate_frame: 'guess' }));
   assert.throws(() => validateRequest('accept_candidate', { configuration_version: -1 }));
+});
+
+test('side and object filters intersect across sources, including intensity scales', () => {
+  const { composeScene } = require('../desktop/scene-layers.js');
+  const trace = (side, layer, extra = {}) => ({ name: 'Label is irrelevant', meta: { side, layer }, ...extra });
+  const base = { frame: 'survey', direction: 'both', figure: { data: [
+    trace('WEST', 'traced_rays'), trace('EAST', 'traced_rays'),
+    trace('WEST', 'traced_rays', { marker: { showscale: true } }),
+    trace('WEST', 'optics'), trace('EAST', 'optics'), trace(undefined, 'boundary'),
+    trace('WEST', 'reconstructed_rays'), // Accepted configuration paths also obey the filter.
+  ] } };
+  const reconstruction = { frame: 'survey', direction: 'both', figure: { data: [
+    trace('WEST', 'reconstructed_rays', { meta: { side: 'WEST', layer: 'reconstructed_rays', mirror_id: 'a' } }),
+    trace('EAST', 'reconstructed_rays', { meta: { side: 'EAST', layer: 'reconstructed_rays', mirror_id: 'b' } }),
+  ] } };
+  const measurements = [{ direction: 'west_to_east', side: 'EAST', figure: { data: [trace('EAST', 'measurement_points')] } }];
+  const all = composeScene(base, reconstruction, measurements).figure.data;
+  const filtered = composeScene(base, reconstruction, measurements, {
+    sides: { EAST: false }, layers: { optics: false, traced_rays: false },
+  }).figure.data;
+  assert.deepEqual(filtered.map(t => t.meta.layer), ['boundary', 'reconstructed_rays', 'reconstructed_rays']);
+  assert.ok(filtered.every(t => t.meta.side !== 'EAST' && !t.marker?.showscale));
+  assert.ok(filtered.every(t => all.some(original => original.uid === t.uid)));
+  assert.equal(composeScene(base, reconstruction, [], { layers: { reconstructed_rays: false } }).figure.data
+    .filter(t => t.meta.layer === 'reconstructed_rays').length, 0);
+  assert.equal(composeScene(base, reconstruction, measurements, {
+    sides: { WEST: false, EAST: false }, layers: { boundary: false },
+  }).figure.data.length, 0);
 });

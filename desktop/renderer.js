@@ -3,6 +3,8 @@ const $ = (id) => document.getElementById(id);
 const bridge = window.mirrorlab;
 const session = {};
 let busy = false;
+let ready = false;
+let legendVisible = false;
 let camera = null;
 let defaultCamera = null;
 let overview = true;
@@ -14,6 +16,9 @@ let measurementContext = null;
 let configurationVersion = 0;
 let activeConfiguration = false;
 let reconstructionResult = null;
+let baseScene = null;
+let reconstructionScene = null;
+let sceneMeasurements = [];
 let mirrorRecords = [];
 let currentJob = null;
 let busyText = '';
@@ -39,11 +44,23 @@ function notify(message, error = false) {
 
 function updateControls() {
   const real = $('kind').value === 'real';
-  $('calibration-card').hidden = !real;
-  $('calibrate').disabled = busy;
+  const locked = busy || !ready;
+  $('controls').disabled = locked;
+  $('calibrate').disabled = locked;
+  $('start-trace').disabled = $('start-load').disabled = locked;
   for (const id of ['optimize', 'save-configuration', 'load-configuration', 'load-legacy',
-    'choose-legacy', 'accept-candidate', 'use-historical', 'save-source', 'legacy-frame']) $(id).disabled = busy;
-  $('kind').disabled = busy || activeConfiguration;
+    'choose-legacy', 'accept-candidate', 'use-historical', 'save-source', 'legacy-frame']) $(id).disabled = locked;
+  $('accept-candidate').disabled = locked || !!candidateBlockReason(reconstructionResult);
+  const historicalIdeal = !activeConfiguration && !real;
+  $('optimize').disabled = locked || historicalIdeal;
+  $('optimize-reason').hidden = !historicalIdeal;
+  $('kind').disabled = locked || activeConfiguration;
+  $('historical-kind').hidden = activeConfiguration;
+  $('calculation-source').hidden = !activeConfiguration && !reconstructionResult;
+  $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}`
+    : $('kind').selectedOptions[0].textContent;
+  $('save-source').options[0].textContent = activeConfiguration ? 'Принятая конфигурация' : 'Текущая историческая конфигурация';
+  for (const button of document.querySelectorAll('[data-result-target]')) button.disabled = $(button.dataset.resultTarget).hidden;
   showSideStatus();
 }
 
@@ -110,6 +127,7 @@ function paragraph(parent, text) {
   const p = document.createElement('p');
   p.textContent = typeof text === 'string' ? text : JSON.stringify(text);
   parent.append(p);
+  return p;
 }
 
 function metadata(result) {
@@ -159,6 +177,7 @@ function lightSceneAxis(axis = {}) {
 }
 
 async function equalAxisScale(plot) {
+  if (!plot._fullLayout?.scene) return; // All layers may be switched off.
   // Use displayed ranges: data extents can differ from the cropped volume view.
   const spans = ['x', 'y', 'z'].map(axis => {
     const range = plot._fullLayout.scene[axis + 'axis'].range;
@@ -195,6 +214,7 @@ async function drawScene(figure) {
     [axis, { ...lightSceneAxis({ ...sourceLayout.scene?.[axis],
       title: sourceLayout.scene?.[axis]?.title ?? { text: `${axis[0]}, м` } }), autorange: true }]));
   const layout = { ...sourceLayout, autosize: true, width: undefined, height: undefined,
+    showlegend: legendVisible,
     template: {}, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
     legend: { ...sourceLayout.legend, bgcolor: 'rgba(255,255,255,0.92)', font: { size: 12, color: '#55565b' } },
     hoverlabel: { bgcolor: '#ffffff', bordercolor: '#c9c7c5', font: { family: 'Segoe UI, sans-serif', size: 12, color: '#303136' } },
@@ -231,8 +251,37 @@ async function drawScene(figure) {
     $('scene').dataset.mirrorListener = 'true';
   }
   $('empty-scene').hidden = true;
-  $('reset-camera').disabled = false;
-  $('scene-extent').disabled = false;
+  $('reset-camera').disabled = !$('scene')._fullLayout?.scene;
+  $('scene-extent').disabled = !$('scene')._fullLayout?.scene;
+  $('toggle-legend').disabled = !figure.data.length;
+}
+
+async function drawSceneLayers() {
+  const result = composeScene(baseScene, reconstructionScene, sceneMeasurements, {
+    base: $('show-base').checked, reconstruction: $('show-reconstruction').checked,
+    measurements: $('show-measurements').checked,
+    sides: Object.fromEntries([...document.querySelectorAll('[data-scene-side]')].map(input => [input.dataset.sceneSide, input.checked])),
+    layers: Object.fromEntries([...document.querySelectorAll('[data-scene-layer]')].map(input => [input.dataset.sceneLayer, input.checked])),
+  });
+  if (!result) return;
+  await drawScene(result.figure);
+  $('filtered-scene').hidden = result.figure.data.length > 0;
+  const hiddenLayers = [...document.querySelectorAll('.scene-layers input')].filter(input => !input.checked).length;
+  $('layers-summary').textContent = hiddenLayers ? `Отключено фильтров: ${hiddenLayers}` : 'Все слои включены';
+  showCoordinateFrame(result.frame);
+  $('scene-label').textContent = result.label;
+  $('scene-comparison-note').textContent = result.note;
+  $('scene-comparison-note').hidden = !result.note;
+}
+
+function candidateBlockReason(result) {
+  if (!result?.document) return 'Нет конфигурации для принятия.';
+  if (result.active) return 'Эта конфигурация уже принята.';
+  if (result.status === 'infeasible' || reconstructionReports(result).some(report => report.status === 'infeasible')) {
+    return 'Принятие недоступно: проверка физической допустимости не пройдена (infeasible). Причины приведены ниже для каждой стороны. Кандидат доступен для сравнения и сохранения.';
+  }
+  if (result.can_activate === false) return 'Принятие недоступно: общая оптика не установлена или конфигурация неполна. Кандидат доступен для просмотра и сохранения.';
+  return '';
 }
 
 function showSummary(result, request) {
@@ -262,6 +311,7 @@ function showSummary(result, request) {
 
 async function showCalibration(result) {
   measurementReports = result.reports || [result];
+  sceneMeasurements = measurementReports.map(report => ({ ...report, side: sideNames[report.direction] }));
   measurementContext = { direction: result.direction, kind: $('kind').value };
   $('measurement-sides').replaceChildren();
   for (const report of measurementReports) {
@@ -273,6 +323,7 @@ async function showCalibration(result) {
     $('measurement-sides').append(button);
   }
   await showMeasurementSide(measurementReports[0]);
+  await drawSceneLayers();
   showSideStatus();
 }
 
@@ -363,6 +414,109 @@ function reconstructionReports(result) {
   return [];
 }
 
+function comparisonTable(parent, headings, rows, captionText) {
+  const wrap = document.createElement('div'); wrap.className = 'table-wrap';
+  const table = document.createElement('table');
+  if (captionText) { const caption = document.createElement('caption'); caption.className = 'sr-only'; caption.textContent = captionText; table.append(caption); }
+  const head = document.createElement('thead'); const headRow = document.createElement('tr');
+  for (const label of headings) { const cell = document.createElement('th'); cell.scope = 'col'; cell.textContent = label; headRow.append(cell); }
+  head.append(headRow); table.append(head);
+  const body = document.createElement('tbody');
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    if (row.outlier) tr.dataset.outlier = 'true';
+    for (const value of Array.isArray(row) ? row : row.values) { const td = document.createElement('td'); td.textContent = value; tr.append(td); }
+    body.append(tr);
+  }
+  table.append(body); wrap.append(table); parent.append(wrap);
+  return table;
+}
+
+function comparisonDetails(parent, label) {
+  const details = document.createElement('details'); const summary = document.createElement('summary');
+  summary.textContent = label; details.append(summary); parent.append(details); return details;
+}
+
+function comparisonScore(parent, report, className) {
+  const score = document.createElement('p'); score.className = `comparison-score ${className}`;
+  const total = report.observation_count ?? 0;
+  score.textContent = `${report.matched_count ?? 0} из ${total}`;
+  const percent = document.createElement('small');
+  percent.textContent = total ? ` · ${((report.matched_count ?? 0) * 100 / total).toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%` : ' · нет полных измерений';
+  score.append(percent); parent.append(score);
+}
+
+function renderTrajectoryComparison(reports, context) {
+  const container = $('trajectory-comparison-sides'); container.replaceChildren();
+  const preview = $('trajectory-comparison-preview');
+  $('trajectory-comparison-result').hidden = !reports.length;
+  preview.hidden = !reports.length;
+  $('trajectory-comparison-context').textContent = context;
+  let fitMatched = 0, fitTotal = 0, physicalMatched = 0, physicalTotal = 0;
+  for (const report of reports) {
+    const fit = report.diagnostics?.geometric_fit;
+    const physical = report.diagnostics?.trajectory_matching;
+    const side = document.createElement('article'); side.className = 'comparison-side trajectory-comparison-side'; side.dataset.direction = report.direction;
+    const heading = document.createElement('h3'); heading.textContent = sideNames[report.direction] ?? report.direction; side.append(heading);
+    const panels = document.createElement('div'); panels.className = 'comparison-panels'; side.append(panels);
+    const fitPanel = document.createElement('section'); fitPanel.className = 'comparison-panel geometric-fit-panel';
+    const fitHeading = document.createElement('h4'); fitHeading.textContent = 'Точность подгонки'; fitPanel.append(fitHeading);
+    paragraph(fitPanel, 'Насколько подогнанные прямые совпадают с измерениями. Перекрытия зеркалами здесь не учитываются.').className = 'comparison-description';
+    if (fit?.status === 'evaluated') {
+      fitMatched += fit.matched_count; fitTotal += fit.observation_count;
+      comparisonScore(fitPanel, fit, 'geometric-fit-summary');
+      paragraph(fitPanel, `В пределах ${format(fit.distance_tolerance_m * 1000)} мм. В пределах 1 мм: ${fit.counts_within_1mm}/${fit.observation_count}; в пределах 3 мм: ${fit.counts_within_3mm}/${fit.observation_count}. Углового отсечения нет.`);
+      paragraph(fitPanel, `Полных измеренных траекторий: ${fit.observation_count}; сопоставлено: ${fit.assigned_count}. Неполных или непригодных записей: ${(fit.excluded_observations ?? []).length}.`);
+      const statistics = comparisonTable(fitPanel, ['Ошибка', 'Медиана', '90%', '95%', 'Максимум'], [
+        ['Положение, мм', ...['median', 'p90', 'p95', 'maximum'].map(k => format(fit.position_error_mm?.[k]))],
+        ['Угол, мрад', ...['median', 'p90', 'p95', 'maximum'].map(k => format(fit.angular_error_mrad?.[k]))],
+      ], 'Распределение ошибок геометрической подгонки'); statistics.className = 'comparison-statistics';
+      paragraph(fitPanel, '90% и 95% — доли сопоставленных траекторий с ошибкой не больше указанной. 3 мм — порог сравнения, не подтверждённая погрешность измерений.');
+      const pairs = [...(fit.matches ?? [])].sort((a, b) => b.maximum_distance_m - a.maximum_distance_m);
+      const details = comparisonDetails(fitPanel, `Пары и наибольшие отклонения · ${pairs.length}`);
+      paragraph(details, 'Сначала показаны наибольшие ошибки. Строки выше порога выделены. Номера используются только для поиска записей.');
+      comparisonTable(details, ['Измерение', 'Расчётная траектория', 'Ошибка, мм', 'Угол, мрад'], pairs.map(pair => ({
+        outlier: !pair.within_tolerance, values: [pair.observation_id, pair.trajectory_id,
+          format(pair.maximum_distance_m * 1000), format(pair.angular_error_rad * 1000)],
+      })), 'Соответствия измеренных и подогнанных траекторий');
+      for (const item of fit.unmatched_observations ?? []) paragraph(details, `Без расчётной пары: ${item.observation_id ?? item}.`);
+      if (fit.excluded_observations?.length) {
+        const excluded = comparisonDetails(fitPanel, `Не входят в оценку · ${fit.excluded_observations.length}`);
+        paragraph(excluded, 'Для проверки траектории нужны две различные полностью измеренные точки.');
+        for (const item of fit.excluded_observations) paragraph(excluded, item.observation_id);
+      }
+    } else {
+      paragraph(fitPanel, 'Оценка недоступна. Откройте сохранённую реконструкцию с измерениями или выполните «Восстановить зеркала» для исторической реальной конфигурации.').className = 'comparison-empty';
+    }
+    panels.append(fitPanel);
+    const physicalPanel = document.createElement('section'); physicalPanel.className = 'comparison-panel physical-path-panel';
+    const physicalHeading = document.createElement('h4'); physicalHeading.textContent = 'Физическая проходимость'; physicalPanel.append(physicalHeading);
+    paragraph(physicalPanel, 'Сколько измеренных траекторий воспроизводится на фактически прослеженных участках. Луч не продолжается за препятствие или конец расчёта.').className = 'comparison-description';
+    if (physical?.status === 'evaluated') {
+      physicalMatched += physical.matched_count; physicalTotal += physical.observation_count;
+      comparisonScore(physicalPanel, physical, 'physical-path-summary');
+      paragraph(physicalPanel, `В пределах ${format(physical.distance_tolerance_m * 1000)} мм; углового отсечения нет. Без совпадения: ${physical.unmatched_observation_count}.`);
+      paragraph(physicalPanel, 'Проверка по сохранённым адресным физическим путям реконструкции, а не по случайной сетке лучей последней трассировки.');
+      paragraph(physicalPanel, `Расчётных путей без пары измерений: ${physical.unmatched_trajectory_count}. Измерения неполны, поэтому такой путь не обязательно ошибочен. Совпадение не отменяет механические ограничения конфигурации.`);
+      const details = comparisonDetails(physicalPanel, 'Прошедшие пути и несовпавшие измерения');
+      comparisonTable(details, ['Измерение', 'Прослеженный путь', 'Ошибка, мм', 'Угол, мрад'], (physical.matches ?? []).map(pair => [
+        pair.observation_id, pair.trajectory_id, format(pair.maximum_distance_m * 1000), format(pair.angular_error_rad * 1000),
+      ]), 'Геометрически совпавшие физические пути');
+      for (const item of physical.unmatched_observations ?? []) paragraph(details,
+        `Не воспроизведено: ${item.observation_id}${item.nearest ? `; ближайший путь ${item.nearest.trajectory_id}, ${format(item.nearest.maximum_distance_m * 1000)} мм${item.reason === 'one_to_one_conflict' ? ' — уже сопоставлен другому измерению' : ''}` : '; расчётного пути нет'}.`);
+      for (const id of physical.unmatched_trajectory_ids ?? []) paragraph(details, `Путь без пары измерений: ${id}.`);
+    } else {
+      paragraph(physicalPanel, 'Проверка недоступна: необходимы измерения, сохранённые физические пути и их привязка к общей системе координат.').className = 'comparison-empty';
+    }
+    panels.append(physicalPanel); container.append(side);
+  }
+  const toleranceLabels = [...new Set(reports.flatMap(report => [report.diagnostics?.geometric_fit, report.diagnostics?.trajectory_matching])
+    .filter(value => value?.status === 'evaluated').map(value => format(value.distance_tolerance_m * 1000)))];
+  $('trajectory-comparison-summary').textContent = fitTotal || physicalTotal
+    ? `Подгонка: ${fitMatched}/${fitTotal}${fitTotal ? ` (${(fitMatched * 100 / fitTotal).toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%)` : ''} · Проходимость: ${physicalMatched}/${physicalTotal} · ${toleranceLabels.length === 1 ? `в пределах ${toleranceLabels[0]} мм` : 'пороги в отчёте'}, без ограничения по углу`
+    : 'Для сравнения с экспериментом откройте реконструкцию с измерениями или восстановите зеркала.';
+}
+
 function showMirror() {
   const selected = mirrorRecords[Number($('mirror-select').value)];
   $('mirror-details').replaceChildren();
@@ -412,37 +566,40 @@ function showMirror() {
 
 async function showReconstruction(result) {
   reconstructionResult = result;
-  $('metrics').replaceChildren();
-  $('result-details').hidden = true;
-  $('calibration-result').hidden = true;
-  measurementReports = [];
-  measurementContext = null;
   configurationVersion = result.configuration_version ?? configurationVersion;
-  if (result.active) activeConfiguration = true;
+  if (result.active) {
+    activeConfiguration = true;
+    if (baseScene) markSceneStale('Источник расчёта изменён. На сцене сохранена предыдущая трассировка для сравнения. Нажмите «Рассчитать лучи» для нового расчёта.');
+  }
   const reports = reconstructionReports(result);
+  renderTrajectoryComparison(reports, result.active ? 'Принятая реконструкция: точность подгонки и сохранённые физические пути.'
+    : 'Диагностический кандидат: точность подгонки и сохранённые физические пути. Следующая трассировка использует прежнюю конфигурацию до принятия кандидата.');
   if (result.active && reports.length === 1) $('direction').value = reports[0].direction;
-  if (result.figure) await drawScene(result.figure);
-  if (result.figure) showCoordinateFrame(result.coordinate_frame ??
-    (reports.every(report => report.display_frame?.coordinate_frame === 'survey') ? 'survey' : 'legacy'));
+  reconstructionScene = null;
+  if (result.figure) {
+    reconstructionScene = { figure: result.figure, frame: result.coordinate_frame ??
+      (reports.every(report => report.display_frame?.coordinate_frame === 'survey') ? 'survey' : 'legacy'),
+      direction: result.scene_direction ?? (reports.length > 1 ? 'both' : reports[0]?.direction),
+      label: `${reports.map(report => sideNames[report.direction]).join(' и ')} · ${result.active ? 'принятая реконструкция' : 'диагностический кандидат'}` };
+  }
   const status = reconstructionStatuses[result.status] ?? result.status ?? 'Диагностический результат';
   $('reconstruction-status').textContent = status;
-  const missingOptics = reports.some(report => report.optics_snapshot === null);
+  $('candidate-state').hidden = false;
+  $('candidate-state').textContent = `${result.active ? 'Принято для расчётов' : 'Кандидат'} · ${status}`;
+  $('candidate-report').hidden = false;
   $('candidate-note').textContent = result.active
-    ? 'Эта конфигурация принята. Построение сцены и сохранение используют её геометрию и оптику.'
-    : result.can_activate === false && result.status !== 'infeasible'
-      ? missingOptics ? 'Кандидат неполон: общая оптика не установлена. Доступны просмотр геометрии и сохранение.'
-        : 'В конфигурации есть недопустимые части. Причины показаны отдельно для каждой стороны; доступны просмотр и сохранение кандидата.'
-    : result.figure ? 'Показан диагностический кандидат. Принятая конфигурация сохранена; непроверенные условия перечислены в отчёте.'
-      : 'Импорт доступен как данные для просмотра и сохранения. Полная оптическая сцена не определена; текущая сцена сохранена.';
-  $('accept-candidate').hidden = result.active || !result.document || result.status === 'infeasible' || result.can_activate === false;
-  $('accept-candidate').textContent = result.status === 'legacy_unvalidated' ? 'Использовать исторический импорт' : 'Использовать частичный результат';
+    ? 'Эта конфигурация принята для следующих расчётов и сохранения. Принятие не меняет статус физических проверок. Для новой трассировки нажмите «Рассчитать лучи».'
+    : 'Диагностический кандидат — результат для сравнения. Следующая трассировка использует прежнюю конфигурацию, пока вы не нажмёте «Принять для расчётов». Статус проверок при принятии сохраняется.';
+  $('accept-candidate').hidden = !result.document;
+  $('accept-candidate').textContent = result.active ? 'Конфигурация принята' : 'Принять для расчётов';
+  $('accept-candidate').disabled = busy || !!candidateBlockReason(result);
+  $('accept-reason').textContent = candidateBlockReason(result);
+  $('accept-reason').hidden = !candidateBlockReason(result);
   $('save-source').hidden = $('save-source-label').hidden = result.active || !result.document;
   $('save-source').value = result.active ? 'active' : 'candidate';
   $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}` : 'Историческая конфигурация';
   $('use-historical').hidden = !activeConfiguration;
-  if (result.figure) $('scene-label').textContent = `${(result.scene_direction
-    ? [sideNames[result.scene_direction] ?? result.scene_direction]
-    : reports.map(report => sideNames[report.direction] ?? report.direction)).join(' и ')} · ${result.active ? 'принятая реконструкция' : 'диагностический кандидат'}`;
+  await drawSceneLayers();
   $('reconstruction-sides').replaceChildren();
   mirrorRecords = [];
   for (const report of reports) {
@@ -459,11 +616,24 @@ async function showReconstruction(result) {
     const ambiguous = mirrors.filter(mirror => mirror.status === 'ambiguous' || mirror.support_status === 'ambiguous').length;
     const failed = mirrors.filter(mirror => ['failed', 'infeasible'].includes(mirror.status)).length;
     paragraph(card, `Неоднозначные: ${counts.ambiguous ?? ambiguous} · недопустимые: ${counts.failed ?? failed}`);
+    const violations = new Map();
+    for (const mirror of mirrors) for (const violation of new Set(mirror.violations ?? [])) {
+      violations.set(violation, (violations.get(violation) ?? 0) + 1);
+    }
+    const violationNames = { body_clearance_not_certified: 'Зазор между телами не подтверждён',
+      'incoming_field:outside_illumination': 'Вне области освещения',
+      'reflection:unavailable': 'Отражённая траектория не получена',
+      'reflection:infeasible': 'Проверка отражения не пройдена' };
+    for (const [reason, count] of violations) paragraph(card, `${violationNames[reason] ?? reason}: ${count} зеркал.`);
     const heldout = report.diagnostics?.withheld;
     if (heldout?.status === 'evaluated') {
-      paragraph(card, `Скрытые лучи: ${heldout.predicted}/${heldout.planned}; медианная угловая ошибка ${format(heldout.angular_error_mrad?.median)} мрад, 90-й процентиль ${format(heldout.angular_error_mrad?.p90)} мрад. Жёсткий эмпирический шаблон: ${format(heldout.rigid_empirical_error_mrad?.median)} мрад.`);
-      if (heldout.conditional_interval_coverage != null) paragraph(card,
-        `Покрытие условных 95% интервалов: ${format(heldout.conditional_interval_coverage * 100)}%. Оценка по малой выборке; метрологическая точность не подтверждена.`);
+      const heldoutDetails = comparisonDetails(card, 'Контроль со скрытыми измерениями');
+      if (heldout.geometric_matching?.status === 'evaluated' && heldout.geometric_matching.angle_tolerance_rad == null) {
+        const geometric = heldout.geometric_matching;
+        paragraph(heldoutDetails, `Среди предсказаний геометрически совпало ${geometric.matched_count}/${geometric.observation_count} скрытых траекторий в пределах ${format(geometric.distance_tolerance_m * 1000)} мм, без углового отсечения. Это проверка предсказанных прямых; физическое прохождение здесь не проверяется.`);
+      } else {
+        paragraph(heldoutDetails, 'Сохранённый контроль использовал выбор номера или угловое отсечение. Он не является текущей оценкой совпадения траекторий без учёта номеров. Подробные прежние метрики сохранены в технической диагностике.');
+      }
     }
     for (const warning of report.warnings ?? report.limitations ?? report.diagnostics?.limitations ?? []) paragraph(card, warning);
     $('reconstruction-sides').append(card);
@@ -507,7 +677,7 @@ bridge?.onProgress(message => {
 });
 
 async function run(method, payload) {
-  if (busy) return;
+  if (busy || !ready) return;
   if (!bridge) { notify('Откройте приложение через npm start: требуется соединение Electron с Python.', true); return; }
   notify('');
   currentJob = null;
@@ -521,11 +691,20 @@ async function run(method, payload) {
     configurationVersion = result.configuration_version ?? configurationVersion;
     session[method] = { parameters: payload, ...result };
     if (method === 'trace') {
-      await drawScene(result.figure);
+      $('scene-stale').hidden = true;
       showSummary(result, payload);
-      if (reconstructionResult && !reconstructionResult.active) {
-        $('candidate-note').textContent = 'Отчёт ниже относится к диагностическому кандидату. Сцена показывает текущую принятую конфигурацию.';
+      const comparisons = result.comparison_reports ?? [];
+      if (comparisons.some(report => report.diagnostics?.geometric_fit?.status === 'evaluated') || !reconstructionResult) {
+        renderTrajectoryComparison(comparisons, result.active
+          ? 'Принятая конфигурация последнего расчёта. Сравнение использует подогнанные прямые и сохранённые адресные физические пути реконструкции.'
+          : 'Историческая конфигурация последнего расчёта. Для оценки подгонки нужна реконструкция с экспериментальными измерениями.');
+      } else {
+        $('trajectory-comparison-context').textContent = 'Сравнение диагностического кандидата. Последняя трассировка использует другую конфигурацию; приведённые ниже оценки относятся к кандидату.';
       }
+      baseScene = { figure: result.figure, frame: result.metadata?.coordinate_frame ?? 'survey',
+        direction: payload.direction, label: $('scene-label').textContent };
+      if (reconstructionResult?.active) reconstructionScene = null;
+      await drawSceneLayers();
       if (result.measurements) {
         session.calibrate = result.measurements;
         await showCalibration(result.measurements);
@@ -540,12 +719,17 @@ async function run(method, payload) {
     else if (method === 'use_historical') {
       activeConfiguration = false;
       reconstructionResult = null;
+      reconstructionScene = null;
+      await drawSceneLayers();
       $('reconstruction-result').hidden = true;
+      renderTrajectoryComparison([], '');
+      $('accept-candidate').hidden = $('accept-reason').hidden = true;
+      $('candidate-state').hidden = $('candidate-report').hidden = true;
       $('active-state').textContent = 'Историческая конфигурация';
       $('use-historical').hidden = true;
       $('save-source').hidden = $('save-source-label').hidden = true;
       $('save-source').value = 'active';
-      notify('Выбрана историческая конфигурация. Нажмите «Построить конфигурацию» для обновления сцены.');
+      markSceneStale('Выбрана историческая конфигурация. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.');
     } else await showReconstruction(result);
     $('run-status').textContent = method === 'trace' ? 'Конфигурация построена' : method === 'calibrate'
       ? 'Измерения обработаны' : method === 'save_configuration' ? 'Конфигурация сохранена' : 'Реконструкция обработана';
@@ -564,6 +748,12 @@ $('trace-form').addEventListener('submit', (event) => {
     collision_mode: $('collision-mode').value, ray_count: Number($('ray-count').value),
     max_interactions: Number($('max-interactions').value) });
 });
+$('trace-form').addEventListener('invalid', event => {
+  const details = event.target.closest('details');
+  if (details) details.open = true;
+}, true);
+$('start-trace').addEventListener('click', () => $('trace-form').requestSubmit());
+$('start-load').addEventListener('click', () => $('load-configuration').click());
 $('calibrate').addEventListener('click', () => run('calibrate', {
   direction: $('direction').value,
 }));
@@ -573,19 +763,46 @@ $('save-configuration').addEventListener('click', () => run('save_configuration'
   ...configurationSelection(), source: $('save-source').value,
 }));
 $('load-configuration').addEventListener('click', () => run('load_configuration', configurationSelection()));
-$('load-legacy').addEventListener('click', () => { $('legacy-context').hidden = !$('legacy-context').hidden; });
+$('load-legacy').addEventListener('click', () => {
+  $('legacy-context').hidden = !$('legacy-context').hidden;
+  $('load-legacy').setAttribute('aria-expanded', String(!$('legacy-context').hidden));
+});
 $('choose-legacy').addEventListener('click', () => run('import_legacy', {
   ...configurationSelection(), coordinate_frame: $('legacy-frame').value,
 }));
 $('accept-candidate').addEventListener('click', () => run('accept_candidate', { configuration_version: configurationVersion }));
 $('use-historical').addEventListener('click', () => run('use_historical', configurationSelection()));
 $('mirror-select').addEventListener('change', showMirror);
-for (const id of ['direction', 'kind', 'collision-mode']) $(id).addEventListener('change', () => {
-  if (id !== 'collision-mode') {
+for (const input of document.querySelectorAll('.scene-layers input')) {
+  input.addEventListener('change', () => drawSceneLayers().catch(error => notify(error.message, true)));
+}
+$('restore-layers').addEventListener('click', () => {
+  for (const input of document.querySelectorAll('.scene-layers input')) input.checked = true;
+  drawSceneLayers().catch(error => notify(error.message, true));
+});
+$('toggle-legend').addEventListener('click', async () => {
+  legendVisible = !legendVisible;
+  $('toggle-legend').setAttribute('aria-pressed', String(legendVisible));
+  try { await Plotly.relayout($('scene'), { showlegend: legendVisible }); }
+  catch (error) { notify(error.message, true); }
+});
+for (const button of document.querySelectorAll('[data-result-target]')) button.addEventListener('click', () => {
+  const target = $(button.dataset.resultTarget);
+  if (target.hidden) return;
+  target.focus({ preventScroll: true });
+  target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+});
+function markSceneStale(message = 'Параметры изменены. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.') {
+  if (!baseScene && !reconstructionScene) return;
+  $('scene-stale').textContent = message;
+  $('scene-stale').hidden = false;
+}
+for (const id of ['direction', 'kind', 'collision-mode', 'ray-count', 'max-interactions']) $(id).addEventListener('change', () => {
+  if (id === 'direction' || id === 'kind') {
     measurementContext = null;
     $('calibration-result').hidden = true;
-    if ($('scene').data) notify('Параметры изменены. Сцена показывает последний результат; нажмите «Построить конфигурацию», чтобы применить выбранные параметры.');
   }
+  markSceneStale();
   updateControls();
 });
 $('cancel').addEventListener('click', async () => {
@@ -595,6 +812,7 @@ async function setSceneExtent() {
   // Keep every ray inside the axis bounds. A close-up changes the camera,
   // never the clipping box (which previously hid the laser-to-periscope path).
   const scene = $('scene')._fullLayout.scene;
+  if (!scene) return;
   let view = structuredClone(defaultCamera);
   if (!overview) {
     const center = {};
@@ -656,10 +874,13 @@ updateControls();
     for (const [key, id] of Object.entries({ direction: 'direction', kind: 'kind', collision_mode: 'collision-mode', ray_count: 'ray-count', max_interactions: 'max-interactions' })) {
       if (defaults[key] !== undefined) $(id).value = defaults[key];
     }
+    ready = true;
     $('connection-label').textContent = 'Расчётный модуль подключён';
+    $('run-status').textContent = 'Готово к расчёту';
     updateControls();
   } catch (error) {
     $('connection-label').textContent = 'Модуль расчёта недоступен';
+    $('run-status').textContent = 'Нет связи с расчётным модулем';
     notify(error.message, true);
   }
 })();

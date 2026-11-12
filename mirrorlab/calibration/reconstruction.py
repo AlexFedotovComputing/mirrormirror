@@ -25,6 +25,7 @@ DEFAULTS = dict(seed=0, template_iterations=5, assignment_resolution_rad=.006,
                 axial_center_sigma_m=.01, axial_center_limit_sigma=3.,
                 physical_max_iterations=80, physical_starts=3,
                 outlier_distance_m=.05, minimum_gap_m=0., numerical_epsilon_m=1e-9,
+                trajectory_distance_tolerance_m=.003,
                 validate_holdout=True, holdout_per_assembly=1, uncertainty_scenarios_m=[.0005, .001, .002])
 
 
@@ -38,6 +39,7 @@ def _options(values):
     for name in ("assignment_resolution_rad", "measurement_sigma_m", "assembly_translation_sigma_m",
                  "assembly_rotation_sigma_rad", "individual_center_sigma_m", "individual_angle_sigma_rad",
                  "axial_center_sigma_m", "axial_center_limit_sigma",
+                 "trajectory_distance_tolerance_m",
                  "outlier_distance_m", "numerical_epsilon_m"):
         if not np.isfinite(result[name]) or result[name] <= 0:
             raise ValueError(f"{name} must be positive and finite")

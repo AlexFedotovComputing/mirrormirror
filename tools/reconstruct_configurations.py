@@ -18,7 +18,7 @@ from mirrorlab.state import save_document
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--direction", choices=("both", "west_to_east", "east_to_west"), default="both")
-    parser.add_argument("--kind", choices=("ideal", "real"), default="real")
+    parser.add_argument("--kind", choices=("real",), default="real")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--skip-holdout", action="store_true", help="Diagnostic run only; explicitly disables validation")
     args = parser.parse_args()
