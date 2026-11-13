@@ -1,0 +1,4969 @@
+{
+  "format": "analysis.reference-surfaces-and-lines",
+  "schema_version": 1,
+  "application_preset": false,
+  "injection_side": "WEST",
+  "route": "east_to_west",
+  "units": "m",
+  "historical_registration": {
+    "side": "east_to_west",
+    "reverse_windows": false,
+    "z_sign": 1,
+    "xy_parity": 1,
+    "remove_sector_shifts": true,
+    "rotation": [
+      [
+        0.7072031364013631,
+        0.7070104128399206,
+        0.0
+      ],
+      [
+        -0.7070104128399206,
+        0.7072031364013631,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "xy_angle_deg": -44.99219195246648,
+    "translation_m": [
+      -0.0003545722267484712,
+      0.0002011113253701042,
+      3.446012362396528
+    ],
+    "n": 83,
+    "rms_mm": 1.615777825931308,
+    "median_mm": 1.2621352050231038,
+    "max_mm": 3.8686057300078778,
+    "angle_median_mrad": 0.4161195904295536,
+    "anchor_rms_mm": 4.157786642713201,
+    "records": [
+      {
+        "survey_id": "1_1_1",
+        "manual_id": "1_1_6",
+        "rms_mm": 1.6832655936486682,
+        "angle_mrad": 0.4375720572042733
+      },
+      {
+        "survey_id": "1_1_2",
+        "manual_id": "1_1_7",
+        "rms_mm": 0.6887785366885801,
+        "angle_mrad": 0.4226534496257905
+      },
+      {
+        "survey_id": "1_1_3",
+        "manual_id": "1_1_5",
+        "rms_mm": 1.9149748073348964,
+        "angle_mrad": 0.5245081791820878
+      },
+      {
+        "survey_id": "1_1_4",
+        "manual_id": "1_1_4",
+        "rms_mm": 0.233068589838408,
+        "angle_mrad": 0.3827454773317678
+      },
+      {
+        "survey_id": "1_1_7",
+        "manual_id": "1_1_2",
+        "rms_mm": 2.9340777108489546,
+        "angle_mrad": 0.3086782962769928
+      },
+      {
+        "survey_id": "1_2_1",
+        "manual_id": "1_2_7",
+        "rms_mm": 1.9076710959093355,
+        "angle_mrad": 0.4527256596948554
+      },
+      {
+        "survey_id": "1_2_2",
+        "manual_id": "1_2_1",
+        "rms_mm": 0.39399168967637355,
+        "angle_mrad": 0.4421524158177819
+      },
+      {
+        "survey_id": "1_2_3",
+        "manual_id": "1_2_6",
+        "rms_mm": 2.556413139066539,
+        "angle_mrad": 0.4271256821587732
+      },
+      {
+        "survey_id": "1_2_4",
+        "manual_id": "1_2_3",
+        "rms_mm": 0.356558251294352,
+        "angle_mrad": 0.41076111161514955
+      },
+      {
+        "survey_id": "1_2_5",
+        "manual_id": "1_2_2",
+        "rms_mm": 1.435099546133046,
+        "angle_mrad": 0.3924546705287793
+      },
+      {
+        "survey_id": "1_3_1",
+        "manual_id": "1_3_7",
+        "rms_mm": 0.8185185770736138,
+        "angle_mrad": 0.4325834307565637
+      },
+      {
+        "survey_id": "1_3_2",
+        "manual_id": "1_3_6",
+        "rms_mm": 1.494132009003821,
+        "angle_mrad": 0.4161195904295536
+      },
+      {
+        "survey_id": "1_3_3",
+        "manual_id": "1_3_5",
+        "rms_mm": 2.553262912700066,
+        "angle_mrad": 0.39813447077618236
+      },
+      {
+        "survey_id": "1_3_4",
+        "manual_id": "1_3_3",
+        "rms_mm": 1.2621352050231038,
+        "angle_mrad": 0.37592215455254163
+      },
+      {
+        "survey_id": "1_3_7",
+        "manual_id": "1_3_1",
+        "rms_mm": 1.4635726594626566,
+        "angle_mrad": 0.30225762791613686
+      },
+      {
+        "survey_id": "1_4_1",
+        "manual_id": "1_4_6",
+        "rms_mm": 1.3615748979662894,
+        "angle_mrad": 0.4462878746540039
+      },
+      {
+        "survey_id": "1_4_2",
+        "manual_id": "1_4_7",
+        "rms_mm": 0.40215890334517757,
+        "angle_mrad": 0.43286006329746807
+      },
+      {
+        "survey_id": "1_4_3",
+        "manual_id": "1_4_5",
+        "rms_mm": 2.7915269175507027,
+        "angle_mrad": 0.41607016101474004
+      },
+      {
+        "survey_id": "1_4_4",
+        "manual_id": "1_4_3",
+        "rms_mm": 1.6107056293741642,
+        "angle_mrad": 0.3958357103998591
+      },
+      {
+        "survey_id": "1_4_5",
+        "manual_id": "1_4_2",
+        "rms_mm": 2.2503305885551814,
+        "angle_mrad": 0.3730991588206892
+      },
+      {
+        "survey_id": "2_1_2",
+        "manual_id": "2_1_6",
+        "rms_mm": 1.0577069464341768,
+        "angle_mrad": 0.4535435784847525
+      },
+      {
+        "survey_id": "2_1_3",
+        "manual_id": "2_1_5",
+        "rms_mm": 2.562324472251353,
+        "angle_mrad": 0.43768436643060765
+      },
+      {
+        "survey_id": "2_1_4",
+        "manual_id": "2_1_3",
+        "rms_mm": 0.8273116451635356,
+        "angle_mrad": 0.4183283077626242
+      },
+      {
+        "survey_id": "2_1_5",
+        "manual_id": "2_1_2",
+        "rms_mm": 1.9803759355197428,
+        "angle_mrad": 0.3974871135920396
+      },
+      {
+        "survey_id": "2_2_1",
+        "manual_id": "2_2_7",
+        "rms_mm": 0.8875470962514656,
+        "angle_mrad": 0.4639777146132651
+      },
+      {
+        "survey_id": "2_2_2",
+        "manual_id": "2_2_6",
+        "rms_mm": 1.099588883418852,
+        "angle_mrad": 0.4509164593552387
+      },
+      {
+        "survey_id": "2_2_3",
+        "manual_id": "2_2_5",
+        "rms_mm": 1.1816063648732438,
+        "angle_mrad": 0.43466193739712744
+      },
+      {
+        "survey_id": "2_2_4",
+        "manual_id": "2_2_3",
+        "rms_mm": 0.9527493595150985,
+        "angle_mrad": 0.41611178154142064
+      },
+      {
+        "survey_id": "2_2_5",
+        "manual_id": "2_2_2",
+        "rms_mm": 1.346800153563826,
+        "angle_mrad": 0.3943675362226018
+      },
+      {
+        "survey_id": "2_3_1",
+        "manual_id": "2_3_7",
+        "rms_mm": 1.4271262163215297,
+        "angle_mrad": 0.46981277665096277
+      },
+      {
+        "survey_id": "2_3_2",
+        "manual_id": "2_3_6",
+        "rms_mm": 1.0447737988093937,
+        "angle_mrad": 0.4585566740072268
+      },
+      {
+        "survey_id": "2_3_3",
+        "manual_id": "2_3_5",
+        "rms_mm": 2.3219245133509965,
+        "angle_mrad": 0.44389231566965853
+      },
+      {
+        "survey_id": "2_3_4",
+        "manual_id": "2_3_3",
+        "rms_mm": 0.9194677649589539,
+        "angle_mrad": 0.4267221656073777
+      },
+      {
+        "survey_id": "2_3_5",
+        "manual_id": "2_3_1",
+        "rms_mm": 2.0578488428261847,
+        "angle_mrad": 0.4072189348285938
+      },
+      {
+        "survey_id": "2_3_6",
+        "manual_id": "2_3_2",
+        "rms_mm": 0.16500876655166027,
+        "angle_mrad": 0.3852520858871251
+      },
+      {
+        "survey_id": "2_4_1",
+        "manual_id": "2_4_6",
+        "rms_mm": 1.126736430978769,
+        "angle_mrad": 0.46810494421932136
+      },
+      {
+        "survey_id": "2_4_2",
+        "manual_id": "2_4_7",
+        "rms_mm": 0.5439907184353497,
+        "angle_mrad": 0.4557628029672415
+      },
+      {
+        "survey_id": "2_4_3",
+        "manual_id": "2_4_5",
+        "rms_mm": 1.3332418053402235,
+        "angle_mrad": 0.44104238433220555
+      },
+      {
+        "survey_id": "2_4_4",
+        "manual_id": "2_4_3",
+        "rms_mm": 0.5853277862556104,
+        "angle_mrad": 0.42197937035735167
+      },
+      {
+        "survey_id": "2_4_5",
+        "manual_id": "2_4_2",
+        "rms_mm": 0.718021528258998,
+        "angle_mrad": 0.4004889609667528
+      },
+      {
+        "survey_id": "3_1_1",
+        "manual_id": "3_1_6",
+        "rms_mm": 2.642021148961896,
+        "angle_mrad": 0.34668877526437497
+      },
+      {
+        "survey_id": "3_1_2",
+        "manual_id": "3_1_7",
+        "rms_mm": 1.45975559176312,
+        "angle_mrad": 0.3722781392110828
+      },
+      {
+        "survey_id": "3_1_3",
+        "manual_id": "3_1_5",
+        "rms_mm": 0.451047669246163,
+        "angle_mrad": 0.39638807309056334
+      },
+      {
+        "survey_id": "3_1_4",
+        "manual_id": "3_1_3",
+        "rms_mm": 1.6359234060365133,
+        "angle_mrad": 0.41853604837841435
+      },
+      {
+        "survey_id": "3_1_5",
+        "manual_id": "3_1_1",
+        "rms_mm": 0.40573815831982235,
+        "angle_mrad": 0.4380922672822687
+      },
+      {
+        "survey_id": "3_1_6",
+        "manual_id": "3_1_2",
+        "rms_mm": 2.0606903147138347,
+        "angle_mrad": 0.454877536951763
+      },
+      {
+        "survey_id": "3_2_1",
+        "manual_id": "3_2_7",
+        "rms_mm": 2.683476154836455,
+        "angle_mrad": 0.36012799848222243
+      },
+      {
+        "survey_id": "3_2_2",
+        "manual_id": "3_2_6",
+        "rms_mm": 1.077192914319158,
+        "angle_mrad": 0.3852026533458887
+      },
+      {
+        "survey_id": "3_2_3",
+        "manual_id": "3_2_5",
+        "rms_mm": 1.1196891967297304,
+        "angle_mrad": 0.40828004746009233
+      },
+      {
+        "survey_id": "3_2_4",
+        "manual_id": "3_2_3",
+        "rms_mm": 1.3634777169617298,
+        "angle_mrad": 0.4293721309895761
+      },
+      {
+        "survey_id": "3_2_5",
+        "manual_id": "3_2_4",
+        "rms_mm": 0.6030976790879847,
+        "angle_mrad": 0.447316386556072
+      },
+      {
+        "survey_id": "3_3_1",
+        "manual_id": "3_3_6",
+        "rms_mm": 2.1600950042865747,
+        "angle_mrad": 0.3315875963720678
+      },
+      {
+        "survey_id": "3_3_2",
+        "manual_id": "3_3_7",
+        "rms_mm": 0.7935805680405038,
+        "angle_mrad": 0.3585722154426089
+      },
+      {
+        "survey_id": "3_3_3",
+        "manual_id": "3_3_5",
+        "rms_mm": 2.915359556743315,
+        "angle_mrad": 0.3835665111611141
+      },
+      {
+        "survey_id": "3_3_4",
+        "manual_id": "3_3_3",
+        "rms_mm": 3.8686057300078778,
+        "angle_mrad": 0.4063484834573813
+      },
+      {
+        "survey_id": "3_3_5",
+        "manual_id": "3_3_4",
+        "rms_mm": 3.482367348678466,
+        "angle_mrad": 0.42695598246162725
+      },
+      {
+        "survey_id": "3_3_6",
+        "manual_id": "3_3_2",
+        "rms_mm": 2.5389021933740534,
+        "angle_mrad": 0.4463844821002798
+      },
+      {
+        "survey_id": "3_4_1",
+        "manual_id": "3_4_7",
+        "rms_mm": 2.667455639288736,
+        "angle_mrad": 0.37051217878870507
+      },
+      {
+        "survey_id": "3_4_2",
+        "manual_id": "3_4_6",
+        "rms_mm": 0.7225913418593908,
+        "angle_mrad": 0.395106700868057
+      },
+      {
+        "survey_id": "3_4_3",
+        "manual_id": "3_4_1",
+        "rms_mm": 1.9598298959258575,
+        "angle_mrad": 0.412298419496253
+      },
+      {
+        "survey_id": "3_4_4",
+        "manual_id": "3_4_3",
+        "rms_mm": 1.225837970762049,
+        "angle_mrad": 0.4377675617688953
+      },
+      {
+        "survey_id": "3_4_5",
+        "manual_id": "3_4_5",
+        "rms_mm": 1.4568510218084534,
+        "angle_mrad": 0.45126794541511756
+      },
+      {
+        "survey_id": "4_1_1",
+        "manual_id": "4_1_6",
+        "rms_mm": 0.7651472683501346,
+        "angle_mrad": 0.36191319188619864
+      },
+      {
+        "survey_id": "4_1_2",
+        "manual_id": "4_1_5",
+        "rms_mm": 1.024793871390286,
+        "angle_mrad": 0.38823750050933187
+      },
+      {
+        "survey_id": "4_1_3",
+        "manual_id": "4_1_4",
+        "rms_mm": 1.6149056251895668,
+        "angle_mrad": 0.40955562561954445
+      },
+      {
+        "survey_id": "4_1_4",
+        "manual_id": "4_1_3",
+        "rms_mm": 1.0101144909444617,
+        "angle_mrad": 0.43059795876733725
+      },
+      {
+        "survey_id": "4_1_5",
+        "manual_id": "4_1_2",
+        "rms_mm": 2.056024717119799,
+        "angle_mrad": 0.44788818844489736
+      },
+      {
+        "survey_id": "4_1_7",
+        "manual_id": "4_1_1",
+        "rms_mm": 0.6605467024813888,
+        "angle_mrad": 0.472025534732198
+      },
+      {
+        "survey_id": "4_2_1",
+        "manual_id": "4_2_5",
+        "rms_mm": 1.6474770172075819,
+        "angle_mrad": 0.35488923372385006
+      },
+      {
+        "survey_id": "4_2_2",
+        "manual_id": "4_2_6",
+        "rms_mm": 1.4941831431340897,
+        "angle_mrad": 0.3794825884217016
+      },
+      {
+        "survey_id": "4_2_3",
+        "manual_id": "4_2_4",
+        "rms_mm": 1.149164851775493,
+        "angle_mrad": 0.4025399210119813
+      },
+      {
+        "survey_id": "4_2_4",
+        "manual_id": "4_2_3",
+        "rms_mm": 0.4970964251381465,
+        "angle_mrad": 0.42214451521122737
+      },
+      {
+        "survey_id": "4_2_5",
+        "manual_id": "4_2_1",
+        "rms_mm": 0.6637579416625059,
+        "angle_mrad": 0.4404786886295283
+      },
+      {
+        "survey_id": "4_3_2",
+        "manual_id": "4_3_7",
+        "rms_mm": 1.255156781844864,
+        "angle_mrad": 0.3742603611312293
+      },
+      {
+        "survey_id": "4_3_3",
+        "manual_id": "4_3_6",
+        "rms_mm": 1.6823137522241045,
+        "angle_mrad": 0.39809429531629476
+      },
+      {
+        "survey_id": "4_3_4",
+        "manual_id": "4_3_3",
+        "rms_mm": 1.1557853742430975,
+        "angle_mrad": 0.4196013346639214
+      },
+      {
+        "survey_id": "4_3_5",
+        "manual_id": "4_3_2",
+        "rms_mm": 1.1813559887010374,
+        "angle_mrad": 0.4382968483106382
+      },
+      {
+        "survey_id": "4_4_1",
+        "manual_id": "4_4_7",
+        "rms_mm": 1.530151186355557,
+        "angle_mrad": 0.331762507311767
+      },
+      {
+        "survey_id": "4_4_2",
+        "manual_id": "4_4_6",
+        "rms_mm": 0.5812028153356892,
+        "angle_mrad": 0.3576870037224947
+      },
+      {
+        "survey_id": "4_4_3",
+        "manual_id": "4_4_5",
+        "rms_mm": 0.8118439089404584,
+        "angle_mrad": 0.3824701786966688
+      },
+      {
+        "survey_id": "4_4_4",
+        "manual_id": "4_4_3",
+        "rms_mm": 1.4165316645849608,
+        "angle_mrad": 0.40578092752716177
+      },
+      {
+        "survey_id": "4_4_5",
+        "manual_id": "4_4_1",
+        "rms_mm": 0.7354706934711325,
+        "angle_mrad": 0.4270850151272396
+      },
+      {
+        "survey_id": "4_4_6",
+        "manual_id": "4_4_2",
+        "rms_mm": 1.0476956628987775,
+        "angle_mrad": 0.4444390535361883
+      }
+    ]
+  },
+  "current_static_display_frame": {
+    "rotation": [
+      [
+        0.6974386849833392,
+        0.7166444590511467,
+        0.0
+      ],
+      [
+        -0.7166444590511467,
+        0.6974386849833392,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    ],
+    "translation_m": [
+      -9.534525038664328e-06,
+      -6.469953661369689e-05,
+      -1.7655000000000003
+    ],
+    "det": -1.0000000000000002,
+    "rms_mm": 9.630205653337601,
+    "max_mm": 16.827693843470765,
+    "survey_window_to_legacy_window": {
+      "1": 4,
+      "2": 3,
+      "3": 2,
+      "4": 1
+    },
+    "physical_sides": {
+      "laser_side": "EAST",
+      "ring_side": "EAST",
+      "injection_side": "WEST",
+      "legacy_ideal": "legacy/variants/из+к-_идеальная.txt",
+      "legacy_real": "из+к-_реальная.py",
+      "survey_file": "Геодезические измерения из+к-.xlsx",
+      "local_incoming": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "additional_screens_file": "лавсан_из+к-.txt",
+      "source_side": "EAST"
+    }
+  },
+  "notes": [
+    "Two different registrations are retained explicitly; current display placement is not historical measurement agreement.",
+    "Historical reference removes four exactly recovered sector translations before the global fit.",
+    "The historical line fit is conditional on legacy optical conventions and is not a physical pose under current incoming light.",
+    "An active reconstructed dataset may have its own embedded display_frame; do not substitute this static frame.",
+    "Unmatched manual mirror IDs are not silently assigned to missing survey rows."
+  ],
+  "mirrors": [
+    {
+      "manual_id": "1_1_1",
+      "center_as_supplied_legacy_m": [
+        -0.7630253693545,
+        1.0144177319388001,
+        -3.100881088875
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19318291013691594,
+        1.2449145416112406,
+        0.34513127352152795
+      ],
+      "historical_plane_normal_survey": [
+        0.21107253432208428,
+        -0.6834451207134142,
+        0.6988212591413339
+      ],
+      "historical_output_line_direction_survey": [
+        0.29494872451534576,
+        -0.9552210613208203,
+        -0.023621471501504843
+      ],
+      "center_current_static_display_survey_m": [
+        0.19480390202060474,
+        1.2542473725139218,
+        1.3353810888749997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_1_2",
+      "center_as_supplied_legacy_m": [
+        -0.7615872729294999,
+        1.0149145532888,
+        -3.100784003625
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19455119430689466,
+        1.2442491460810488,
+        0.34522835877152813
+      ],
+      "historical_plane_normal_survey": [
+        0.3342431637321471,
+        -0.6319722769777311,
+        0.6992085158448137
+      ],
+      "historical_output_line_direction_survey": [
+        0.467306736586104,
+        -0.8838083163504259,
+        -0.022522741641966326
+      ],
+      "center_current_static_display_survey_m": [
+        0.1961629303677518,
+        1.2535632711083797,
+        1.3352840036249995
+      ],
+      "matched_primary_survey_id": "1_1_7",
+      "training_alignment_rms_mm": 2.9340777108489546,
+      "primary_direction_difference_mrad": 0.3086782962769928,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_1_3",
+      "center_as_supplied_legacy_m": [
+        -0.7608848629045001,
+        1.0137013622888,
+        -3.1015885309
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19419020220985073,
+        1.2428945623990368,
+        0.344423831496528
+      ],
+      "historical_plane_normal_survey": [
+        0.07273940853059606,
+        -0.7116802174834581,
+        0.6987275910462651
+      ],
+      "historical_output_line_direction_survey": [
+        0.1016584610487422,
+        -0.9945325169752748,
+        -0.02388786252526809
+      ],
+      "center_current_static_display_survey_m": [
+        0.1957833916839861,
+        1.252213766520308,
+        1.3360885308999997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_1_4",
+      "center_as_supplied_legacy_m": [
+        -0.7626207277545001,
+        1.0134488329638,
+        -3.1007754019
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19278405228123946,
+        1.2439432473925962,
+        0.34523696049652797
+      ],
+      "historical_plane_normal_survey": [
+        -0.06713063462786358,
+        -0.7120046875488066,
+        0.6989583698640328
+      ],
+      "historical_output_line_direction_survey": [
+        -0.09376968534659012,
+        -0.9953227596010258,
+        -0.023234679472705078
+      ],
+      "center_current_static_display_survey_m": [
+        0.19439175864418415,
+        1.2532816407263745,
+        1.3352754018999997
+      ],
+      "matched_primary_survey_id": "1_1_4",
+      "training_alignment_rms_mm": 0.233068589838408,
+      "primary_direction_difference_mrad": 0.3827454773317678,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_1_5",
+      "center_as_supplied_legacy_m": [
+        -0.7632398582295,
+        1.0121103322637999,
+        -3.1008870268
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19139986733498415,
+        1.2434343871922122,
+        0.3451253355965278
+      ],
+      "historical_plane_normal_survey": [
+        -0.20802989700902275,
+        -0.6828689288926975,
+        0.7002953576194512
+      ],
+      "historical_output_line_direction_survey": [
+        -0.29123326022716817,
+        -0.9564538820369994,
+        -0.019472022848358805
+      ],
+      "center_current_static_display_survey_m": [
+        0.1930007239897758,
+        1.2527918149826553,
+        1.3353870267999999
+      ],
+      "matched_primary_survey_id": "1_1_3",
+      "training_alignment_rms_mm": 1.9149748073348964,
+      "primary_direction_difference_mrad": 0.5245081791820878,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_1_6",
+      "center_as_supplied_legacy_m": [
+        -0.7643612085545,
+        1.0126487720888,
+        -3.1010076722249997
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19098752743110228,
+        1.244607979881432,
+        0.34500469017152824
+      ],
+      "historical_plane_normal_survey": [
+        -0.44802365976070935,
+        -0.5519519052655857,
+        0.7032950266910112
+      ],
+      "historical_output_line_direction_survey": [
+        -0.6299989639531998,
+        -0.7765183719122508,
+        -0.010978319572779616
+      ],
+      "center_current_static_display_survey_m": [
+        0.19260452081082108,
+        1.2539709532432126,
+        1.3355076722249994
+      ],
+      "matched_primary_survey_id": "1_1_1",
+      "training_alignment_rms_mm": 1.6832655936486682,
+      "primary_direction_difference_mrad": 0.4375720572042733,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_1_7",
+      "center_as_supplied_legacy_m": [
+        -0.7646823739795001,
+        1.0136484483138,
+        -3.100967642
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19146717973578198,
+        1.2455420213428572,
+        0.3450447203965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.3357445027293255,
+        -0.6281323940454822,
+        0.7019439610380085
+      ],
+      "historical_output_line_direction_survey": [
+        -0.4711772218983381,
+        -0.8819141083145118,
+        -0.014816582601395178
+      ],
+      "center_current_static_display_survey_m": [
+        0.19309694004663827,
+        1.2548983275372507,
+        1.3354676419999998
+      ],
+      "matched_primary_survey_id": "1_1_2",
+      "training_alignment_rms_mm": 0.6887785366885801,
+      "primary_direction_difference_mrad": 0.4226534496257905,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_1",
+      "center_as_supplied_legacy_m": [
+        -0.7647097800545001,
+        1.0248901589138,
+        -2.7712870967
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.1993958045259185,
+        1.2535115707180937,
+        0.6747252656965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.4819247037289318,
+        -0.5171188427690441,
+        0.7073448115233375
+      ],
+      "historical_output_line_direction_survey": [
+        -0.6815886460274706,
+        -0.7317354045440045,
+        0.00046405092540624526
+      ],
+      "center_current_static_display_survey_m": [
+        0.20113413560147628,
+        1.2627583718068711,
+        1.0057870966999998
+      ],
+      "matched_primary_survey_id": "1_2_2",
+      "training_alignment_rms_mm": 0.39399168967637355,
+      "primary_direction_difference_mrad": 0.4421524158177819,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_2",
+      "center_as_supplied_legacy_m": [
+        -0.7631057591795001,
+        1.0245357709137999,
+        -2.7719256407749997
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.20027961711338615,
+        1.252126886951953,
+        0.6740867216215283
+      ],
+      "historical_plane_normal_survey": [
+        -0.1260811006998528,
+        -0.6865894462202985,
+        0.7160296700453251
+      ],
+      "historical_output_line_direction_survey": [
+        -0.1804579686036453,
+        -0.9832627820041305,
+        0.02508431966275182
+      ],
+      "center_current_static_display_survey_m": [
+        0.20199887161466784,
+        1.2613616952339062,
+        1.0064256407749994
+      ],
+      "matched_primary_survey_id": "1_2_5",
+      "training_alignment_rms_mm": 1.435099546133046,
+      "primary_direction_difference_mrad": 0.3924546705287793,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_3",
+      "center_as_supplied_legacy_m": [
+        -0.7638657457545001,
+        1.0238112556388,
+        -2.7719230274249997
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19922991238023668,
+        1.252151825899246,
+        0.6740893349715282
+      ],
+      "historical_plane_normal_survey": [
+        -0.24718282410597928,
+        -0.6554032803154926,
+        0.7136856392128712
+      ],
+      "historical_output_line_direction_survey": [
+        -0.3526786984229337,
+        -0.9355634697069712,
+        0.01840461432789542
+      ],
+      "center_current_static_display_survey_m": [
+        0.20094960771986825,
+        1.261401030421187,
+        1.0064230274249995
+      ],
+      "matched_primary_survey_id": "1_2_4",
+      "training_alignment_rms_mm": 0.356558251294352,
+      "primary_direction_difference_mrad": 0.41076111161514955,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_4",
+      "center_as_supplied_legacy_m": [
+        -0.7620495667295,
+        1.0238254310638,
+        -2.772367005275
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.20052434205606456,
+        1.2508777933220092,
+        0.673645357121528
+      ],
+      "historical_plane_normal_survey": [
+        0.12343965466479241,
+        -0.6831471053449921,
+        0.719772661411223
+      ],
+      "historical_output_line_direction_survey": [
+        0.17768330725245615,
+        -0.9834356901269595,
+        0.03581739393563077
+      ],
+      "center_current_static_display_survey_m": [
+        0.20222643997053957,
+        1.2601093622760466,
+        1.0068670052749997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_5",
+      "center_as_supplied_legacy_m": [
+        -0.7628642913795,
+        1.0231630677137997,
+        -2.772691429575
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19947986844274737,
+        1.250985386694599,
+        0.6733209328215279
+      ],
+      "historical_plane_normal_survey": [
+        0.00020546108742499508,
+        -0.6959267347391408,
+        0.7181127611044514
+      ],
+      "historical_output_line_direction_survey": [
+        0.00033758122657929313,
+        -0.9995178930722408,
+        0.031046215024438717
+      ],
+      "center_current_static_display_survey_m": [
+        0.2011835404573638,
+        1.2602312723583162,
+        1.0071914295749997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_6",
+      "center_as_supplied_legacy_m": [
+        -0.7646750569295,
+        1.0231422883387997,
+        -2.7719229564
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19818459813200254,
+        1.2522509215544886,
+        0.6740894059965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.3640051096157859,
+        -0.6015678373698145,
+        0.7110670975483285
+      ],
+      "historical_output_line_direction_survey": [
+        -0.5174900988079251,
+        -0.8556187946763885,
+        0.010976148335746783
+      ],
+      "center_current_static_display_survey_m": [
+        0.19990575108940237,
+        1.2615144551163897,
+        1.0064229563999998
+      ],
+      "matched_primary_survey_id": "1_2_3",
+      "training_alignment_rms_mm": 2.556413139066539,
+      "primary_direction_difference_mrad": 0.4271256821587732,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_2_7",
+      "center_as_supplied_legacy_m": [
+        -0.7657159396045001,
+        1.0241481123637999,
+        -2.771152804325
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19815961069877622,
+        1.2536981583494062,
+        0.6748595580715278
+      ],
+      "historical_plane_normal_survey": [
+        -0.5717067934641078,
+        -0.41942010740556845,
+        0.7051511297664418
+      ],
+      "historical_output_line_direction_survey": [
+        -0.8061083442598785,
+        -0.591740695316071,
+        -0.0056821493688113955
+      ],
+      "center_current_static_display_survey_m": [
+        0.19990061745962515,
+        1.2629618985032716,
+        1.005652804325
+      ],
+      "matched_primary_survey_id": "1_2_1",
+      "training_alignment_rms_mm": 1.9076710959093355,
+      "primary_direction_difference_mrad": 0.4527256596948554,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_1",
+      "center_as_supplied_legacy_m": [
+        -0.7714585169795,
+        1.0180153051638,
+        -2.4412996864
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.18976248341780919,
+        1.2534210798632852,
+        1.0047126759965281
+      ],
+      "historical_plane_normal_survey": [
+        0.3596783478216165,
+        -0.6095072949852807,
+        0.7064929889730249
+      ],
+      "historical_output_line_direction_survey": [
+        0.5081091511511974,
+        -0.861290275639706,
+        -0.002037548745384088
+      ],
+      "center_current_static_display_survey_m": [
+        0.1915004795484813,
+        1.2628000277709135,
+        0.6757996863999995
+      ],
+      "matched_primary_survey_id": "1_3_7",
+      "training_alignment_rms_mm": 1.4635726594626566,
+      "primary_direction_difference_mrad": 0.30225762791613686,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_2",
+      "center_as_supplied_legacy_m": [
+        -0.7700624176295001,
+        1.0170730980137999,
+        -2.441595870025
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19008365899075472,
+        1.2517676912338564,
+        1.004416492371528
+      ],
+      "historical_plane_normal_survey": [
+        0.24236698152274783,
+        -0.6631320415497867,
+        0.7081766317364365
+      ],
+      "historical_output_line_direction_survey": [
+        0.34321010144915914,
+        -0.939254755033768,
+        0.0027076576067434077
+      ],
+      "center_current_static_display_survey_m": [
+        0.19179894570992534,
+        1.2611423891917732,
+        0.6760958700249997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_3",
+      "center_as_supplied_legacy_m": [
+        -0.7716599740045,
+        1.0158326765387997,
+        -2.4416944515749996
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.1880768712126415,
+        1.2520199502685003,
+        1.0043179108215283
+      ],
+      "historical_plane_normal_survey": [
+        -0.02507937429444339,
+        -0.7021997257683082,
+        0.7115381719317041
+      ],
+      "historical_output_line_direction_survey": [
+        -0.035635854584164316,
+        -0.9992897706628796,
+        0.012249086357133954
+      ],
+      "center_current_static_display_survey_m": [
+        0.1897958069156117,
+        1.2614221511935895,
+        0.6761944515749994
+      ],
+      "matched_primary_survey_id": "1_3_4",
+      "training_alignment_rms_mm": 1.2621352050231038,
+      "primary_direction_difference_mrad": 0.37592215455254163,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_4",
+      "center_as_supplied_legacy_m": [
+        -0.7699465711795,
+        1.0160295082638,
+        -2.4424348230749997
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.18942775714355287,
+        1.2509477566430995,
+        1.0035775393215283
+      ],
+      "historical_plane_normal_survey": [
+        0.1096481784147737,
+        -0.6956939762935729,
+        0.7099205366230505
+      ],
+      "historical_output_line_direction_survey": [
+        0.15567483482229638,
+        -0.987778763832125,
+        0.007645882900670586
+      ],
+      "center_current_static_display_survey_m": [
+        0.1911318586938135,
+        1.2603315286123777,
+        0.6769348230749994
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_5",
+      "center_as_supplied_legacy_m": [
+        -0.7717135511045,
+        1.0147109187638,
+        -2.441911688575
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.18724588689187321,
+        1.2512645192193277,
+        1.0041006738215281
+      ],
+      "historical_plane_normal_survey": [
+        -0.1633474020036441,
+        -0.680132227467083,
+        0.7146592050896173
+      ],
+      "historical_output_line_direction_survey": [
+        -0.23336273019041048,
+        -0.9721593074658584,
+        0.021168775722276822
+      ],
+      "center_current_static_display_survey_m": [
+        0.1889545386795914,
+        1.2606781896579708,
+        0.6764116885749996
+      ],
+      "matched_primary_survey_id": "1_3_3",
+      "training_alignment_rms_mm": 2.553262912700066,
+      "primary_direction_difference_mrad": 0.39813447077618236,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_6",
+      "center_as_supplied_legacy_m": [
+        -0.7732670281295,
+        1.0148978957388,
+        -2.4419834115
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.18627945773575205,
+        1.2524950743552652,
+        1.004028950896528
+      ],
+      "historical_plane_normal_survey": [
+        -0.2830989371177279,
+        -0.6377445762603171,
+        0.7163357084868534
+      ],
+      "historical_output_line_direction_survey": [
+        -0.4054343283167901,
+        -0.9137545374191808,
+        0.02599328313572158
+      ],
+      "center_current_static_display_survey_m": [
+        0.1880050797192275,
+        1.2619218853357665,
+        0.6764834114999996
+      ],
+      "matched_primary_survey_id": "1_3_2",
+      "training_alignment_rms_mm": 1.494132009003821,
+      "primary_direction_difference_mrad": 0.4161195904295536,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_3_7",
+      "center_as_supplied_legacy_m": [
+        -0.7733985494795,
+        1.0160401839137998,
+        -2.4420251909
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.18699405505871708,
+        1.25339589109926,
+        1.003987171496528
+      ],
+      "historical_plane_normal_survey": [
+        -0.40110367429270527,
+        -0.5718453321311178,
+        0.715617746138777
+      ],
+      "historical_output_line_direction_survey": [
+        -0.573895440636541,
+        -0.8185775514840572,
+        0.023975308610238
+      ],
+      "center_current_static_display_survey_m": [
+        0.18873196613308954,
+        1.2628128153451348,
+        0.6765251908999996
+      ],
+      "matched_primary_survey_id": "1_3_1",
+      "training_alignment_rms_mm": 0.8185185770736138,
+      "primary_direction_difference_mrad": 0.4325834307565637,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_1",
+      "center_as_supplied_legacy_m": [
+        -0.7688599943295,
+        1.0255581501638,
+        -2.1078270055
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.1969330367433368,
+        1.2569182209331242,
+        1.338185356896528
+      ],
+      "historical_plane_normal_survey": [
+        0.26827668749986383,
+        -0.6741363999573144,
+        0.6881625775910021
+      ],
+      "historical_output_line_direction_survey": [
+        0.3691545420646735,
+        -0.9278451059479432,
+        -0.053182548279213315
+      ],
+      "center_current_static_display_survey_m": [
+        0.19871832784312843,
+        1.2661984828099053,
+        0.3423270054999996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_2",
+      "center_as_supplied_legacy_m": [
+        -0.7686665067795,
+        1.0245082888138,
+        -2.108591587625
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19632760883906317,
+        1.2560389579810127,
+        1.337420774771528
+      ],
+      "historical_plane_normal_survey": [
+        -0.010671808096574038,
+        -0.735528817741709,
+        0.6774093819718129
+      ],
+      "historical_output_line_direction_survey": [
+        -0.0144106740296126,
+        -0.9964821406071134,
+        -0.08255710705370489
+      ],
+      "center_current_static_display_survey_m": [
+        0.19810089622631152,
+        1.2653276071099435,
+        0.3430915876249996
+      ],
+      "matched_primary_survey_id": "1_4_5",
+      "training_alignment_rms_mm": 2.2503305885551814,
+      "primary_direction_difference_mrad": 0.3730991588206892,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_3",
+      "center_as_supplied_legacy_m": [
+        -0.7695709303295001,
+        1.0239748868888,
+        -2.1082947593
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19531087695266394,
+        1.2563011713341579,
+        1.3377176030965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.15878680013076144,
+        -0.7218710122805889,
+        0.6735643946448113
+      ],
+      "historical_output_line_direction_survey": [
+        -0.2137911295673593,
+        -0.9724491854429831,
+        -0.09292972963261192
+      ],
+      "center_current_static_display_survey_m": [
+        0.19708785672093299,
+        1.2656037420985466,
+        0.3427947592999998
+      ],
+      "matched_primary_survey_id": "1_4_4",
+      "training_alignment_rms_mm": 1.6107056293741642,
+      "primary_direction_difference_mrad": 0.3958357103998591,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_4",
+      "center_as_supplied_legacy_m": [
+        -0.7676445416795,
+        1.0239626696137998,
+        -2.1093190645
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19666458730723044,
+        1.2549305544042328,
+        1.3366932978965278
+      ],
+      "historical_plane_normal_survey": [
+        0.13697496713409957,
+        -0.7179432837331394,
+        0.6824919777705004
+      ],
+      "historical_output_line_direction_survey": [
+        0.18694553053370802,
+        -0.979962571985073,
+        -0.06873664322522244
+      ],
+      "center_current_static_display_survey_m": [
+        0.19842263924532236,
+        1.264214685546335,
+        0.3438190644999999
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_5",
+      "center_as_supplied_legacy_m": [
+        -0.7699153484545,
+        1.0226689561637998,
+        -2.1082549572750002
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.1941439967534079,
+        1.2556211202302607,
+        1.3377574051215277
+      ],
+      "historical_plane_normal_survey": [
+        -0.3028900410920636,
+        -0.6750816034132259,
+        0.6726978903938058
+      ],
+      "historical_output_line_direction_survey": [
+        -0.40733895038676055,
+        -0.90829815099169,
+        -0.09523365163055919
+      ],
+      "center_current_static_display_survey_m": [
+        0.19591175817877263,
+        1.2649397608319015,
+        0.34275495727499994
+      ],
+      "matched_primary_survey_id": "1_4_3",
+      "training_alignment_rms_mm": 2.7915269175507027,
+      "primary_direction_difference_mrad": 0.41607016101474004,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_6",
+      "center_as_supplied_legacy_m": [
+        -0.7711034453544999,
+        1.0233270408388,
+        -2.1082930808
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.19376904361713468,
+        1.2569265166562011,
+        1.3377192815965278
+      ],
+      "historical_plane_normal_survey": [
+        -0.5427968230261135,
+        -0.5008336969305263,
+        0.6741937532576663
+      ],
+      "historical_output_line_direction_survey": [
+        -0.7317057817785776,
+        -0.6755033769039531,
+        -0.09111441545197474
+      ],
+      "center_current_static_display_survey_m": [
+        0.19555474617512936,
+        1.266250177602442,
+        0.3427930807999999
+      ],
+      "matched_primary_survey_id": "1_4_1",
+      "training_alignment_rms_mm": 1.3615748979662894,
+      "primary_direction_difference_mrad": 0.4462878746540039,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "1_4_7",
+      "center_as_supplied_legacy_m": [
+        -0.7709518744295001,
+        1.0243660435388,
+        -2.107827398
+      ],
+      "removed_sector_translation_m": [
+        -0.019870327679500033,
+        -0.0026805251862001,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        0.1946108207785507,
+        1.257554140402112,
+        1.338184964396528
+      ],
+      "historical_plane_normal_survey": [
+        -0.432953553626613,
+        -0.601204412393449,
+        0.6716431157398512
+      ],
+      "historical_output_line_direction_survey": [
+        -0.5813842848314743,
+        -0.8077020186620077,
+        -0.09802939559291934
+      ],
+      "center_current_static_display_survey_m": [
+        0.19640505312963716,
+        1.2668661958156697,
+        0.34232739799999967
+      ],
+      "matched_primary_survey_id": "1_4_2",
+      "training_alignment_rms_mm": 0.40215890334517757,
+      "primary_direction_difference_mrad": 0.43286006329746807,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_1",
+      "center_as_supplied_legacy_m": [
+        -1.0186494878085999,
+        -0.7667131645892001,
+        -3.099301749275
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2509553073485566,
+        0.1936310173103204,
+        0.34671061312152807
+      ],
+      "historical_plane_normal_survey": [
+        0.702530389844116,
+        0.2038923126401749,
+        0.681820340112933
+      ],
+      "historical_output_line_direction_survey": [
+        0.9579927686779525,
+        0.27797128100584456,
+        -0.0705820238922128
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2599158348456405,
+        0.1952093903462018,
+        1.3338017492749996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_2",
+      "center_as_supplied_legacy_m": [
+        -1.0186878595086,
+        -0.7647909556892001,
+        -3.0999694617
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.249623422227192,
+        0.19501753866467741,
+        0.34604290069652777
+      ],
+      "historical_plane_normal_survey": [
+        0.7246962337185867,
+        -0.07536989627466778,
+        0.684934119145514
+      ],
+      "historical_output_line_direction_survey": [
+        0.9927250150615237,
+        -0.10317253733054503,
+        -0.06206828507277051
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2585650563963053,
+        0.1965775120598705,
+        1.3344694617
+      ],
+      "matched_primary_survey_id": "2_1_5",
+      "training_alignment_rms_mm": 1.9803759355197428,
+      "primary_direction_difference_mrad": 0.3974871135920396,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_3",
+      "center_as_supplied_legacy_m": [
+        -1.0181309417586002,
+        -0.7656810925392001,
+        -3.100065360925
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2498589042694772,
+        0.1939942844441858,
+        0.345947001471528
+      ],
+      "historical_plane_normal_survey": [
+        0.6950643084094718,
+        -0.2093001572422339,
+        0.6878074231597381
+      ],
+      "historical_output_line_direction_survey": [
+        0.9561631441375571,
+        -0.2877824025805091,
+        -0.054160230409139976
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2588145520544516,
+        0.19555758416606672,
+        1.3345653609249997
+      ],
+      "matched_primary_survey_id": "2_1_4",
+      "training_alignment_rms_mm": 0.8273116451635356,
+      "primary_direction_difference_mrad": 0.4183283077626242,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_4",
+      "center_as_supplied_legacy_m": [
+        -1.0181455064086,
+        -0.7638157170892002,
+        -3.100937773475
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2485503645686318,
+        0.19532378117220112,
+        0.34507458892152787
+      ],
+      "historical_plane_normal_survey": [
+        0.7277698898948957,
+        0.06396892480676916,
+        0.6828315780786922
+      ],
+      "historical_output_line_direction_survey": [
+        0.9938646042916627,
+        0.08736476839407857,
+        -0.0678273217783616
+      ],
+      "center_current_static_display_survey_m": [
+        -1.257487899024502,
+        0.1968690068426353,
+        1.3354377734749998
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_5",
+      "center_as_supplied_legacy_m": [
+        -1.0168631492336,
+        -0.7660703950142,
+        -3.1004188130749997
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2492375583230602,
+        0.19282262599636124,
+        0.3455935493215283
+      ],
+      "historical_plane_normal_survey": [
+        0.6362784122050633,
+        -0.3419594916665375,
+        0.6915298173043349
+      ],
+      "historical_output_line_direction_survey": [
+        0.8800925710421489,
+        -0.4727721613719421,
+        -0.043858292581023695
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2582093359645872,
+        0.19437751307157422,
+        1.3349188130749994
+      ],
+      "matched_primary_survey_id": "2_1_3",
+      "training_alignment_rms_mm": 2.562324472251353,
+      "primary_direction_difference_mrad": 0.43768436643060765,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_6",
+      "center_as_supplied_legacy_m": [
+        -1.0176019970085999,
+        -0.7668164543892001,
+        -3.100371365
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2502875455335851,
+        0.19281738353684813,
+        0.345640997396528
+      ],
+      "historical_plane_normal_survey": [
+        0.5560258140758684,
+        -0.45798238112575695,
+        0.6936046659730959
+      ],
+      "historical_output_line_direction_survey": [
+        0.7714743924378944,
+        -0.635120592529539,
+        -0.03806697725731867
+      ],
+      "center_current_static_display_survey_m": [
+        -1.259259296302403,
+        0.19438667356619055,
+        1.3348713649999997
+      ],
+      "matched_primary_survey_id": "2_1_2",
+      "training_alignment_rms_mm": 1.0577069464341768,
+      "primary_direction_difference_mrad": 0.4535435784847525,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_1_7",
+      "center_as_supplied_legacy_m": [
+        -1.0191835991086,
+        -0.7657322690892001,
+        -3.0993092593
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2506395292026962,
+        0.19470233193511796,
+        0.34670310309652796
+      ],
+      "historical_plane_normal_survey": [
+        0.45099745242195366,
+        -0.5583770412901065,
+        0.6962875682281097
+      ],
+      "historical_output_line_direction_survey": [
+        0.6282706234643294,
+        -0.777394652647435,
+        -0.030554504200146937
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2595853914033643,
+        0.19627627271748957,
+        1.3338092592999997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_1",
+      "center_as_supplied_legacy_m": [
+        -1.0243122234836002,
+        -0.7638811974642001,
+        -2.7713757004
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2529577815323334,
+        0.1996374064306912,
+        0.6746366619965278
+      ],
+      "historical_plane_normal_survey": [
+        0.6755956972165986,
+        0.21527416184302786,
+        0.7051435946991221
+      ],
+      "historical_output_line_direction_survey": [
+        0.9528030908265845,
+        0.3035319535393175,
+        -0.0058841560068311205
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2618357322198748,
+        0.20124268191833802,
+        1.0058757003999999
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_2",
+      "center_as_supplied_legacy_m": [
+        -1.0237110580836002,
+        -0.7630139182142,
+        -2.771445793375
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2519194600153674,
+        0.19982571883878808,
+        0.6745665690215281
+      ],
+      "historical_plane_normal_survey": [
+        0.7048645794193629,
+        -0.05273342543635577,
+        0.7073790430325971
+      ],
+      "historical_output_line_direction_survey": [
+        0.9972177415089399,
+        -0.0745425466579546,
+        0.0004298343349047329
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2607949253448787,
+        0.20141673416508826,
+        1.0059457933749996
+      ],
+      "matched_primary_survey_id": "2_2_5",
+      "training_alignment_rms_mm": 1.346800153563826,
+      "primary_direction_difference_mrad": 0.3943675362226018,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_3",
+      "center_as_supplied_legacy_m": [
+        -1.0229943574086,
+        -0.7637812780892,
+        -2.7714662146
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2519551384721668,
+        0.19877632468832498,
+        0.6745461477965278
+      ],
+      "historical_plane_normal_survey": [
+        0.6801696854891398,
+        -0.18806515025974807,
+        0.7085200760736301
+      ],
+      "historical_output_line_direction_survey": [
+        0.963862910397819,
+        -0.26637332891809945,
+        0.0036796196183053187
+      ],
+      "center_current_static_display_survey_m": [
+        -1.260844994771097,
+        0.20036792813542215,
+        1.0059662146
+      ],
+      "matched_primary_survey_id": "2_2_4",
+      "training_alignment_rms_mm": 0.9527493595150985,
+      "primary_direction_difference_mrad": 0.41611178154142064,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_4",
+      "center_as_supplied_legacy_m": [
+        -1.0231967284086,
+        -0.7620083068892001,
+        -2.772221564075
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2508447467780184,
+        0.20017325388597113,
+        0.6737907983215279
+      ],
+      "historical_plane_normal_survey": [
+        0.7027109006308438,
+        0.08635927537972243,
+        0.7062148863415991
+      ],
+      "historical_output_line_direction_survey": [
+        0.992529498857857,
+        0.12197119909194182,
+        -0.002867139523168083
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2597155461486784,
+        0.20174949489348612,
+        1.0067215640749998
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_5",
+      "center_as_supplied_legacy_m": [
+        -1.0219760888836,
+        -0.7635250932141999,
+        -2.7714953807
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2510538904033508,
+        0.19823757298518152,
+        0.6745169816965282
+      ],
+      "historical_plane_normal_survey": [
+        0.6324130023741761,
+        -0.31214024611221786,
+        0.7089585750839639
+      ],
+      "historical_output_line_direction_survey": [
+        0.8967927009796697,
+        -0.4424232424125945,
+        0.004952377481122872
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2599512214388995,
+        0.1998168648814874,
+        1.0059953806999995
+      ],
+      "matched_primary_survey_id": "2_2_3",
+      "training_alignment_rms_mm": 1.1816063648732438,
+      "primary_direction_difference_mrad": 0.43466193739712744,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_6",
+      "center_as_supplied_legacy_m": [
+        -1.0224112201086,
+        -0.7646544628392001,
+        -2.7715192311250005
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2521600926552372,
+        0.19774652155125164,
+        0.6744931312715274
+      ],
+      "historical_plane_normal_survey": [
+        0.5609536377851606,
+        -0.4269267425053291,
+        0.7092704510899799
+      ],
+      "historical_output_line_direction_survey": [
+        0.795880958522257,
+        -0.6054246041889553,
+        0.005877797575714605
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2610640552722356,
+        0.1993410331967235,
+        1.0060192311250002
+      ],
+      "matched_primary_survey_id": "2_2_2",
+      "training_alignment_rms_mm": 1.099588883418852,
+      "primary_direction_difference_mrad": 0.4509164593552387,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_2_7",
+      "center_as_supplied_legacy_m": [
+        -1.0235944326336002,
+        -0.7660982802392,
+        -2.7714128425
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.254017658199986,
+        0.19756199293335863,
+        0.6745995198965278
+      ],
+      "historical_plane_normal_survey": [
+        0.46842483968293563,
+        -0.5286536492423998,
+        0.7078866354937842
+      ],
+      "historical_output_line_direction_survey": [
+        0.6633948112435607,
+        -0.7482668629542669,
+        0.002006544218366435
+      ],
+      "center_current_static_display_survey_m": [
+        -1.262923977199319,
+        0.1991820017878328,
+        1.0059128425
+      ],
+      "matched_primary_survey_id": "2_2_1",
+      "training_alignment_rms_mm": 0.8875470962514656,
+      "primary_direction_difference_mrad": 0.4639777146132651,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_1",
+      "center_as_supplied_legacy_m": [
+        -1.0207822391836001,
+        -0.7718721291892001,
+        -2.441643616675
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2561110375017936,
+        0.19149045879474058,
+        1.004368745721528
+      ],
+      "historical_plane_normal_survey": [
+        0.6909183089890528,
+        -0.1313092491002893,
+        0.7109077094844494
+      ],
+      "historical_output_line_direction_survey": [
+        0.9823805562988162,
+        -0.18659923089798205,
+        0.010448427360648771
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2651004415550482,
+        0.1931397533151299,
+        0.6761436166749997
+      ],
+      "matched_primary_survey_id": "2_3_5",
+      "training_alignment_rms_mm": 2.0578488428261847,
+      "primary_direction_difference_mrad": 0.4072189348285938,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_2",
+      "center_as_supplied_legacy_m": [
+        -1.0205305678086,
+        -0.7706232869892001,
+        -2.441716954075
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2550501102766571,
+        0.1921957096327122,
+        1.004295408321528
+      ],
+      "historical_plane_normal_survey": [
+        0.702814657213593,
+        0.0009627826532379197,
+        0.7113723572471047
+      ],
+      "historical_output_line_direction_survey": [
+        0.9999298935603039,
+        0.001406441983849679,
+        0.01175712062646972
+      ],
+      "center_current_static_display_survey_m": [
+        -1.264029940359361,
+        0.19383038528045393,
+        0.6762169540749996
+      ],
+      "matched_primary_survey_id": "2_3_6",
+      "training_alignment_rms_mm": 0.16500876655166027,
+      "primary_direction_difference_mrad": 0.3852520858871251,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_3",
+      "center_as_supplied_legacy_m": [
+        -1.0198120041085998,
+        -0.7714707010891999,
+        -2.441759084675
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.255141070367,
+        0.19108838370517273,
+        1.0042532777215278
+      ],
+      "historical_plane_normal_survey": [
+        0.6529945597628812,
+        -0.25681097505737055,
+        0.712492966989965
+      ],
+      "historical_output_line_direction_survey": [
+        0.9305711069820418,
+        -0.36580437337829663,
+        0.014985835563248395
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2641360808566426,
+        0.1927244112108333,
+        0.6762590846749998
+      ],
+      "matched_primary_survey_id": "2_3_4",
+      "training_alignment_rms_mm": 0.9194677649589539,
+      "primary_direction_difference_mrad": 0.4267221656073777,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_4",
+      "center_as_supplied_legacy_m": [
+        -1.0198469672586001,
+        -0.7696131544392,
+        -2.4424352229
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.253852491592453,
+        0.19242676583318033,
+        1.003577139496528
+      ],
+      "historical_plane_normal_survey": [
+        0.6951245406110362,
+        0.12785895318821902,
+        0.7074277073524254
+      ],
+      "historical_output_line_direction_survey": [
+        0.9835056276002702,
+        0.18087665346069148,
+        0.0005627712322244793
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2628292649958504,
+        0.1940449922514232,
+        0.6769352228999996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_5",
+      "center_as_supplied_legacy_m": [
+        -1.0186934176836,
+        -0.7719495837642001,
+        -2.441990143475
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2546885775766579,
+        0.18995886412530802,
+        1.004022218921528
+      ],
+      "historical_plane_normal_survey": [
+        0.5927354797635013,
+        -0.375619650539477,
+        0.7124426497326876
+      ],
+      "historical_output_line_direction_survey": [
+        0.8446988626721765,
+        -0.5350350156000526,
+        0.014878288953446672
+      ],
+      "center_current_static_display_survey_m": [
+        -1.263699124026925,
+        0.19158879114427393,
+        0.6764901434749997
+      ],
+      "matched_primary_survey_id": "2_3_3",
+      "training_alignment_rms_mm": 2.3219245133509965,
+      "primary_direction_difference_mrad": 0.44389231566965853,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_6",
+      "center_as_supplied_legacy_m": [
+        -1.0193949156586,
+        -0.7727910261142001,
+        -2.4416875137
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2557795876480118,
+        0.18985975982919814,
+        1.0043248486965282
+      ],
+      "historical_plane_normal_survey": [
+        0.508934687406109,
+        -0.4840657049547338,
+        0.7118046622785796
+      ],
+      "historical_output_line_direction_survey": [
+        0.7247082630514822,
+        -0.6889311384543275,
+        0.013108010258163105
+      ],
+      "center_current_static_display_survey_m": [
+        -1.264791390849866,
+        0.19150466133501992,
+        0.6761875136999995
+      ],
+      "matched_primary_survey_id": "2_3_2",
+      "training_alignment_rms_mm": 1.0447737988093937,
+      "primary_direction_difference_mrad": 0.4585566740072268,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_3_7",
+      "center_as_supplied_legacy_m": [
+        -1.0204850879085998,
+        -0.7733058844642,
+        -2.441660671825
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2569145710970169,
+        0.19026641352181478,
+        1.0043516905715282
+      ],
+      "historical_plane_normal_survey": [
+        0.40701546681106865,
+        -0.572991214109082,
+        0.7113504609757192
+      ],
+      "historical_output_line_direction_survey": [
+        0.5793086578122069,
+        -0.8150218299708877,
+        0.01186994754518067
+      ],
+      "center_current_static_display_survey_m": [
+        -1.265920689534035,
+        0.1919268451068171,
+        0.6761606718249995
+      ],
+      "matched_primary_survey_id": "2_3_1",
+      "training_alignment_rms_mm": 1.4271262163215297,
+      "primary_direction_difference_mrad": 0.46981277665096277,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_1",
+      "center_as_supplied_legacy_m": [
+        -1.0250300581086,
+        -0.7711580234392001,
+        -2.1098725626249997
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2586102281672997,
+        0.19499872883269623,
+        1.3361397997715283
+      ],
+      "historical_plane_normal_survey": [
+        0.6918764410001534,
+        0.18334181573808936,
+        0.6983500332861896
+      ],
+      "historical_output_line_direction_survey": [
+        0.9663490616316133,
+        0.2560208278948592,
+        -0.0249564975053026
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2675512748712334,
+        0.19668197418600267,
+        0.3443725626249994
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_2",
+      "center_as_supplied_legacy_m": [
+        -1.0244771811586,
+        -0.7699353554642,
+        -2.1099129367
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2573547928644446,
+        0.1954725136987246,
+        1.3360994256965282
+      ],
+      "historical_plane_normal_survey": [
+        0.7134954209728028,
+        -0.09267173289823813,
+        0.6945043082461624
+      ],
+      "historical_output_line_direction_survey": [
+        0.9910498900311987,
+        -0.12863984505377707,
+        -0.035663787427718474
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2662894588687248,
+        0.19713849392790334,
+        0.3444129366999995
+      ],
+      "matched_primary_survey_id": "2_4_5",
+      "training_alignment_rms_mm": 0.718021528258998,
+      "primary_direction_difference_mrad": 0.4004889609667528,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_3",
+      "center_as_supplied_legacy_m": [
+        -1.0237855772836,
+        -0.7707396277642,
+        -2.1099157079749995
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.257434317325756,
+        0.19441475866445848,
+        1.3360966544215285
+      ],
+      "historical_plane_normal_survey": [
+        0.6824099698368558,
+        -0.23181376476977486,
+        0.6932380626671655
+      ],
+      "historical_output_line_direction_survey": [
+        0.9461804341558928,
+        -0.3212622336691334,
+        -0.039155628439406454
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2663834848589786,
+        0.19608192922774578,
+        0.3444157079749992
+      ],
+      "matched_primary_survey_id": "2_4_4",
+      "training_alignment_rms_mm": 0.5853277862556104,
+      "primary_direction_difference_mrad": 0.42197937035735167,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_4",
+      "center_as_supplied_legacy_m": [
+        -1.0238165999586,
+        -0.7688747149642001,
+        -2.110744841775
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2561377438901773,
+        0.19575556419999254,
+        1.335267520621528
+      ],
+      "historical_plane_normal_survey": [
+        0.7159730390588243,
+        0.050738793882873445,
+        0.6962816830394023
+      ],
+      "historical_output_line_direction_survey": [
+        0.997026385397195,
+        0.07066890244972507,
+        -0.030729351577202912
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2650686418479018,
+        0.19740482378673005,
+        0.3452448417749996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_5",
+      "center_as_supplied_legacy_m": [
+        -1.0226679643086,
+        -0.7709524791392002,
+        -2.1098318017
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2567944260630657,
+        0.19347406549362106,
+        1.336180560696528
+      ],
+      "historical_plane_normal_survey": [
+        0.6228558146689267,
+        -0.3652384672983267,
+        0.6918464397094757
+      ],
+      "historical_output_line_direction_survey": [
+        0.8619351067174824,
+        -0.5051940583446088,
+        -0.042974820781788714
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2657565570938696,
+        0.1951325472987714,
+        0.34433180169999966
+      ],
+      "matched_primary_survey_id": "2_4_3",
+      "training_alignment_rms_mm": 1.3332418053402235,
+      "primary_direction_difference_mrad": 0.44104238433220555,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_6",
+      "center_as_supplied_legacy_m": [
+        -1.0231592366086,
+        -0.7722305774892001,
+        -2.1099934265249995
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2580454842165363,
+        0.19291752496351142,
+        1.3360189358715284
+      ],
+      "historical_plane_normal_survey": [
+        0.4346929400972438,
+        -0.5752352763235893,
+        0.6929259878966422
+      ],
+      "historical_output_line_direction_survey": [
+        0.6026526627736678,
+        -0.7970062520217785,
+        -0.039884862918209585
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2670151315014002,
+        0.1945932196379484,
+        0.34449342652499926
+      ],
+      "matched_primary_survey_id": "2_4_1",
+      "training_alignment_rms_mm": 1.126736430978769,
+      "primary_direction_difference_mrad": 0.46810494421932136,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "2_4_7",
+      "center_as_supplied_legacy_m": [
+        -1.0241546969586,
+        -0.7718965713392001,
+        -2.10986053
+      ],
+      "removed_sector_translation_m": [
+        0.0025362321413999744,
+        -0.019319658739199993,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -1.2585133310722167,
+        0.19385753599338806,
+        1.3361518323965278
+      ],
+      "historical_plane_normal_survey": [
+        0.5425451090239537,
+        -0.4756486316869292,
+        0.6923894741029344
+      ],
+      "historical_output_line_direction_survey": [
+        0.7514656864923079,
+        -0.6584702469437723,
+        -0.04142771915579624
+      ],
+      "center_current_static_display_survey_m": [
+        -1.2674700404021708,
+        0.19553955959201333,
+        0.3443605299999999
+      ],
+      "matched_primary_survey_id": "2_4_2",
+      "training_alignment_rms_mm": 0.5439907184353497,
+      "primary_direction_difference_mrad": 0.4557628029672415,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_1",
+      "center_as_supplied_legacy_m": [
+        0.7619520337,
+        -1.0138897887,
+        -3.1008682926
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.1924736341234598,
+        -1.247049595059206,
+        0.345144069796528
+      ],
+      "historical_plane_normal_survey": [
+        0.10830378222295389,
+        0.7054589169630943,
+        0.7004270177780556
+      ],
+      "historical_output_line_direction_survey": [
+        0.15154249352516694,
+        0.9882776210027954,
+        -0.018499094065096422
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19519320928132272,
+        -1.2532393634994348,
+        1.3353682925999997
+      ],
+      "matched_primary_survey_id": "3_1_5",
+      "training_alignment_rms_mm": 0.40573815831982235,
+      "primary_direction_difference_mrad": 0.4380922672822687,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_2",
+      "center_as_supplied_legacy_m": [
+        0.760873333175,
+        -1.0136983283,
+        -3.1008327472749997
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.1931011300215311,
+        -1.2461515411603186,
+        0.3451796151215283
+      ],
+      "historical_plane_normal_survey": [
+        -0.02922584615078623,
+        0.7145816670468319,
+        0.6989412643687175
+      ],
+      "historical_output_line_direction_survey": [
+        -0.04108780834390354,
+        0.9988977062047829,
+        -0.022697236490781814
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19580832772218176,
+        -1.2523327868556156,
+        1.3353327472749994
+      ],
+      "matched_primary_survey_id": "3_1_6",
+      "training_alignment_rms_mm": 2.0606903147138347,
+      "primary_direction_difference_mrad": 0.454877536951763,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_3",
+      "center_as_supplied_legacy_m": [
+        0.7620370109250001,
+        -1.01274033125,
+        -3.100926140175
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19160085957715062,
+        -1.2462967749283356,
+        0.34508622222152807
+      ],
+      "historical_plane_normal_survey": [
+        0.2404170310256988,
+        0.6713467449788709,
+        0.7010657595397617
+      ],
+      "historical_output_line_direction_survey": [
+        0.33698812590070365,
+        0.9413611256360326,
+        -0.016680352010463473
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19431019056480756,
+        -1.2524985858645044,
+        1.3354261401749996
+      ],
+      "matched_primary_survey_id": "3_1_4",
+      "training_alignment_rms_mm": 1.6359234060365133,
+      "primary_direction_difference_mrad": 0.41853604837841435,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_4",
+      "center_as_supplied_legacy_m": [
+        0.7601630495249999,
+        -1.012714596575,
+        -3.1017136534
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19290793627352965,
+        -1.244953665062401,
+        0.3442987089965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.15943544629423378,
+        0.6962190200356546,
+        0.6998995746573583
+      ],
+      "historical_output_line_direction_survey": [
+        -0.22344962205112237,
+        0.9745089663837762,
+        -0.020063420516808317
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19559872112708895,
+        -1.251137673452828,
+        1.3362136533999998
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_5",
+      "center_as_supplied_legacy_m": [
+        0.76222063465,
+        -1.0116244841,
+        -3.1012747164
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19068208474872517,
+        -1.2456374682097302,
+        0.3447376459965281
+      ],
+      "historical_plane_normal_survey": [
+        0.36267477242268764,
+        0.6082875912841882,
+        0.706012192343611
+      ],
+      "historical_output_line_direction_survey": [
+        0.5120627306122923,
+        0.8589436712504522,
+        -0.0027440001234341205
+      ],
+      "center_current_static_display_survey_m": [
+        -0.1933824585983163,
+        -1.2518519438206375,
+        1.3357747163999996
+      ],
+      "matched_primary_survey_id": "3_1_3",
+      "training_alignment_rms_mm": 0.451047669246163,
+      "primary_direction_difference_mrad": 0.39638807309056334,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_6",
+      "center_as_supplied_legacy_m": [
+        0.7635908690000001,
+        -1.0121047755750001,
+        -3.101244327875
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19005262179282353,
+        -1.2469459018007183,
+        0.34476803452152804
+      ],
+      "historical_plane_normal_survey": [
+        0.5646745044034758,
+        0.42626177542682203,
+        0.7067132395014701
+      ],
+      "historical_output_line_direction_survey": [
+        0.7981773438365998,
+        0.6024220571533456,
+        -0.0007699617397715075
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19277100237942157,
+        -1.2531688885298993,
+        1.3357443278749996
+      ],
+      "matched_primary_survey_id": "3_1_1",
+      "training_alignment_rms_mm": 2.642021148961896,
+      "primary_direction_difference_mrad": 0.34668877526437497,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_1_7",
+      "center_as_supplied_legacy_m": [
+        0.7636449067000001,
+        -1.0131533841,
+        -3.1012435607
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19075578330806722,
+        -1.2477256862550412,
+        0.344768801696528
+      ],
+      "historical_plane_normal_survey": [
+        0.4728549480803774,
+        0.5276551336293522,
+        0.7056828310441554
+      ],
+      "historical_output_line_direction_survey": [
+        0.6673851440227585,
+        0.7447036963802767,
+        -0.00367071318339951
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19348479388614903,
+        -1.2539389544989223,
+        1.3357435606999997
+      ],
+      "matched_primary_survey_id": "3_1_2",
+      "training_alignment_rms_mm": 1.45975559176312,
+      "primary_direction_difference_mrad": 0.3722781392110828,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_1",
+      "center_as_supplied_legacy_m": [
+        0.7602230356500002,
+        -1.02156417535,
+        -2.771515853025
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19912225824096116,
+        -1.2512545257429128,
+        0.674496509371528
+      ],
+      "historical_plane_normal_survey": [
+        -0.2232439040889824,
+        0.6643516636917677,
+        0.7133014974308476
+      ],
+      "historical_output_line_direction_survey": [
+        -0.31876204709520245,
+        0.9476678590689444,
+        0.01778724878554816
+      ],
+      "center_current_static_display_survey_m": [
+        -0.20189888607699194,
+        -1.2573527007604217,
+        1.0060158530249996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_2",
+      "center_as_supplied_legacy_m": [
+        0.7582782473,
+        -1.02160450435,
+        -2.7716599545
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.20052613168465747,
+        -1.249908060923981,
+        0.674352407896528
+      ],
+      "historical_plane_normal_survey": [
+        -0.0987965441112322,
+        0.6943363885355653,
+        0.7128367431797175
+      ],
+      "historical_output_line_direction_survey": [
+        -0.14110733599424094,
+        0.9898565805759056,
+        0.016512710836969147
+      ],
+      "center_current_static_display_survey_m": [
+        -0.2032841582607759,
+        -1.2559871059700938,
+        1.0061599544999997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_3",
+      "center_as_supplied_legacy_m": [
+        0.7600050428,
+        -1.02053705275,
+        -2.7716804211749997
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.1985502370947311,
+        -1.2503740182038494,
+        0.6743319412215283
+      ],
+      "historical_plane_normal_survey": [
+        0.16718408444604574,
+        0.6830406870810868,
+        0.7109886790236075
+      ],
+      "historical_output_line_direction_survey": [
+        0.23758463310670191,
+        0.9713007732301592,
+        0.011329167403150375
+      ],
+      "center_current_static_display_survey_m": [
+        -0.20131484100357558,
+        -1.2564801223568958,
+        1.0061804211749994
+      ],
+      "matched_primary_survey_id": "3_2_4",
+      "training_alignment_rms_mm": 1.3634777169617298,
+      "primary_direction_difference_mrad": 0.4293721309895761,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_4",
+      "center_as_supplied_legacy_m": [
+        0.7597549238499999,
+        -1.0193778558500002,
+        -2.771747884625
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19790755772181295,
+        -1.249377393818364,
+        0.6742644777715281
+      ],
+      "historical_plane_normal_survey": [
+        0.03542644718049843,
+        0.7012889545486283,
+        0.7119963265834026
+      ],
+      "historical_output_line_direction_survey": [
+        0.05023875743688904,
+        0.9986368127250506,
+        0.014162751199885304
+      ],
+      "center_current_static_display_survey_m": [
+        -0.20065855159981896,
+        -1.2554924072357019,
+        1.0062478846249996
+      ],
+      "matched_primary_survey_id": "3_2_5",
+      "training_alignment_rms_mm": 0.6030976790879847,
+      "primary_direction_difference_mrad": 0.447316386556072,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_5",
+      "center_as_supplied_legacy_m": [
+        0.760916663,
+        -1.019140807675,
+        -2.7715787188
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19691837662318268,
+        -1.2500311142815796,
+        0.6744336435965281
+      ],
+      "historical_plane_normal_survey": [
+        0.2972769243138643,
+        0.6385410017582092,
+        0.7098533787650176
+      ],
+      "historical_output_line_direction_survey": [
+        0.4219670781497541,
+        0.9065747344628736,
+        0.008126240910119487
+      ],
+      "center_current_static_display_survey_m": [
+        -0.1996784305136071,
+        -1.2561596345929624,
+        1.0060787187999995
+      ],
+      "matched_primary_survey_id": "3_2_3",
+      "training_alignment_rms_mm": 1.1196891967297304,
+      "primary_direction_difference_mrad": 0.40828004746009233,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_6",
+      "center_as_supplied_legacy_m": [
+        0.762350884425,
+        -1.019668477075,
+        -2.7714734791249995
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19627715849346578,
+        -1.2514182932180358,
+        0.6745388832715284
+      ],
+      "historical_plane_normal_survey": [
+        0.41489806335038126,
+        0.5708068674124787,
+        0.7085471876613838
+      ],
+      "historical_output_line_direction_survey": [
+        0.5879337785067852,
+        0.8088969271857684,
+        0.004430945740647285
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19905630036070102,
+        -1.257555478482683,
+        1.0059734791249992
+      ],
+      "matched_primary_survey_id": "3_2_2",
+      "training_alignment_rms_mm": 1.077192914319158,
+      "primary_direction_difference_mrad": 0.3852026533458887,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_2_7",
+      "center_as_supplied_legacy_m": [
+        0.76266156335,
+        -1.0209783735,
+        -2.7714597599750004
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19698355579550875,
+        -1.2525643093131817,
+        0.6745526024215276
+      ],
+      "historical_plane_normal_survey": [
+        0.5175191455143964,
+        0.4800195132377915,
+        0.7083468083763795
+      ],
+      "historical_output_line_direction_survey": [
+        0.733199055796917,
+        0.680003120945644,
+        0.003860062524641328
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19977835087470414,
+        -1.2586916972529447,
+        1.005959759975
+      ],
+      "matched_primary_survey_id": "3_2_1",
+      "training_alignment_rms_mm": 2.683476154836455,
+      "primary_direction_difference_mrad": 0.36012799848222243,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_1",
+      "center_as_supplied_legacy_m": [
+        0.7701847095250001,
+        -1.0141902536499998,
+        -2.440429208225
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.18686389180738724,
+        -1.253082672348035,
+        1.005583154171528
+      ],
+      "historical_plane_normal_survey": [
+        -0.07961047591908671,
+        0.7155249106617859,
+        0.6940362197654961
+      ],
+      "historical_output_line_direction_survey": [
+        -0.11075597023019078,
+        0.9931815771404848,
+        -0.03637952565810765
+      ],
+      "center_current_static_display_survey_m": [
+        -0.18966674922159696,
+        -1.259348820892197,
+        0.6749292082249996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_2",
+      "center_as_supplied_legacy_m": [
+        0.769194016975,
+        -1.013842360525,
+        -2.440337893075
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.18731854862402653,
+        -1.2521362112901298,
+        1.0056744693215278
+      ],
+      "historical_plane_normal_survey": [
+        0.04282118499645384,
+        0.7189284008594966,
+        0.6937638651249477
+      ],
+      "historical_output_line_direction_survey": [
+        0.0592108555495533,
+        0.9975559759255972,
+        -0.03709648878559613
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19010838085051868,
+        -1.2583962124420014,
+        0.6748378930749999
+      ],
+      "matched_primary_survey_id": "3_3_6",
+      "training_alignment_rms_mm": 2.5389021933740534,
+      "primary_direction_difference_mrad": 0.4463844821002798,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_3",
+      "center_as_supplied_legacy_m": [
+        0.770415682875,
+        -1.0129059344,
+        -2.440391833725
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.1857925196466816,
+        -1.2523376983098329,
+        1.0056205286715278
+      ],
+      "historical_plane_normal_survey": [
+        0.3142532555241743,
+        0.646503979464387,
+        0.6951816280147011
+      ],
+      "historical_output_line_direction_survey": [
+        0.43685913835593765,
+        0.8989206883863169,
+        -0.03310119674542433
+      ],
+      "center_current_static_display_survey_m": [
+        -0.18858525919794167,
+        -1.2586186127348442,
+        0.6748918337249998
+      ],
+      "matched_primary_survey_id": "3_3_4",
+      "training_alignment_rms_mm": 3.8686057300078778,
+      "primary_direction_difference_mrad": 0.4063484834573813,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_4",
+      "center_as_supplied_legacy_m": [
+        0.7690313105500001,
+        -1.0128050431,
+        -2.4406446243
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.18670022089720378,
+        -1.251287582017015,
+        1.005367738096528
+      ],
+      "historical_plane_normal_survey": [
+        0.18716298607450152,
+        0.6948845502779294,
+        0.6943381585572815
+      ],
+      "historical_output_line_direction_survey": [
+        0.25977330930196124,
+        0.9650181123529536,
+        -0.035466471561901414
+      ],
+      "center_current_static_display_survey_m": [
+        -0.1894784708207055,
+        -1.257556144483271,
+        0.6751446242999997
+      ],
+      "matched_primary_survey_id": "3_3_5",
+      "training_alignment_rms_mm": 3.482367348678466,
+      "primary_direction_difference_mrad": 0.42695598246162725,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_5",
+      "center_as_supplied_legacy_m": [
+        0.7707250647999999,
+        -1.0118075063999998,
+        -2.440510598525
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.1847971237452207,
+        -1.2517796228256413,
+        1.005501763871528
+      ],
+      "historical_plane_normal_survey": [
+        0.4295622616002625,
+        0.5749537883456608,
+        0.6963507770339893
+      ],
+      "historical_output_line_direction_survey": [
+        0.598247174801983,
+        0.8007558844414576,
+        -0.029838421101408108
+      ],
+      "center_current_static_display_survey_m": [
+        -0.18758230193514533,
+        -1.258074243397257,
+        0.6750105985249997
+      ],
+      "matched_primary_survey_id": "3_3_3",
+      "training_alignment_rms_mm": 2.915359556743315,
+      "primary_direction_difference_mrad": 0.3835665111611141,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_6",
+      "center_as_supplied_legacy_m": [
+        0.7716430117,
+        -1.01241163405,
+        -2.4405552668
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.18457507335772536,
+        -1.2528558618112424,
+        1.0054570955965279
+      ],
+      "historical_plane_normal_survey": [
+        0.6151836630689391,
+        0.36508522301346746,
+        0.6987573546162421
+      ],
+      "historical_output_line_direction_survey": [
+        0.8597973351910141,
+        0.5101106220340971,
+        -0.02314510070009801
+      ],
+      "center_current_static_display_survey_m": [
+        -0.18737503498925703,
+        -1.2591534269506235,
+        0.6750552667999998
+      ],
+      "matched_primary_survey_id": "3_3_1",
+      "training_alignment_rms_mm": 2.1600950042865747,
+      "primary_direction_difference_mrad": 0.3315875963720678,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_3_7",
+      "center_as_supplied_legacy_m": [
+        0.7713121554,
+        -1.0134525952,
+        -2.440578126
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.18554502634319536,
+        -1.2533581139521406,
+        1.0054342363965278
+      ],
+      "historical_plane_normal_survey": [
+        0.531297807252957,
+        0.480415137061693,
+        0.6977993523142552
+      ],
+      "historical_output_line_direction_survey": [
+        0.7415216903973019,
+        0.670432528532373,
+        -0.02580324312980975
+      ],
+      "center_current_static_display_survey_m": [
+        -0.18835178601228253,
+        -1.259642327192061,
+        0.6750781259999998
+      ],
+      "matched_primary_survey_id": "3_3_2",
+      "training_alignment_rms_mm": 0.7935805680405038,
+      "primary_direction_difference_mrad": 0.3585722154426089,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_1",
+      "center_as_supplied_legacy_m": [
+        0.767271042675,
+        -1.021575184175,
+        -2.1101558487250003
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19414566892141058,
+        -1.2562453255749249,
+        1.3358565136715277
+      ],
+      "historical_plane_normal_survey": [
+        0.2796225595912025,
+        0.6612926807561457,
+        0.6960626513080667
+      ],
+      "historical_output_line_direction_survey": [
+        0.38918343651218257,
+        0.9206500749903689,
+        -0.0306543987838086
+      ],
+      "center_current_static_display_survey_m": [
+        -0.1969912227391596,
+        -1.2624112939226728,
+        0.344655848725
+      ],
+      "matched_primary_survey_id": "3_4_3",
+      "training_alignment_rms_mm": 1.9598298959258575,
+      "primary_direction_difference_mrad": 0.412298419496253,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_2",
+      "center_as_supplied_legacy_m": [
+        0.7643192732,
+        -1.02187506825,
+        -2.110728841025
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19644519071573419,
+        -1.2543704727781937,
+        1.3352835213715282
+      ],
+      "historical_plane_normal_survey": [
+        -0.21311962655704164,
+        0.6822031580653087,
+        0.6994132368649497
+      ],
+      "historical_output_line_direction_survey": [
+        -0.2983993640701861,
+        0.9542001138220667,
+        -0.021446731789791618
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19926481122088394,
+        -1.260505075438933,
+        0.3452288410249995
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_3",
+      "center_as_supplied_legacy_m": [
+        0.766011899075,
+        -1.02076950065,
+        -2.1106751671
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19446651258288167,
+        -1.2547853160226372,
+        1.3353371952965278
+      ],
+      "historical_plane_normal_survey": [
+        0.1103355607848512,
+        0.7054710915799322,
+        0.7000975667514575
+      ],
+      "historical_output_line_direction_survey": [
+        0.15431700310462965,
+        0.9878304872020408,
+        -0.019421408470675305
+      ],
+      "center_current_static_display_survey_m": [
+        -0.1972920095618087,
+        -1.2609470207803943,
+        0.34517516709999985
+      ],
+      "matched_primary_survey_id": "3_4_4",
+      "training_alignment_rms_mm": 1.225837970762049,
+      "primary_direction_difference_mrad": 0.4377675617688953,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_4",
+      "center_as_supplied_legacy_m": [
+        0.7641587560499999,
+        -1.020837410175,
+        -2.111432753475
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19582507388366796,
+        -1.253523150436552,
+        1.334579608921528
+      ],
+      "historical_plane_normal_survey": [
+        -0.10688585413670655,
+        0.7066290392052592,
+        0.699464663251346
+      ],
+      "historical_output_line_direction_survey": [
+        -0.14978454082223536,
+        0.9884900537714472,
+        -0.021260407465369946
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19863313018105888,
+        -1.2596663388295126,
+        0.34593275347499963
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_5",
+      "center_as_supplied_legacy_m": [
+        0.765785691,
+        -1.0197441562,
+        -2.110658805125
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19390155844010337,
+        -1.253900257747212,
+        1.335353557271528
+      ],
+      "historical_plane_normal_survey": [
+        0.0031617831793542355,
+        0.7144311295287006,
+        0.6996986238999413
+      ],
+      "historical_output_line_direction_survey": [
+        0.004203403203820018,
+        0.9997796122975353,
+        -0.020568379510689905
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19671496840545805,
+        -1.26006979513199,
+        0.34515880512499963
+      ],
+      "matched_primary_survey_id": "3_4_5",
+      "training_alignment_rms_mm": 1.4568510218084534,
+      "primary_direction_difference_mrad": 0.45126794541511756,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_6",
+      "center_as_supplied_legacy_m": [
+        0.7681589481500001,
+        -1.0196427418,
+        -2.1103630884999998
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.19215148250332442,
+        -1.2555064546828527,
+        1.3356492738965282
+      ],
+      "historical_plane_normal_survey": [
+        0.3744156660452492,
+        0.6132042646086742,
+        0.6955526140311944
+      ],
+      "historical_output_line_direction_survey": [
+        0.5208174772373497,
+        0.8530657098023685,
+        -0.03206322135256834
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19498708899180664,
+        -1.2616998463926667,
+        0.34486308849999947
+      ],
+      "matched_primary_survey_id": "3_4_2",
+      "training_alignment_rms_mm": 0.7225913418593908,
+      "primary_direction_difference_mrad": 0.395106700868057,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "3_4_7",
+      "center_as_supplied_legacy_m": [
+        0.768062410475,
+        -1.02068829465,
+        -2.110357020325
+      ],
+      "removed_sector_translation_m": [
+        0.016000000000000014,
+        0.0040000000000000036,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        -0.1929589710019899,
+        -1.2561776197961896,
+        1.335655342071528
+      ],
+      "historical_plane_normal_survey": [
+        0.4854081998954336,
+        0.5270699039326703,
+        0.6975501385869551
+      ],
+      "historical_output_line_direction_survey": [
+        0.6772158509863562,
+        0.7353072105916442,
+        -0.026495230226597166
+      ],
+      "center_current_static_display_survey_m": [
+        -0.19580370775750763,
+        -1.2623598722075728,
+        0.34485702032499965
+      ],
+      "matched_primary_survey_id": "3_4_1",
+      "training_alignment_rms_mm": 2.667455639288736,
+      "primary_direction_difference_mrad": 0.37051217878870507,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_1",
+      "center_as_supplied_legacy_m": [
+        1.0156917360578,
+        0.7625798720682,
+        -3.100872221375
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2465951126391235,
+        -0.19372047867277714,
+        0.345140141021528
+      ],
+      "historical_plane_normal_survey": [
+        -0.6557415557431042,
+        -0.2818345506595044,
+        0.700408665085012
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9184551042186953,
+        -0.3950831086808389,
+        -0.0186964908394609
+      ],
+      "center_current_static_display_survey_m": [
+        1.254871814121166,
+        -0.19610185111646738,
+        1.3353722213749997
+      ],
+      "matched_primary_survey_id": "4_1_7",
+      "training_alignment_rms_mm": 0.6605467024813888,
+      "primary_direction_difference_mrad": 0.472025534732198,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_2",
+      "center_as_supplied_legacy_m": [
+        1.0136541509577999,
+        0.7627616798432,
+        -3.1007290323
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.245282666055779,
+        -0.1921513097613275,
+        0.3452833300965281
+      ],
+      "historical_plane_normal_survey": [
+        -0.7163241505933047,
+        -0.0160272261362842,
+        0.6975835715519376
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9993938224143691,
+        -0.02258715845068111,
+        -0.02649165893485539
+      ],
+      "center_current_static_display_survey_m": [
+        1.2535810149830464,
+        -0.1945148272691914,
+        1.3352290322999996
+      ],
+      "matched_primary_survey_id": "4_1_5",
+      "training_alignment_rms_mm": 2.056024717119799,
+      "primary_direction_difference_mrad": 0.44788818844489736,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_3",
+      "center_as_supplied_legacy_m": [
+        1.0136659487578,
+        0.7640726576182,
+        -3.1006362781
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2462178844348686,
+        -0.1912325233345436,
+        0.3453760842965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.7065042279863369,
+        0.12346801157168279,
+        0.6968553838178795
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9847004973216081,
+        0.17191165540410522,
+        -0.028483562115656058
+      ],
+      "center_current_static_display_survey_m": [
+        1.2545287481835572,
+        -0.19360895548175208,
+        1.3351362780999998
+      ],
+      "matched_primary_survey_id": "4_1_4",
+      "training_alignment_rms_mm": 1.0101144909444617,
+      "primary_direction_difference_mrad": 0.43059795876733725,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_4",
+      "center_as_supplied_legacy_m": [
+        1.0124111468827999,
+        0.7641213846432,
+        -3.100883000075
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.245364935127368,
+        -0.19031090543796006,
+        0.3451293623215279
+      ],
+      "historical_plane_normal_survey": [
+        -0.6666228773910472,
+        0.2650330106872077,
+        0.6966860430530778
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9289017742927166,
+        0.36919469492125523,
+        -0.02892699358460038
+      ],
+      "center_current_static_display_survey_m": [
+        1.2536885207664148,
+        -0.1926757245585871,
+        1.3353830000749998
+      ],
+      "matched_primary_survey_id": "4_1_3",
+      "training_alignment_rms_mm": 1.6149056251895668,
+      "primary_direction_difference_mrad": 0.40955562561954445,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_5",
+      "center_as_supplied_legacy_m": [
+        1.0130660891828,
+        0.7649420856432,
+        -3.1006369769
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.246408356528918,
+        -0.19019355414262182,
+        0.3453753854965278
+      ],
+      "historical_plane_normal_survey": [
+        -0.607690858091883,
+        0.38378911733033155,
+        0.6952824853326565
+      ],
+      "historical_output_line_direction_survey": [
+        -0.8450664086702822,
+        0.5336530450829976,
+        -0.03282060954270849
+      ],
+      "center_current_static_display_survey_m": [
+        1.2547334536870547,
+        -0.192572696702676,
+        1.3351369768999999
+      ],
+      "matched_primary_survey_id": "4_1_2",
+      "training_alignment_rms_mm": 1.024793871390286,
+      "primary_direction_difference_mrad": 0.38823750050933187,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_6",
+      "center_as_supplied_legacy_m": [
+        1.0140983859578,
+        0.7653317067932,
+        -3.1004265812250003
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2474138662560077,
+        -0.19064785741239962,
+        0.3455857811715277
+      ],
+      "historical_plane_normal_survey": [
+        -0.5151342448848474,
+        0.5010248740894961,
+        0.6954213005729135
+      ],
+      "historical_output_line_direction_survey": [
+        -0.7164587626879002,
+        0.6968751283627797,
+        -0.032432959116957205
+      ],
+      "center_current_static_display_survey_m": [
+        1.2557326372306,
+        -0.19304074960407844,
+        1.334926581225
+      ],
+      "matched_primary_survey_id": "4_1_1",
+      "training_alignment_rms_mm": 0.7651472683501346,
+      "primary_direction_difference_mrad": 0.36191319188619864,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_1_7",
+      "center_as_supplied_legacy_m": [
+        1.0151176835828,
+        0.7636040696181999,
+        -3.100208106125
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2469132592609997,
+        -0.19259030187578113,
+        0.3458042562715278
+      ],
+      "historical_plane_normal_survey": [
+        -0.6982482608777423,
+        -0.15583857818258606,
+        0.6986871286428845
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9756594400044696,
+        -0.21803283245473518,
+        -0.02345934998951993
+      ],
+      "center_current_static_display_survey_m": [
+        1.255205433217072,
+        -0.19497614459861892,
+        1.334708106125
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_1",
+      "center_as_supplied_legacy_m": [
+        1.0230719386578,
+        0.7623621663682001,
+        -2.7720087019000004
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2516604948682866,
+        -0.19909232091369786,
+        0.6740036604965276
+      ],
+      "historical_plane_normal_survey": [
+        -0.6989148616413725,
+        0.04621120785219467,
+        0.713710403767286
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9976536292929613,
+        0.06576060713038215,
+        0.019046745349960648
+      ],
+      "center_current_static_display_survey_m": [
+        1.2598630353338118,
+        -0.20154266879355365,
+        1.0065087019
+      ],
+      "matched_primary_survey_id": "4_2_5",
+      "training_alignment_rms_mm": 0.6637579416625059,
+      "primary_direction_difference_mrad": 0.4404786886295283,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_2",
+      "center_as_supplied_legacy_m": [
+        1.0226173985328,
+        0.7614156489681999,
+        -2.7727624935249997
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2506698450085318,
+        -0.19944033638620798,
+        0.6732498688715283
+      ],
+      "historical_plane_normal_survey": [
+        -0.6961219241790566,
+        -0.09053552628029886,
+        0.7121920984947789
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9915089647272913,
+        -0.12920796639687263,
+        0.014672228358335704
+      ],
+      "center_current_static_display_survey_m": [
+        1.2588677050166541,
+        -0.20187706298232588,
+        1.0072624935249994
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_3",
+      "center_as_supplied_legacy_m": [
+        1.0225961011328,
+        0.7632981574932,
+        -2.7720420806
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2519857365498896,
+        -0.1980939629694592,
+        0.6739702817965281
+      ],
+      "historical_plane_normal_survey": [
+        -0.67576671298198,
+        0.17934672936725837,
+        0.7149644049117394
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9663284643533055,
+        0.25631165833189096,
+        0.022663468043047086
+      ],
+      "center_current_static_display_survey_m": [
+        1.2602019406895624,
+        -0.20054886604847777,
+        1.0065420805999996
+      ],
+      "matched_primary_survey_id": "4_2_4",
+      "training_alignment_rms_mm": 0.4970964251381465,
+      "primary_direction_difference_mrad": 0.42214451521122737,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_4",
+      "center_as_supplied_legacy_m": [
+        1.0214939830328,
+        0.7633826242682,
+        -2.7720956147999996
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2512660340623492,
+        -0.1972550188283781,
+        0.6739167475965284
+      ],
+      "historical_plane_normal_survey": [
+        -0.6309646800836689,
+        0.29864253876923613,
+        0.7160280766313414
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9036053249099487,
+        0.42759262640760914,
+        0.025728634558168317
+      ],
+      "center_current_static_display_survey_m": [
+        1.2594938135374798,
+        -0.19970012882241198,
+        1.0065956147999993
+      ],
+      "matched_primary_survey_id": "4_2_3",
+      "training_alignment_rms_mm": 1.149164851775493,
+      "primary_direction_difference_mrad": 0.4025399210119813,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_5",
+      "center_as_supplied_legacy_m": [
+        1.0220274879828,
+        0.7651363327682,
+        -2.772046750625
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2528832206068605,
+        -0.196391984231796,
+        0.673965611771528
+      ],
+      "historical_plane_normal_survey": [
+        -0.47334591698146655,
+        0.5133566368995174,
+        0.715827218138701
+      ],
+      "historical_output_line_direction_survey": [
+        -0.6776271157418505,
+        0.7349751231775827,
+        0.02516069000400112
+      ],
+      "center_current_static_display_survey_m": [
+        1.2611226860075557,
+        -0.1988593580386217,
+        1.0065467506249997
+      ],
+      "matched_primary_survey_id": "4_2_1",
+      "training_alignment_rms_mm": 1.6474770172075819,
+      "primary_direction_difference_mrad": 0.35488923372385006,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_6",
+      "center_as_supplied_legacy_m": [
+        1.0229807533828,
+        0.7646502862681999,
+        -2.7718329893
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.253213732950939,
+        -0.19740968640503287,
+        0.674179373096528
+      ],
+      "historical_plane_normal_survey": [
+        -0.5624793103367525,
+        0.4135278305604387,
+        0.7159691046372523
+      ],
+      "historical_output_line_direction_survey": [
+        -0.8054398008244641,
+        0.5921257607583814,
+        0.02556972221508269
+      ],
+      "center_current_static_display_survey_m": [
+        1.2614392076435055,
+        -0.19988149803733768,
+        1.0063329892999997
+      ],
+      "matched_primary_survey_id": "4_2_2",
+      "training_alignment_rms_mm": 1.4941831431340897,
+      "primary_direction_difference_mrad": 0.3794825884217016,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_2_7",
+      "center_as_supplied_legacy_m": [
+        1.0236489037828,
+        0.7633628134432,
+        -2.7716266631249997
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2527759943158836,
+        -0.19879258051504756,
+        0.6743856992715282
+      ],
+      "historical_plane_normal_survey": [
+        -0.6691514648595577,
+        -0.217540130572088,
+        0.7105720291898543
+      ],
+      "historical_output_line_direction_survey": [
+        -0.950868413123322,
+        -0.3094333969681803,
+        0.010011681430619146
+      ],
+      "center_current_static_display_survey_m": [
+        1.2609825413136377,
+        -0.20125825767333025,
+        1.0061266631249994
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_1",
+      "center_as_supplied_legacy_m": [
+        1.0184205785328002,
+        0.7706974134432001,
+        -2.4407855569
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.254264144874973,
+        -0.18990904799733427,
+        1.005226805496528
+      ],
+      "historical_plane_normal_survey": [
+        -0.6768301784791305,
+        -0.2041040373712174,
+        0.7072781994580896
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9573310521891701,
+        -0.28899272892292904,
+        0.0006776016935389206
+      ],
+      "center_current_static_display_survey_m": [
+        1.2625924054759692,
+        -0.19239597357392188,
+        0.6752855568999996
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_2",
+      "center_as_supplied_legacy_m": [
+        1.0178088021578,
+        0.7695743747932,
+        -2.4407117214999996
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2530374946842249,
+        -0.19027073218545976,
+        1.0053006408965284
+      ],
+      "historical_plane_normal_survey": [
+        -0.7097556235811778,
+        0.06366880459530115,
+        0.7015648495444302
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9959010698070799,
+        0.08914110607723585,
+        -0.015327177314854223
+      ],
+      "center_current_static_display_survey_m": [
+        1.2613609095396623,
+        -0.19274079802384114,
+        0.6752117214999993
+      ],
+      "matched_primary_survey_id": "4_3_5",
+      "training_alignment_rms_mm": 1.1813559887010374,
+      "primary_direction_difference_mrad": 0.4382968483106382,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_3",
+      "center_as_supplied_legacy_m": [
+        1.0173833235077998,
+        0.7705343070682,
+        -2.4406359113
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.253415276962519,
+        -0.1892910472338556,
+        1.0053764510965282
+      ],
+      "historical_plane_normal_survey": [
+        -0.686539976973155,
+        0.20050334186625027,
+        0.6989000428660491
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9596909275880979,
+        0.2801345463980154,
+        -0.022758721833058715
+      ],
+      "center_current_static_display_survey_m": [
+        1.2617520944154608,
+        -0.19176638720332484,
+        0.6751359112999995
+      ],
+      "matched_primary_survey_id": "4_3_4",
+      "training_alignment_rms_mm": 1.1557853742430975,
+      "primary_direction_difference_mrad": 0.4196013346639214,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_4",
+      "center_as_supplied_legacy_m": [
+        1.0174087889828,
+        0.7686035559432,
+        -2.4414530204
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2520682250763318,
+        -0.19067448484105934,
+        1.004559341996528
+      ],
+      "historical_plane_normal_survey": [
+        -0.7056821602307958,
+        -0.075841556716762,
+        0.7044577680789501
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9942218228566734,
+        -0.10710093102076819,
+        -0.007235850332787064
+      ],
+      "center_current_static_display_survey_m": [
+        1.2603861929273195,
+        -0.19313121742053094,
+        0.6759530203999997
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_5",
+      "center_as_supplied_legacy_m": [
+        1.0156272371328001,
+        0.7711843369682,
+        -2.4414616253
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2526329450782847,
+        -0.18758977269684995,
+        1.0045507370965279
+      ],
+      "historical_plane_normal_survey": [
+        -0.462761721987075,
+        0.5559639943399485,
+        0.6904749276122389
+      ],
+      "historical_output_line_direction_survey": [
+        -0.63901106141695,
+        0.7678119502968539,
+        -0.04614837340713318
+      ],
+      "center_current_static_display_survey_m": [
+        1.2609931721694163,
+        -0.1900545416344103,
+        0.6759616252999998
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_6",
+      "center_as_supplied_legacy_m": [
+        1.0166702741578,
+        0.7713050615432,
+        -2.440533484025
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2534559376653582,
+        -0.18824183393642158,
+        1.005478878371528
+      ],
+      "historical_plane_normal_survey": [
+        -0.6370836486314978,
+        0.3314973275441903,
+        0.695869202133158
+      ],
+      "historical_output_line_direction_survey": [
+        -0.886696443929235,
+        0.46129861682536755,
+        -0.031192987004312056
+      ],
+      "center_current_static_display_survey_m": [
+        1.2618071431382663,
+        -0.19071783035012843,
+        0.6750334840249996
+      ],
+      "matched_primary_survey_id": "4_3_3",
+      "training_alignment_rms_mm": 1.6823137522241045,
+      "primary_direction_difference_mrad": 0.39809429531629476,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_3_7",
+      "center_as_supplied_legacy_m": [
+        1.0177255242328,
+        0.7719121670932,
+        -2.440206530675
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2546314437736288,
+        -0.18855855977851016,
+        1.0058058317215282
+      ],
+      "historical_plane_normal_survey": [
+        -0.5629622288491825,
+        0.45045094307706807,
+        0.6929411784344619
+      ],
+      "historical_output_line_direction_survey": [
+        -0.7802131509338714,
+        0.6242767765128683,
+        -0.03931851238974182
+      ],
+      "center_current_static_display_survey_m": [
+        1.2629781941913696,
+        -0.1910506505728524,
+        0.6747065306749995
+      ],
+      "matched_primary_survey_id": "4_3_2",
+      "training_alignment_rms_mm": 1.255156781844864,
+      "primary_direction_difference_mrad": 0.3742603611312293,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_1",
+      "center_as_supplied_legacy_m": [
+        1.0234990516328,
+        0.7692931484682,
+        -2.1099834589
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2568628270197113,
+        -0.19449268195502026,
+        1.336028903496528
+      ],
+      "historical_plane_normal_survey": [
+        -0.7048481581834256,
+        0.1503779841468177,
+        0.6932355557740614
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9772965787392474,
+        0.20834098386849173,
+        -0.038541297659394735
+      ],
+      "center_current_static_display_survey_m": [
+        1.2651279703631828,
+        -0.1970148218990092,
+        0.34448345889999965
+      ],
+      "matched_primary_survey_id": "4_4_5",
+      "training_alignment_rms_mm": 0.7354706934711325,
+      "primary_direction_difference_mrad": 0.4270850151272396,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_2",
+      "center_as_supplied_legacy_m": [
+        1.0229651805578,
+        0.7683890016181999,
+        -2.1102145148
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2558460304833508,
+        -0.19475464503396875,
+        1.335797847596528
+      ],
+      "historical_plane_normal_survey": [
+        -0.720425212982014,
+        0.013182580929740294,
+        0.6934073348760098
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9991105626010377,
+        0.018066492116739174,
+        -0.03810099160959057
+      ],
+      "center_current_static_display_survey_m": [
+        1.264107676192463,
+        -0.19726281314135866,
+        0.3447145147999997
+      ],
+      "matched_primary_survey_id": "4_4_6",
+      "training_alignment_rms_mm": 1.0476956628987775,
+      "primary_direction_difference_mrad": 0.4444390535361883,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_3",
+      "center_as_supplied_legacy_m": [
+        1.0223617193328,
+        0.7692592825182001,
+        -2.110213852425
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2560345584707302,
+        -0.1937125262821183,
+        1.3357985099715282
+      ],
+      "historical_plane_normal_survey": [
+        -0.6583473961194264,
+        0.28816837715014965,
+        0.6953687456547213
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9156363489471293,
+        0.4006842850708509,
+        -0.03259110590379988
+      ],
+      "center_current_static_display_survey_m": [
+        1.264310480974064,
+        -0.196223378431748,
+        0.3447138524249995
+      ],
+      "matched_primary_survey_id": "4_4_4",
+      "training_alignment_rms_mm": 1.4165316645849608,
+      "primary_direction_difference_mrad": 0.40578092752716177,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_4",
+      "center_as_supplied_legacy_m": [
+        1.0222541412828001,
+        0.7673529032432,
+        -2.1110200502
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.254610648938115,
+        -0.19498466488302585,
+        1.334992312196528
+      ],
+      "historical_plane_normal_survey": [
+        -0.7107555288419733,
+        -0.13291844930946026,
+        0.6907671561776337
+      ],
+      "historical_output_line_direction_survey": [
+        -0.9818942062174627,
+        -0.18389465379979714,
+        -0.045459037610049324
+      ],
+      "center_current_static_display_survey_m": [
+        1.2628692557360601,
+        -0.19747586587293556,
+        0.34552005019999976
+      ],
+      "matched_primary_survey_id": null,
+      "training_alignment_rms_mm": null,
+      "primary_direction_difference_mrad": null,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_5",
+      "center_as_supplied_legacy_m": [
+        1.0212404253328,
+        0.7696425758932001,
+        -2.1104709681
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2555125682443995,
+        -0.1926486934713015,
+        1.335541394296528
+      ],
+      "historical_plane_normal_survey": [
+        -0.5886162493560412,
+        0.41100964208403423,
+        0.6961335971693798
+      ],
+      "historical_output_line_direction_survey": [
+        -0.8195355011081608,
+        0.572218780677789,
+        -0.03045044273930486
+      ],
+      "center_current_static_display_survey_m": [
+        1.2638031322346088,
+        -0.1951524856722579,
+        0.3449709680999997
+      ],
+      "matched_primary_survey_id": "4_4_3",
+      "training_alignment_rms_mm": 0.8118439089404584,
+      "primary_direction_difference_mrad": 0.3824701786966688,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_6",
+      "center_as_supplied_legacy_m": [
+        1.0217830716828,
+        0.7705414839182,
+        -2.1103237219
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.2565318667789367,
+        -0.19239663951662478,
+        1.335688640496528
+      ],
+      "historical_plane_normal_survey": [
+        -0.4969837815642257,
+        0.5164505277987687,
+        0.697342077605027
+      ],
+      "historical_output_line_direction_survey": [
+        -0.6931130496145338,
+        0.720319911971147,
+        -0.027083664300093346
+      ],
+      "center_current_static_display_survey_m": [
+        1.2648257922466768,
+        -0.1949144369413328,
+        0.34482372189999966
+      ],
+      "matched_primary_survey_id": "4_4_2",
+      "training_alignment_rms_mm": 0.5812028153356892,
+      "primary_direction_difference_mrad": 0.3576870037224947,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    },
+    {
+      "manual_id": "4_4_7",
+      "center_as_supplied_legacy_m": [
+        1.0230526140328,
+        0.7714341878432,
+        -2.1105080793
+      ],
+      "removed_sector_translation_m": [
+        -0.0032595754172000113,
+        0.018115417243199927,
+        0.0
+      ],
+      "center_historical_registered_survey_m": [
+        1.258060842081209,
+        -0.19266289616197832,
+        1.3355042830965278
+      ],
+      "historical_plane_normal_survey": [
+        -0.3873766276488213,
+        0.6014552761166767,
+        0.698706590195655
+      ],
+      "historical_output_line_direction_survey": [
+        -0.5412405102827136,
+        0.8405452878314301,
+        -0.023287961123438117
+      ],
+      "center_current_static_display_survey_m": [
+        1.266350971515216,
+        -0.19520164118045963,
+        0.3450080792999999
+      ],
+      "matched_primary_survey_id": "4_4_1",
+      "training_alignment_rms_mm": 1.530151186355557,
+      "primary_direction_difference_mrad": 0.331762507311767,
+      "physical_body_pose_verified": false,
+      "source_kind": "manual_reconstructed_surface",
+      "used_for_training": false
+    }
+  ]
+}

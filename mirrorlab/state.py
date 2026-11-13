@@ -219,6 +219,8 @@ def validate_document(document):
         raise ValueError("Directions must be explicitly separated")
     from .engine.bodies import MirrorBody
     for direction, dataset in datasets.items():
+        if dataset.get("manual_references") is not None:
+            _validate_manual_dataset(dataset)
         if dataset.get("direction") != direction or dataset.get("status") not in STATUSES:
             raise ValueError("Dataset direction/status mismatch")
         if dataset.get("physical_sides") != encode(ROUTES[direction].metadata()):
@@ -336,6 +338,49 @@ def validate_document(document):
     if document["status"] == "validated" and any(d["status"] != "validated" for d in datasets.values()):
         raise ValueError("Overall status cannot promote an unvalidated side")
     return document
+
+
+def _validate_manual_dataset(dataset):
+    """The additive v1 manual extension retains verifiable source bytes."""
+    reference = dataset["manual_references"]
+    if dataset.get("status") == "validated" and (
+            dataset.get("mechanics", {}).get("status") != "validated"
+            or dataset.get("physical_validation", {}).get("validated_count") != 112):
+        raise ValueError("Manual configuration cannot promote incomplete physical checks")
+    if not isinstance(reference, dict) or reference.get("schema_version") != 1:
+        raise ValueError("Unsupported manual reference schema")
+    if (reference.get("units") != "m" or reference.get("coordinate_frame") != "survey"
+            or reference.get("used_as_primary_measurements") is not False):
+        raise ValueError("Manual references cannot become primary observations")
+    for source in [reference, *([reference["original_text"]] if "original_text" in reference else [])]:
+        raw = source.get("raw_utf8")
+        if not isinstance(raw, str) or hashlib.sha256(raw.encode("utf-8")).hexdigest() != source.get("sha256"):
+            raise ValueError("Manual source hash mismatch")
+    try:
+        payload = json.loads(reference["raw_utf8"].lstrip("\ufeff"))
+    except (ValueError, TypeError) as error:
+        raise ValueError("Invalid embedded manual JSON") from error
+    if payload != reference.get("payload") or payload.get("route") != dataset.get("direction"):
+        raise ValueError("Manual source payload mismatch")
+    original = dataset.get("original_optics_snapshot")
+    _validate_snapshot(original)
+    raw_mirrors = {m.get("source_manual_id", m.get("source_id")): m for m in payload.get("mirrors", [])}
+    sources = set()
+    for m in dataset.get("mirrors", []):
+        source_id = m.get("source_manual_id")
+        if not source_id or source_id in sources:
+            raise ValueError("Duplicate or missing manual source ID")
+        sources.add(source_id)
+        if m.get("manual_reference_survey") != raw_mirrors.get(source_id):
+            raise ValueError("Manual per-mirror reference differs from immutable source")
+        if m.get("physical_native_id") != m.get("canonical_id"):
+            raise ValueError("Manual physical identity mismatch")
+        if m.get("canonical_slot") not in (None, 1, 2, 3, 4, 5, 6, 7):
+            raise ValueError("Invalid manual canonical slot")
+        if (not np.isclose(m.get("radius_m", 0), .0005, rtol=0, atol=1e-12)
+                or not np.isclose(m.get("axial_height_m", 0), .0095, rtol=0, atol=1e-12)
+                or m.get("length_definition") != "full_extent"):
+            raise ValueError("Manual bodies must have diameter 1 mm and full extent 10 mm")
 
 
 def new_document(datasets, version=0):

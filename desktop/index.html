@@ -35,6 +35,7 @@
         <div class="controls-column">
           <section class="card file-card" aria-label="Файл конфигурации">
             <div class="file-actions"><button id="load-configuration" type="button" class="secondary-button">Открыть конфигурацию</button><button id="save-configuration" type="button" class="secondary-button">Сохранить</button></div>
+            <button id="load-manual" type="button" class="secondary-button full-width">Загрузить ручную реконструкцию</button>
             <label id="save-source-label" for="save-source" hidden>Что сохранить</label>
             <select id="save-source" hidden><option value="active">Текущая конфигурация</option><option value="candidate">Диагностический кандидат</option></select>
             <button id="load-legacy" type="button" class="text-button" aria-expanded="false" aria-controls="legacy-context">Импорт старого формата…</button>
@@ -77,6 +78,7 @@
             <button id="optimize" type="button" class="secondary-button full-width" aria-describedby="optimize-reason" disabled>Восстановить зеркала</button>
             <p id="optimize-reason">В идеальной геометрии все лучи заданы. Выберите «Историческая реальная».</p>
             <p id="candidate-state" class="candidate-state" aria-live="polite" hidden></p>
+            <button id="preview-candidate" type="button" class="text-button" hidden>Показать кандидата в сцене</button>
             <button id="accept-candidate" type="button" class="secondary-button full-width" aria-describedby="accept-reason" hidden>Принять для расчётов</button>
             <p id="accept-reason" aria-live="polite" hidden></p>
             <button id="candidate-report" type="button" class="text-button" data-result-target="reconstruction-result" hidden>Отчёт и причины ограничений →</button>

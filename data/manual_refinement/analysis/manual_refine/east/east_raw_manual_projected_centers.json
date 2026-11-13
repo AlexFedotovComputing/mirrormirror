@@ -1,0 +1,1462 @@
+{
+  "format": "analysis.raw-manual-center-projection",
+  "note": "Not a unique mirror recovery; direct manual-line preserving comparison only",
+  "mirrors": [
+    {
+      "source_id": "1_1_1",
+      "center_survey_m": [
+        0.4588584989259595,
+        -1.1795716517281023,
+        -0.3430850330731922
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8312067261666286,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_1_2",
+      "center_survey_m": [
+        0.4594908167869222,
+        -1.179454778000453,
+        -0.3440506543509074
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.6609366982157725,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_1_3",
+      "center_survey_m": [
+        0.45851954773650155,
+        -1.1798300551613112,
+        -0.34592237522035374
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.0484120543317923,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_1_4",
+      "center_survey_m": [
+        0.4585396801829826,
+        -1.1798556438023395,
+        -0.3448707540992514
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.0396772901746538,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_1_5",
+      "center_survey_m": [
+        0.45868265796569896,
+        -1.1797726993234583,
+        -0.34374432744778144
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.30242574141018946,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_1_6",
+      "center_survey_m": [
+        0.4587700840725034,
+        -1.179630681376176,
+        -0.3426210163481245
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.298343407070853,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_1_7",
+      "center_survey_m": [
+        0.4589796370703069,
+        -1.179242135165837,
+        -0.342945189492973
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.0405848957724653,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_1",
+      "center_survey_m": [
+        0.4663251827427119,
+        -1.1812759199995535,
+        -0.6749660940021988
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.2182983653123645,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_2",
+      "center_survey_m": [
+        0.4670054997656265,
+        -1.18109772161259,
+        -0.6767034318435995
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.6736514743370579,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_3",
+      "center_survey_m": [
+        0.4667233262485798,
+        -1.1811381905414466,
+        -0.6777326451979273
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.6007531282085685,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_4",
+      "center_survey_m": [
+        0.4839893076457945,
+        -1.1666924859334764,
+        -0.6772265550214093
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 22.63308087747678,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_5",
+      "center_survey_m": [
+        0.4818955701963252,
+        -1.1622532775760548,
+        -0.6788491973639971
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 24.47249559842666,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_6",
+      "center_survey_m": [
+        0.4665811214223015,
+        -1.1813344967368566,
+        -0.6768310238628852
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.711291821156652,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_2_7",
+      "center_survey_m": [
+        0.46668296999707076,
+        -1.1812255039549187,
+        -0.6744409097371026
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.6940581396778258,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_1",
+      "center_survey_m": [
+        0.4596281669986033,
+        -1.1870120868064131,
+        -1.0037586235516434
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.4839971052089431,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_2",
+      "center_survey_m": [
+        0.4607780373712304,
+        -1.1867865638442898,
+        -1.0056719150689934
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8527883837380087,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_3",
+      "center_survey_m": [
+        0.4598958021110303,
+        -1.1870180109302544,
+        -1.0062408683193589
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.1074867966982225,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_4",
+      "center_survey_m": [
+        0.4757368952159277,
+        -1.1751937487506965,
+        -1.0038977137196554
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 19.592954150182894,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_5",
+      "center_survey_m": [
+        0.4662768348721262,
+        -1.1800003321112773,
+        -1.0050355489536567
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 9.291602712061522,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_6",
+      "center_survey_m": [
+        0.4602645013040627,
+        -1.1866434217958552,
+        -1.0063181117648021
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.2107785010058423,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_3_7",
+      "center_survey_m": [
+        0.4600308631110218,
+        -1.187328725620199,
+        -1.0037998723617232
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.4105480279220635,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_1",
+      "center_survey_m": [
+        0.46606524809413885,
+        -1.1872634443836088,
+        -1.334010180006693
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.7385810984898059,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_2",
+      "center_survey_m": [
+        0.4662101499536824,
+        -1.187187874386387,
+        -1.334855147915842
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.43708040653031077,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_3",
+      "center_survey_m": [
+        0.46540158095680106,
+        -1.1873436338997323,
+        -1.3370018498709073
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.3382460300325976,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_4",
+      "center_survey_m": [
+        0.4653259075122533,
+        -1.1875049463247132,
+        -1.334646936761966
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.54935408047971,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_5",
+      "center_survey_m": [
+        0.4759352702383517,
+        -1.1781039800494555,
+        -1.3351984621053636
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 13.651435218673559,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_6",
+      "center_survey_m": [
+        0.4808454845414813,
+        -1.1670346287763629,
+        -1.3356221606941838
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 25.206583957491972,
+      "use_for_training": false
+    },
+    {
+      "source_id": "1_4_7",
+      "center_survey_m": [
+        0.4660203908307169,
+        -1.186905000097345,
+        -1.3329903670108745
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.7565119848900719,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_1",
+      "center_survey_m": [
+        -1.1911983221954905,
+        -0.5674233715698365,
+        -0.3437401240902219
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 41.60594293699593,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_2",
+      "center_survey_m": [
+        -1.183637927339141,
+        -0.5313738178389853,
+        -0.34406292599236477
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 4.951248786114993,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_3",
+      "center_survey_m": [
+        -1.1839866080124077,
+        -0.5234930835919219,
+        -0.3451871568491815
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 3.1046231340157395,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_4",
+      "center_survey_m": [
+        -1.1848479383086188,
+        -0.5228098174342892,
+        -0.3456293350887913
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 4.003744940335613,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_5",
+      "center_survey_m": [
+        -1.1839628801765294,
+        -0.5257880782689432,
+        -0.3447678818475669
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.0021235536779358,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_6",
+      "center_survey_m": [
+        -1.1811130067078544,
+        -0.5293387370349769,
+        -0.3464387661549669
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 3.866994535169203,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_1_7",
+      "center_survey_m": [
+        -1.1900524663858993,
+        -0.521057469062423,
+        -0.345754829899233
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 8.566377130618125,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_1",
+      "center_survey_m": [
+        -1.195009061778451,
+        -0.57946746017959,
+        -0.6769398175175275
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 42.64252453402517,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_2",
+      "center_survey_m": [
+        -1.1874776482925844,
+        -0.5435136262971844,
+        -0.6763478727105688
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 6.221257574068455,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_3",
+      "center_survey_m": [
+        -1.1877904397683399,
+        -0.5351877535844857,
+        -0.6773231518882306
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.4975897359275616,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_4",
+      "center_survey_m": [
+        -1.1895172384115147,
+        -0.5314967254858626,
+        -0.6810971602624685
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 7.097797749072247,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_5",
+      "center_survey_m": [
+        -1.188455046222581,
+        -0.5358359854263147,
+        -0.6748759222572313
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 3.7726287761060338,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_6",
+      "center_survey_m": [
+        -1.1835043573374244,
+        -0.5416334427551324,
+        -0.6806475202600005
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 6.188236168061354,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_2_7",
+      "center_survey_m": [
+        -1.1910142101251227,
+        -0.5343343007101234,
+        -0.6859698921120533
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 9.287731747112094,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_1",
+      "center_survey_m": [
+        -1.2059171830095992,
+        -0.4985954186748658,
+        -1.0065491165858163
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 49.076671866114445,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_2",
+      "center_survey_m": [
+        -1.1995123739906441,
+        -0.5109656464665572,
+        -1.0078116489050613
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 58.4424127551149,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_3",
+      "center_survey_m": [
+        -1.1895302709049265,
+        -0.5196748054182037,
+        -1.0091493524979254
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 65.3741720306032,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_4",
+      "center_survey_m": [
+        -1.1758733431796093,
+        -0.5244210017818649,
+        -1.0068213637977284
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 70.42221015042621,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_5",
+      "center_survey_m": [
+        -1.158882923014673,
+        -0.5226746004818117,
+        -1.00867249066978
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 72.76992623506061,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_6",
+      "center_survey_m": [
+        -1.1469714370206006,
+        -0.5156914115717752,
+        -1.0078174637510633
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 71.69763445212541,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_3_7",
+      "center_survey_m": [
+        -1.1401384572222157,
+        -0.5076545671899055,
+        -1.0052237645682123
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 69.18161116430707,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_1",
+      "center_survey_m": [
+        -1.2078940007797019,
+        -0.4928723786126311,
+        -1.3344487369575577
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 37.569802726376174,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_2",
+      "center_survey_m": [
+        -1.206084667777923,
+        -0.5023785996334393,
+        -1.3359600700367482
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 45.255023634678,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_3",
+      "center_survey_m": [
+        -1.1994714647835594,
+        -0.5139342702263298,
+        -1.3373334671485104
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 54.467051715953666,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_4",
+      "center_survey_m": [
+        -1.1887322967263767,
+        -0.5222560824495582,
+        -1.3396796687417596
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 61.83544547531251,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_5",
+      "center_survey_m": [
+        -1.1731619602967378,
+        -0.5259548109168312,
+        -1.335602090480505
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 67.33251503918073,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_6",
+      "center_survey_m": [
+        -1.1598829645449935,
+        -0.5232489265033955,
+        -1.3373012121651913
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 69.15075856468931,
+      "use_for_training": false
+    },
+    {
+      "source_id": "2_4_7",
+      "center_survey_m": [
+        -1.1489378659424874,
+        -0.5159357216893496,
+        -1.3363176957393095
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 68.35734760081213,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_1",
+      "center_survey_m": [
+        -0.46875477294787693,
+        1.1853389429140464,
+        -0.3452860775380304
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 10.156080211518905,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_2",
+      "center_survey_m": [
+        -0.46007194467859314,
+        1.1824678038289196,
+        -0.34785373092208666
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8789797776598521,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_3",
+      "center_survey_m": [
+        -0.45900423674946134,
+        1.1824008123622927,
+        -0.34896135582449794
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.7128221236657144,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_4",
+      "center_survey_m": [
+        -0.4595618075952589,
+        1.1824112008982521,
+        -0.3480422400316805
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.565179919100444,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_5",
+      "center_survey_m": [
+        -0.45984517164877187,
+        1.1822717457730392,
+        -0.34955807480189355
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.9871074887058463,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_6",
+      "center_survey_m": [
+        -0.4517576780382367,
+        1.1878103611450166,
+        -0.34697171583448005
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 9.689973219636586,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_1_7",
+      "center_survey_m": [
+        -0.4462323900520646,
+        1.1954796495444846,
+        -0.3444281521525029
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 19.18540752237714,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_1",
+      "center_survey_m": [
+        -0.463204250503143,
+        1.1815904556153531,
+        -0.6788794892377976
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.5505056064857218,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_2",
+      "center_survey_m": [
+        -0.46392953672295406,
+        1.181509198958555,
+        -0.6797254514607676
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.6599127003991992,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_3",
+      "center_survey_m": [
+        -0.4640146338519088,
+        1.181385083760496,
+        -0.6808544324524176
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.7833276741089783,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_4",
+      "center_survey_m": [
+        -0.463703121752685,
+        1.1815998232642373,
+        -0.6784591086174653
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.6499972589376768,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_7",
+      "center_survey_m": [
+        -0.4635458724948671,
+        1.1824525039284894,
+        -0.6766531021543416
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.6121626193704413,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_5",
+      "center_survey_m": [
+        -0.4637446835320634,
+        1.1815228850701196,
+        -0.678940654195987
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.18068585505264304,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_2_6",
+      "center_survey_m": [
+        -0.4636312180550025,
+        1.1818479929465013,
+        -0.6777928493227691
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.3456524851860643,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_1",
+      "center_survey_m": [
+        -0.45425293180376275,
+        1.184991958837098,
+        -1.0066290874608061
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.7037839222734754,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_2",
+      "center_survey_m": [
+        -0.45530369506391694,
+        1.1853385453011396,
+        -1.007929549980343
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.5300431440635721,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_3",
+      "center_survey_m": [
+        -0.4551869696689991,
+        1.18522643495364,
+        -1.0088795464963312
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.7527729678995011,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_4",
+      "center_survey_m": [
+        -0.4552216802429017,
+        1.1852061110118604,
+        -1.0073564912946504
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.9201027305212425,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_5",
+      "center_survey_m": [
+        -0.45470899836361034,
+        1.185225507592442,
+        -1.0096743059295865
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.4803227048008174,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_6",
+      "center_survey_m": [
+        -0.45448417556227616,
+        1.1854499629854942,
+        -1.0087415030985816
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.6903436386432011,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_3_7",
+      "center_survey_m": [
+        -0.45476777279650354,
+        1.1853537704931194,
+        -1.0078159910893434
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.41263310876409803,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_1",
+      "center_survey_m": [
+        -0.45919924072414725,
+        1.1851882265837994,
+        -1.33862575153965
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 69.51448668840838,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_2",
+      "center_survey_m": [
+        -0.46073101391383964,
+        1.1979602641108476,
+        -1.3387699229970529
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 67.9820812223635,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_3",
+      "center_survey_m": [
+        -0.4652048481545771,
+        1.207060820992794,
+        -1.3374333070601037
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 65.03037736312842,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_4",
+      "center_survey_m": [
+        -0.47423145145814055,
+        1.2159663362998496,
+        -1.334744353295614
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 59.36681255984334,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_5",
+      "center_survey_m": [
+        -0.4884609039939896,
+        1.2217440588535438,
+        -1.3375224162142807
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 50.00333247620099,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_6",
+      "center_survey_m": [
+        -0.5002267887559,
+        1.221597365885632,
+        -1.339268362838894
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 41.21383449866572,
+      "use_for_training": false
+    },
+    {
+      "source_id": "3_4_7",
+      "center_survey_m": [
+        -0.5141500388681005,
+        1.2156170231595786,
+        -1.3181814304756672
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 33.17549445915584,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_7",
+      "center_survey_m": [
+        1.1801262971155804,
+        0.4609203339469012,
+        -0.34500467228209064
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.7785752235234377,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_6",
+      "center_survey_m": [
+        1.180181750641769,
+        0.4616401603919763,
+        -0.34613390914881953
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.611702525799745,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_5",
+      "center_survey_m": [
+        1.180247395977415,
+        0.460966041713157,
+        -0.3469498265800096
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.2299753766922636,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_4",
+      "center_survey_m": [
+        1.1772348721815704,
+        0.46784562838289045,
+        -0.33659045679991767
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 11.70032249853402,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_3",
+      "center_survey_m": [
+        1.180328718478143,
+        0.46072763562983476,
+        -0.3421262761826942
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 3.643367540702149,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_2",
+      "center_survey_m": [
+        1.1802749044145386,
+        0.4609943128763633,
+        -0.3434965266525671
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.2518518473755083,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_1_1",
+      "center_survey_m": [
+        1.1801621641533953,
+        0.46116465603560985,
+        -0.34486863823603037
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8708318476775662,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_7",
+      "center_survey_m": [
+        1.1829018616743074,
+        0.46712992459610647,
+        -0.6734621556049755
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.0960966169405615,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_6",
+      "center_survey_m": [
+        1.1829103691886136,
+        0.4680538335261905,
+        -0.6761079213540951
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8177177082508722,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_5",
+      "center_survey_m": [
+        1.1828672519819534,
+        0.46761548351556104,
+        -0.6769485594622064
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.4271866954377583,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_4",
+      "center_survey_m": [
+        1.182944464809701,
+        0.46743168741133606,
+        -0.6754400859323457
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.10173017103053193,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_3",
+      "center_survey_m": [
+        1.1832250540211473,
+        0.46697688509926605,
+        -0.6768904424157706
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.4806487749135733,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_2",
+      "center_survey_m": [
+        1.1830829934307596,
+        0.4673184086421269,
+        -0.6756109831264915
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.23817370691941045,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_2_1",
+      "center_survey_m": [
+        1.1826969564078489,
+        0.4676491432389876,
+        -0.6743268555216356
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.2359536746945514,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_7",
+      "center_survey_m": [
+        1.1864805065815276,
+        0.4580862728959585,
+        -1.007624032354589
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.6114775054231621,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_6",
+      "center_survey_m": [
+        1.186637140958769,
+        0.4587483238771447,
+        -1.0089235359161979
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.7626477638591411,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_5",
+      "center_survey_m": [
+        1.18658291641318,
+        0.4588951135295124,
+        -1.006228774810295
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.036482007224832,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_4",
+      "center_survey_m": [
+        1.18660368651529,
+        0.4585098125339797,
+        -1.005125872999435
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.0549577601691333,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_3",
+      "center_survey_m": [
+        1.1867593256114937,
+        0.45819096008263,
+        -1.008001154453762
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8841879261058979,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_2",
+      "center_survey_m": [
+        1.192883931066453,
+        0.45004877742873906,
+        -1.0054836553083857
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 10.64877351848932,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_3_1",
+      "center_survey_m": [
+        1.205322285169265,
+        0.4405457805675718,
+        -1.0016366899748943
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 26.507333152601475,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_7",
+      "center_survey_m": [
+        1.1888154519378171,
+        0.4619981977736146,
+        -1.3328716478844453
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 2.057858797685303,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_6",
+      "center_survey_m": [
+        1.189488730825758,
+        0.46356069499063207,
+        -1.3346954657243608
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.8089371750165013,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_5",
+      "center_survey_m": [
+        1.1893583957048488,
+        0.46321292038940703,
+        -1.3359896113462268
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.3444909107551557,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_4",
+      "center_survey_m": [
+        1.1892836844110415,
+        0.4624375061039544,
+        -1.334073236786359
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.7320485759870001,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_3",
+      "center_survey_m": [
+        1.1892436974892076,
+        0.463031312473165,
+        -1.3361432336238555
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 1.4460951181520452,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_2",
+      "center_survey_m": [
+        1.1894363279132782,
+        0.4624510966652246,
+        -1.334541178325323
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 0.41039871401760314,
+      "use_for_training": false
+    },
+    {
+      "source_id": "4_4_1",
+      "center_survey_m": [
+        1.1939091055553759,
+        0.4564112335662597,
+        -1.3278939358887547
+      ],
+      "method": "orthogonal projection of original complete-line fan anchor onto manual infinite line",
+      "point_on_raw_line": true,
+      "not_unique": true,
+      "bundle_anchor_distance_mm": 10.424970748641528,
+      "use_for_training": false
+    }
+  ]
+}

@@ -210,6 +210,16 @@ def import_legacy(path, direction=None, coordinate_frame=None, kind="real"):
     path = Path(path)
     if path.stat().st_size > MAX_BYTES:
         raise ValueError("Legacy file exceeds 100 MB")
+    from .manual_schema import is_manual_data, import_manual, _known_text
+    if path.suffix.lower() == ".json" and is_manual_data(_loads(path.read_bytes())):
+        return import_manual(path, direction, coordinate_frame)
+    if path.suffix.lower() == ".txt":
+        try:
+            manual = _known_text(path.read_bytes(), path.name)
+        except ValueError:
+            manual = None
+        if manual is not None:
+            return import_manual(path, direction, coordinate_frame)
     members = {}
     if path.suffix.lower() == ".zip":
         with ZipFile(path) as archive:
@@ -227,6 +237,8 @@ def import_legacy(path, direction=None, coordinate_frame=None, kind="real"):
                     raise ValueError("Archive contains ambiguous duplicate data filenames")
                 members[name.name] = raw
         candidates = []
+        if any(is_manual_data(_loads(raw)) for name, raw in members.items() if name.endswith(".json")):
+            return import_manual(path, direction, coordinate_frame)
         for name, raw in members.items():
             if name.endswith(".json"):
                 try:

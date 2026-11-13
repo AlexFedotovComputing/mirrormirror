@@ -252,6 +252,11 @@ const { _electron } = require('playwright-core');
       return data.some(trace => trace.meta?.scene_source === 'base' && trace.name?.includes('Лучи')) &&
         data.some(trace => trace.meta?.scene_source === 'reconstruction');
     }), 'Loading a reconstruction preserves the previous traced rays');
+    // Loading an unvalidated historical document previews it; acceptance is explicit.
+    if (await page.locator('#accept-candidate').isEnabled()) {
+      await page.locator('#accept-candidate').click();
+      await waitForStatus('Реконструкция обработана');
+    }
     assert.match(await page.locator('#active-state').innerText(), /Принятая конфигурация/);
     assert.equal(await page.locator('#mirror-select option').count(), 112);
     const selectedGeometry = await page.evaluate(() => {

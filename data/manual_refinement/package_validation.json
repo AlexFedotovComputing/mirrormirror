@@ -1,0 +1,38 @@
+{
+  "status": "passed_serialization_frame_and_algebra_checks",
+  "not_a_new_full_ray_trace": true,
+  "west_count": 112,
+  "east_count": 112,
+  "west_unique_primary_mappings": 83,
+  "west_max_roundtrip_error_m": 5.33167196845001e-16,
+  "west_max_exact_point_transform_error_m": 0.0,
+  "east_max_roundtrip_error_m": 3.554447978966673e-16,
+  "max_body_SO3_error": 1.2212453270876722e-15,
+  "west_max_reflection_vector_error": 1.2567637595793301e-15,
+  "east_max_reflection_vector_error": 5.419560439567086e-16,
+  "east_recomputed_primary_170_points_rms_mm": 13.047645718062048,
+  "east_recomputed_13_groups_140_points_rms_mm": 0.6593494841654224,
+  "east_recomputed_13_groups_140_points_max_mm": 2.031851018091316,
+  "east_primary_rms_by_group_mm": {
+    "1_1": 0.9159307115163253,
+    "1_2": 0.5595507392648053,
+    "1_3": 0.5677309307417436,
+    "1_4": 0.6076302786013462,
+    "2_1": 28.203590037688873,
+    "2_2": 35.79986875388972,
+    "2_3": 0.8577631191115868,
+    "2_4": 0.6705948239767476,
+    "3_1": 0.38448459772577376,
+    "3_2": 0.5369375208870864,
+    "3_3": 0.7559224075057468,
+    "3_4": 28.47698230374046,
+    "4_1": 0.5079812298442908,
+    "4_2": 0.5994022178981352,
+    "4_3": 0.628525486518641,
+    "4_4": 0.6257969902824588
+  },
+  "east_3_2_internal_slot_5_verified": true,
+  "east_reported_full_path_status_counts": {
+    "validated": 112
+  }
+}

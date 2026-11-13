@@ -139,10 +139,13 @@ test('partial preview, cancellation and process restart do not replace accepted 
   client.stop();
 });
 
-test('load preserves partial status and stale candidates cannot replace it', () => {
+test('load previews partial status and stale candidates cannot replace accepted state', () => {
   const state = new ConfigurationState();
-  state.offer({ document: { id: 'a' }, status: 'partial' }, 0, { load: true });
-  assert.equal(state.active.status, 'partial');
+  state.offer({ document: { id: 'a' }, status: 'validated' }, 0);
+  const partial = state.offer({ document: { id: 'partial' }, status: 'partial', can_activate: true }, 1, { load: true });
+  assert.equal(partial.active, false);
+  assert.equal(state.candidate.status, 'partial');
+  assert.equal(state.version, 1);
   assert.throws(() => state.offer({ document: { id: 'old' }, status: 'validated' }, 0), /Запоздалый/);
   assert.equal(state.active.document.id, 'a');
   const loadedInvalid = state.offer({ document: { id: 'invalid-load' }, status: 'infeasible' }, 1, { load: true });
@@ -154,6 +157,30 @@ test('load preserves partial status and stale candidates cannot replace it', () 
   state.historical();
   assert.equal(state.active, null);
   assert.throws(() => state.accept(1), /устарел/);
+});
+
+test('manual candidates remain diagnostic through load and explicit acceptance', () => {
+  const state = new ConfigurationState();
+  state.offer({ document: { id: 'accepted' }, status: 'validated' }, 0);
+  const document = { datasets: { east_to_west: { model_kind: 'manual_reconstruction', manual_references: {} } } };
+  for (const status of ['partial', 'legacy_unvalidated', 'infeasible']) {
+    const result = state.offer({ document, status, can_activate: true }, 1, { load: true });
+    assert.equal(result.active, false);
+    assert.equal(state.active.document.id, 'accepted');
+    assert.throws(() => state.accept(1, { load: true }));
+  }
+  state.offer({ document, status: 'validated', can_activate: false }, 1, { load: true });
+  assert.throws(() => state.accept(1, { load: true }));
+  state.offer({ document, status: 'validated', can_activate: true }, 1);
+  assert.equal(state.active.document, document);
+});
+
+test('manual IPC commands discard renderer-supplied documents and file paths', () => {
+  const payload = { direction: 'both', kind: 'ideal', path: 'untrusted', candidate_configuration: { forged: true },
+    document: { forged: true }, active_configuration: { forged: true } };
+  for (const method of ['import_manual', 'refine_manual']) {
+    assert.deepEqual(validateRequest(method, payload), { direction: 'both', kind: 'ideal' });
+  }
 });
 
 test('scene comparison retains base rays, replaces overlays and keeps source data immutable', () => {

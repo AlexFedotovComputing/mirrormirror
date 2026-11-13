@@ -48,10 +48,12 @@ function updateControls() {
   $('controls').disabled = locked;
   $('calibrate').disabled = locked;
   $('start-trace').disabled = $('start-load').disabled = locked;
-  for (const id of ['optimize', 'save-configuration', 'load-configuration', 'load-legacy',
+  for (const id of ['optimize', 'save-configuration', 'load-configuration', 'load-manual', 'load-legacy', 'preview-candidate',
     'choose-legacy', 'accept-candidate', 'use-historical', 'save-source', 'legacy-frame']) $(id).disabled = locked;
   $('accept-candidate').disabled = locked || !!candidateBlockReason(reconstructionResult);
-  const historicalIdeal = !activeConfiguration && !real;
+  const manual = hasManualReconstruction(reconstructionResult);
+  const historicalIdeal = !activeConfiguration && !real && !manual;
+  $('optimize').textContent = manual ? 'Уточнить ручную реконструкцию' : 'Восстановить зеркала';
   $('optimize').disabled = locked || historicalIdeal;
   $('optimize-reason').hidden = !historicalIdeal;
   $('kind').disabled = locked || activeConfiguration;
@@ -277,11 +279,17 @@ async function drawSceneLayers() {
 function candidateBlockReason(result) {
   if (!result?.document) return 'Нет конфигурации для принятия.';
   if (result.active) return 'Эта конфигурация уже принята.';
+  if (hasManualReconstruction(result) && result.status !== 'validated') return 'Ручная реконструкция не прошла все проверки. Доступны уточнение, просмотр и сохранение диагностического кандидата.';
   if (result.status === 'infeasible' || reconstructionReports(result).some(report => report.status === 'infeasible')) {
     return 'Принятие недоступно: проверка физической допустимости не пройдена (infeasible). Причины приведены ниже для каждой стороны. Кандидат доступен для сравнения и сохранения.';
   }
   if (result.can_activate === false) return 'Принятие недоступно: общая оптика не установлена или конфигурация неполна. Кандидат доступен для просмотра и сохранения.';
   return '';
+}
+
+function hasManualReconstruction(result) {
+  return Object.values(result?.document?.datasets ?? {}).some(dataset =>
+    dataset?.model_kind === 'manual_reconstruction' || !!dataset?.manual_references);
 }
 
 function showSummary(result, request) {
@@ -535,8 +543,11 @@ function showMirror() {
   const fields = [
     ['Сторона', sideNames[selected.direction] ?? selected.direction],
     ['Исходный номер', mirror.old_id ?? mirror.mirror_id], ['Каноническое место', mirror.canonical_id],
+    ['Ручной источник', mirror.source_manual_id], ['Геодезическое наблюдение', mirror.survey_observation_id],
+    ['Физический идентификатор', mirror.physical_native_id ?? mirror.physical_id ?? mirror.native_id], ['Угловое место', mirror.canonical_slot],
+    ['Происхождение назначения', mirror.mapping_origin],
     ['Статус', basisStatuses[mirror.status] ?? mirror.status],
-    ['Наблюдение', selected.datasetStatus === 'legacy_unvalidated'
+    ['Наблюдение', selected.datasetStatus === 'legacy_unvalidated' && !mirror.manual_reference_survey
       ? 'Исторический источник; первичные измерения не привязаны' : basisStatuses[mirror.observation_status] ?? mirror.observation_status],
     ['Идентификаторы измерений', mirror.observation_old_ids ?? mirror.observation_ids],
     ['Основание', basisStatuses[mirror.support_status ?? mirror.basis ?? mirror.confidence_status ?? mirror.status] ?? mirror.support_status ?? mirror.basis ?? mirror.confidence_status],
@@ -587,9 +598,15 @@ async function showReconstruction(result) {
   $('candidate-state').hidden = false;
   $('candidate-state').textContent = `${result.active ? 'Принято для расчётов' : 'Кандидат'} · ${status}`;
   $('candidate-report').hidden = false;
+  $('preview-candidate').hidden = result.active || !result.figure;
+  $('preview-candidate').textContent = 'Показать кандидата в сцене';
+  // Manual candidates require an explicit comparison preview; the accepted base stays intact.
+  if (hasManualReconstruction(result) && !result.active) $('show-reconstruction').checked = false;
   $('candidate-note').textContent = result.active
     ? 'Эта конфигурация принята для следующих расчётов и сохранения. Принятие не меняет статус физических проверок. Для новой трассировки нажмите «Рассчитать лучи».'
-    : 'Диагностический кандидат — результат для сравнения. Следующая трассировка использует прежнюю конфигурацию, пока вы не нажмёте «Принять для расчётов». Статус проверок при принятии сохраняется.';
+    : hasManualReconstruction(result)
+      ? 'Ручной кандидат сохранён отдельно от принятой конфигурации. Покажите его для сравнения или запустите уточнение. Принятие доступно только после необходимых проверок.'
+      : 'Диагностический кандидат — результат для сравнения. Следующая трассировка использует прежнюю конфигурацию, пока вы не нажмёте «Принять для расчётов». Статус проверок при принятии сохраняется.';
   $('accept-candidate').hidden = !result.document;
   $('accept-candidate').textContent = result.active ? 'Конфигурация принята' : 'Принять для расчётов';
   $('accept-candidate').disabled = busy || !!candidateBlockReason(result);
@@ -610,9 +627,14 @@ async function showReconstruction(result) {
     const mirrors = report.mirrors ?? [];
     const count = state => mirrors.filter(mirror => (mirror.observation_status ?? mirror.measurement_status ?? mirror.trajectory_status ?? mirror.status) === state).length;
     const counts = report.counts ?? {};
-    paragraph(card, report.status === 'legacy_unvalidated'
+    paragraph(card, report.status === 'legacy_unvalidated' && !report.manual_references
       ? `Зеркал: ${mirrors.length}. Геометрия из исторического источника; независимые первичные измерения к этому импорту не привязаны.`
       : `Зеркал: ${mirrors.length || counts.total || '—'} · полные: ${counts.complete ?? counts.measured ?? count('measured')} · частичные: ${counts.partial ?? counts.single_screen ?? count('partial')} · предсказанные: ${counts.predicted ?? count('predicted')}`);
+    if (report.manual_references) {
+      paragraph(card, `Ручной источник: ${report.manual_references.source_file ?? '—'} · система: ${report.manual_references.coordinate_frame ?? '—'} · единицы: ${report.manual_references.units ?? '—'}.`);
+      paragraph(card, 'Ручные ориентиры сохранены отдельно от первичных измерений и не увеличивают число независимых наблюдений.');
+      paragraph(card, `SHA-256: ${report.manual_references.sha256 ?? '—'}`).style.overflowWrap = 'anywhere';
+    }
     const ambiguous = mirrors.filter(mirror => mirror.status === 'ambiguous' || mirror.support_status === 'ambiguous').length;
     const failed = mirrors.filter(mirror => ['failed', 'infeasible'].includes(mirror.status)).length;
     paragraph(card, `Неоднозначные: ${counts.ambiguous ?? ambiguous} · недопустимые: ${counts.failed ?? failed}`);
@@ -683,7 +705,8 @@ async function run(method, payload) {
   currentJob = null;
   const actionLabels = { trace: 'Трассировка лучей', calibrate: 'Обработка измерений', optimize: 'Проверка данных',
     save_configuration: 'Сохранение конфигурации', load_configuration: 'Проверка файла конфигурации',
-    import_legacy: 'Проверка исторических данных', accept_candidate: 'Применение результата', use_historical: 'Историческая конфигурация' };
+    import_legacy: 'Проверка исторических данных', import_manual: 'Проверка ручной реконструкции',
+    refine_manual: 'Уточнение ручной реконструкции', accept_candidate: 'Применение результата', use_historical: 'Историческая конфигурация' };
   setBusy(true, actionLabels[method]);
   try {
     const result = await bridge.request(method, payload);
@@ -725,6 +748,7 @@ async function run(method, payload) {
       renderTrajectoryComparison([], '');
       $('accept-candidate').hidden = $('accept-reason').hidden = true;
       $('candidate-state').hidden = $('candidate-report').hidden = true;
+      $('preview-candidate').hidden = true;
       $('active-state').textContent = 'Историческая конфигурация';
       $('use-historical').hidden = true;
       $('save-source').hidden = $('save-source-label').hidden = true;
@@ -758,7 +782,17 @@ $('calibrate').addEventListener('click', () => run('calibrate', {
   direction: $('direction').value,
 }));
 const configurationSelection = () => ({ direction: $('direction').value, kind: $('kind').value });
-$('optimize').addEventListener('click', () => run('optimize', configurationSelection()));
+$('optimize').addEventListener('click', () => run(hasManualReconstruction(reconstructionResult) ? 'refine_manual' : 'optimize', {
+  ...configurationSelection(),
+  ...(hasManualReconstruction(reconstructionResult) ? { direction: Object.keys(reconstructionResult.document.datasets).length > 1
+    ? 'both' : Object.keys(reconstructionResult.document.datasets)[0] } : {}),
+}));
+$('load-manual').addEventListener('click', () => run('import_manual', configurationSelection()));
+$('preview-candidate').addEventListener('click', async () => {
+  $('show-reconstruction').checked = !$('show-reconstruction').checked;
+  $('preview-candidate').textContent = $('show-reconstruction').checked ? 'Скрыть кандидата в сцене' : 'Показать кандидата в сцене';
+  await drawSceneLayers();
+});
 $('save-configuration').addEventListener('click', () => run('save_configuration', {
   ...configurationSelection(), source: $('save-source').value,
 }));

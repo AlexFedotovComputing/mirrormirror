@@ -191,10 +191,11 @@ def _assign_with_partials(template, group, frame, options):
                     rejected.append(partials[a]["id"])
         candidates.append({**alternative, "assigned": assigned, "partial_cost_m2": partial_cost,
                            "rejected_partial_ids": rejected,
-                           "combined_cost": alternative["cost"] + partial_cost})
+                           "combined_cost": (alternative["cost"] / options["assignment_resolution_rad"]**2
+                                             + partial_cost / options["measurement_sigma_m"]**2)})
     candidates.sort(key=lambda x: x["combined_cost"])
     chosen = candidates[0]
-    tolerance = options["assignment_resolution_rad"]**2 * len(group["directions"])
+    tolerance = len(group["directions"])
     alternatives = [c for c in candidates if c["combined_cost"] <= chosen["combined_cost"] + tolerance]
     return chosen, alternatives
 
@@ -301,7 +302,7 @@ def _serial_assignment(fit, physical_group):
                                  rejected_partial_ids=item["rejected_partial_ids"]))
     return dict(physical_group=physical_group, cost=fit["chosen"]["combined_cost"],
                 alternatives=alternatives, ambiguous=len(alternatives) > 1, cost_is_probability=False,
-                criterion="SO3 angular subset residual plus measured-component distances at both real screens",
+                criterion="Dimensionless SO3 angular residual / angular resolution squared plus measured-component distance / measurement sigma squared",
                 rejected_complete_indices=fit["chosen"]["outliers"],
                 rejected_partial_ids=fit["chosen"]["rejected_partial_ids"])
 

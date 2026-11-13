@@ -259,6 +259,8 @@ def document_result(document):
                 data.extend(_surface_traces(body.build_surfaces()[0]))
             figure = dict(data=data, layout=dict(template="plotly_dark", scene=dict(aspectmode="data"),
                 title=dict(text="Частичный импорт: общая оптика отсутствует")))
+        if dataset.get("manual_references"):
+            figure["data"].extend(_manual_comparison_layers(dataset))
         for layer in figure["data"]:
             layer["name"] = f"{ROUTES[direction].injection_side} · {layer.get('name', '')}"
             meta = layer.setdefault("meta", {})
@@ -281,14 +283,46 @@ def document_result(document):
                 scene_direction="both" if shared_frame and len(figures) > 1 else next(iter(document["datasets"])),
                 coordinate_frame=("survey" if all(d.get("display_frame") for d in document["datasets"].values())
                                   else next(iter(document["datasets"].values())).get("coordinate_frame", "legacy")),
-                can_activate=can_activate and all(d["status"] != "infeasible" for d in document["datasets"].values()),
+                can_activate=can_activate and all(d["status"] != "infeasible" and
+                    (not d.get("manual_references") or d["status"] == "validated")
+                    for d in document["datasets"].values()),
                 warnings=warnings)
+
+
+def _manual_comparison_layers(dataset):
+    """Immutable manual references and primary points in their survey frame."""
+    traces = []
+    records = dataset.get("observations", {}).get("records", [])
+    observations = {r["id"]: r for r in records}
+    for mirror in dataset["mirrors"]:
+        reference = mirror.get("manual_reference_survey", {})
+        face = reference.get("survey_edge_points_as_transformed_m")
+        points = face or reference.get("source_manual_points_survey_m")
+        meta = dict(mirror_id=mirror["canonical_id"], layer="reconstructed_rays")
+        if points:
+            points = list(points) + ([points[0]] if face else [])
+            traces.append(dict(type="scatter3d", mode="lines+markers",
+                x=[p[0] for p in points], y=[p[1] for p in points], z=[p[2] for p in points],
+                name=f"Ручной источник {mirror['source_manual_id']}", legendgroup="manual_references",
+                line=dict(color="#d8a65d", width=3, dash="dash"), marker=dict(size=2),
+                meta={**meta, "kind": "manual_reference"}, showlegend=False))
+        row = observations.get(mirror.get("survey_observation_id"), {})
+        points = [p for p in row.get("screens_m", []) if all(v is not None for v in p)]
+        if points:
+            traces.append(dict(type="scatter3d", mode="markers",
+                x=[p[0] for p in points], y=[p[1] for p in points], z=[p[2] for p in points],
+                name=f"Первичные точки {row.get('old_id', '')}", legendgroup="manual_primary",
+                marker=dict(size=3, color="#78c8f0"),
+                meta={**meta, "layer": "measurement_points", "kind": "manual_primary"}, showlegend=False))
+    return traces
 
 
 def optimize(payload, progress=None):
     from .state import new_document, dataset_from_config, validate_document, configuration_from_dataset
     from .calibration.reconstruction import reconstruct
-    document = payload.get("active_configuration")
+    document = payload.get("candidate_configuration") or payload.get("active_configuration")
+    if document and any(d.get("manual_references") for d in document.get("datasets", {}).values()):
+        return refine_manual_configuration(payload, progress)
     if document is None and payload.get("kind", "real") == "ideal":
         raise ValueError("В исторической идеальной конфигурации все лучи заданы. "
                          "Для восстановления недостающих лучей выберите «Историческая реальная».")
@@ -333,6 +367,28 @@ def optimize(payload, progress=None):
     return document_result(candidate)
 
 
+def refine_manual_configuration(payload, progress=None):
+    """Refine a diagnostic document without changing the accepted state."""
+    from .state import new_document, validate_document
+    from .calibration.manual_refinement import refine_manual
+    document = (payload.get("candidate_configuration") or payload.get("manual_configuration")
+                or payload.get("document") or payload.get("active_configuration"))
+    validate_document(document)
+    direction = payload.get("direction", "both")
+    if direction not in {*DIRECTIONS, "both"}:
+        raise ValueError("Неизвестная сторона")
+    chosen = list(document["datasets"]) if direction == "both" else [direction]
+    datasets = copy.deepcopy(document["datasets"])
+    for d in chosen:
+        if d not in datasets or not datasets[d].get("manual_references"):
+            raise ValueError("Для выбранной стороны отсутствует ручная реконструкция")
+        def report(value, direction=d):
+            if progress:
+                progress({"direction": direction, **value})
+        datasets[d] = refine_manual(datasets[d], options=payload.get("options"), progress=report)
+    return document_result(new_document(datasets, payload.get("configuration_version", 0)))
+
+
 def dispatch(method, payload, progress=None):
     if not isinstance(payload, dict):
         raise ValueError("Параметры должны быть JSON-объектом.")
@@ -344,6 +400,8 @@ def dispatch(method, payload, progress=None):
         return calibrate(payload)
     if method == "optimize":
         return optimize(payload, progress)
+    if method == "refine_manual":
+        return refine_manual_configuration(payload, progress)
     if method == "save_configuration":
         from .state import save_document
         document = payload.get("document") or payload.get("active_configuration") or _historical_document(payload)
@@ -355,4 +413,8 @@ def dispatch(method, payload, progress=None):
         from .legacy_import import import_legacy
         return document_result(import_legacy(payload["path"], payload.get("direction"),
                                              payload.get("coordinate_frame"), payload.get("kind", "real")))
+    if method == "import_manual":
+        from .manual_schema import import_manual
+        return document_result(import_manual(payload["path"], payload.get("direction"),
+                                             payload.get("coordinate_frame")))
     raise ValueError(f"Неизвестная операция: {method}")

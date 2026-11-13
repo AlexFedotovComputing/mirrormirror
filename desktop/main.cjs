@@ -3,7 +3,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { writeFile } = require('node:fs/promises');
 const { WorkerClient, validateRequest } = require('./worker-client.cjs');
-const { ConfigurationState } = require('./configuration-state.cjs');
+const { ConfigurationState, isManualConfiguration } = require('./configuration-state.cjs');
 
 const root = path.resolve(__dirname, '..');
 const page = pathToFileURL(path.join(__dirname, 'index.html')).href;
@@ -58,15 +58,20 @@ app.whenReady().then(() => {
         return await worker.request(method, { ...clean, ...configurations.payload(),
           document: selected?.document ?? null, path: filePath });
       }
-      if (method === 'load_configuration' || method === 'import_legacy') {
+      if (['load_configuration', 'import_legacy', 'import_manual'].includes(method)) {
         const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-          title: method === 'import_legacy' ? 'Импорт старого формата' : 'Открыть конфигурацию',
-          properties: ['openFile'], filters: method === 'import_legacy'
+          title: method === 'import_manual' ? 'Загрузить ручную реконструкцию' : method === 'import_legacy' ? 'Импорт старого формата' : 'Открыть конфигурацию',
+          properties: ['openFile'], filters: method !== 'load_configuration'
             ? [{ name: 'Исторические данные', extensions: ['json', 'txt', 'zip'] }]
             : [{ name: 'Конфигурация MirrorLab', extensions: ['json'] }],
         });
         if (canceled || !filePaths?.length) return { canceled: true };
         clean.path = filePaths[0];
+      }
+      if (method === 'refine_manual') {
+        const selected = configurations.candidate ?? configurations.active;
+        if (!isManualConfiguration(selected?.document)) throw new Error('Сначала загрузите ручную реконструкцию.');
+        clean.candidate_configuration = selected.document;
       }
       const result = await worker.request(method, { ...clean, ...configurations.payload() }, {
         onProgress: message => {
@@ -75,7 +80,7 @@ app.whenReady().then(() => {
           }
         },
       });
-      if (['optimize', 'load_configuration', 'import_legacy'].includes(method)) {
+      if (['optimize', 'refine_manual', 'load_configuration', 'import_legacy', 'import_manual'].includes(method)) {
         return configurations.offer(result, version, { load: method === 'load_configuration' });
       }
       if (version !== configurations.version) throw new Error('Конфигурация изменилась. Запоздалый результат не применён.');

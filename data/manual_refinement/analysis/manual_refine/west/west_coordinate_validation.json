@@ -1,0 +1,26 @@
+{
+  "count": 112,
+  "matched_full_primary_count": 83,
+  "primary_ids_unique": true,
+  "source_id_and_native_seed_id_unique": true,
+  "max_survey_native_roundtrip_error_m": 2.9504581591051765e-16,
+  "max_center_difference_from_historical_registration_m": 5.087681048627601e-16,
+  "survey_z_range_m": [
+    0.3442987089965279,
+    1.338185356896528
+  ],
+  "incidence_status_counts": {
+    "available": 72,
+    "outside_illumination": 40
+  },
+  "max_algebraic_reflection_vector_error": 6.473657049138938e-16,
+  "physical_body_count": 112,
+  "original_historical_fit_metrics": {
+    "n": 83,
+    "rms_mm": 1.615777825931308,
+    "median_mm": 1.2621352050231038,
+    "max_mm": 3.8686057300078778,
+    "angle_median_mrad": 0.4161195904295536
+  },
+  "fit_metrics_are_independent_uncertainty": false
+}

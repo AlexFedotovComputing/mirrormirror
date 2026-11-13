@@ -1,0 +1,297 @@
+{
+  "package": "manual_reconstruction_inputs_and_agent_task",
+  "version": 1,
+  "date": "2026-11-12",
+  "repository": "AlexFedotovComputing/mirrormirror",
+  "commit": "4ab80dfba048e11cf5a3b0bef7dc6832b298540b",
+  "coordinate_frame": "survey/world as stored in current project",
+  "units": "m",
+  "all_outputs_are_derived_not_new_measurements": true,
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0"
+  },
+  "files": [
+    {
+      "path": "AGENT_TASK_manual_reconstruction.txt",
+      "bytes": 44406,
+      "sha256": "cfb276e3c948d83cb82fc3e8de05b78fd21e3912814fd6a9a51986c026f5450f"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 8658,
+      "sha256": "a2a50e32dcaf0082b092d2881dd3ac2270ca4bfb50753b1a161ecc38a87234a4"
+    },
+    {
+      "path": "analysis/manual_refine/east/README_EAST_recovery.txt",
+      "bytes": 15018,
+      "sha256": "a7c65ec6feeaaf1b7626840f7e16b04cc61b7ecc7b9e3b2a8a436de325222002"
+    },
+    {
+      "path": "analysis/manual_refine/east/east_before_path_repair.json",
+      "bytes": 2943415,
+      "sha256": "b05ffaae130a855889c4ebec089103d2fd67880f4c32042a5858eab4d0e4177d"
+    },
+    {
+      "path": "analysis/manual_refine/east/east_raw_manual_projected_centers.json",
+      "bytes": 46239,
+      "sha256": "14d6fb46d523fa90adec7620b15fa5864e2c8fc327cfed3bbaad2c7ad0d42464"
+    },
+    {
+      "path": "analysis/manual_refine/east/east_recovered_centers.csv",
+      "bytes": 44859,
+      "sha256": "b532d0deed6d1d2b5b3317657e5f4469d635fbfa38407a91596938a82febbb0c"
+    },
+    {
+      "path": "analysis/manual_refine/east/east_recovered_centers.json",
+      "bytes": 3228085,
+      "sha256": "9c830da208e795a859cffcb71c887ab697f1129cf065496c86f454578cf59e67"
+    },
+    {
+      "path": "analysis/manual_refine/east/east_recovery_summary.json",
+      "bytes": 54851,
+      "sha256": "fbf4caf3bdb6f20f4c7643a7ea4410e621777c27b60121929624e0096bc2657c"
+    },
+    {
+      "path": "analysis/manual_refine/east/recover_east.py",
+      "bytes": 28542,
+      "sha256": "3fee8929d79e2f386a700a725aa707d3ea6484eea2f9ce5873f52d9b959be67d"
+    },
+    {
+      "path": "analysis/manual_refine/east/repair_east.py",
+      "bytes": 11271,
+      "sha256": "0b7ecccbf55ff4fa6ae93bc091a66b2348b21cb596dec959c1281614a7cb75d4"
+    },
+    {
+      "path": "analysis/manual_refine/east/repair_east_paths.py",
+      "bytes": 17964,
+      "sha256": "5d04c5a69f977e7938b8bca98f9d9a5b0ff7d21e49e07a2282e04cde431a6685"
+    },
+    {
+      "path": "analysis/manual_refine/frame/PORTABLE_SCRIPTS_README.txt",
+      "bytes": 3950,
+      "sha256": "a4d727a9ae7f7114b6594b8ea6bfe0c4340b0f6d640372a6000bbea0e813da2f"
+    },
+    {
+      "path": "analysis/manual_refine/frame/compare_west_refinement.py",
+      "bytes": 2650,
+      "sha256": "0ffb2b84ca1d1ab72d797e4efaf6bbbd5d0a4c7ad4d2770879b98b0200eed8ea"
+    },
+    {
+      "path": "analysis/manual_refine/frame/coordinate_and_optical_integration_notes.txt",
+      "bytes": 7021,
+      "sha256": "2ad3051f12aab34d6c93cfb9a2e64b67ff8d98d8fc1dadefffbf00e7f883a67b"
+    },
+    {
+      "path": "analysis/manual_refine/frame/fit_mc_steering.py",
+      "bytes": 5976,
+      "sha256": "9550adf35e548a17f20965f44143a5af140e4a3cb24964d76991c38f6952f14b"
+    },
+    {
+      "path": "analysis/manual_refine/frame/relax_west_exit_z.py",
+      "bytes": 6034,
+      "sha256": "8bea992721629c0098f4276f929b4d20a92f4b163a6ffc4fa6104486105c60db"
+    },
+    {
+      "path": "analysis/manual_refine/frame/validate_west_optical_candidate.py",
+      "bytes": 1865,
+      "sha256": "5b7c7dab7f852f2f97007e465d178738ca3cc6a180a34467dbe11ebbf58a4d63"
+    },
+    {
+      "path": "analysis/manual_refine/frame/west_exit_z_body_validation.json",
+      "bytes": 130186,
+      "sha256": "99ad1930377f6dfb30a5e73a88e7b176115a77dd577b37985224f40d07682168"
+    },
+    {
+      "path": "analysis/manual_refine/frame/west_exit_z_candidate_bodies_native.json",
+      "bytes": 122055,
+      "sha256": "863c64f2968fbe8c108329b9efc591d2565504a8cbb011ec68e109fcc23ad403"
+    },
+    {
+      "path": "analysis/manual_refine/frame/west_exit_z_full_reflections.json",
+      "bytes": 615597,
+      "sha256": "a3b30c26667f6cf6bc54cd8640746481f5088f05707dea18bcb1d1ca4787beb3"
+    },
+    {
+      "path": "analysis/manual_refine/frame/west_exit_z_primary_residuals.json",
+      "bytes": 39647,
+      "sha256": "4beb26942dc826ac8217969e899667f431f0329896080c6b02629ecab9c42da1"
+    },
+    {
+      "path": "analysis/manual_refine/frame/west_mc_slide_roll_full_reflections.json",
+      "bytes": 609698,
+      "sha256": "12d19516b5cd5e27862fbf8ff21211e8bd1c27d5d672092d894d777349d805d1"
+    },
+    {
+      "path": "analysis/manual_refine/frame/west_mc_steering_candidate.json",
+      "bytes": 722346,
+      "sha256": "347b85cb78b6b1fefcd8252ad4f6dcd5bf96742a4d9f30e69ebbead27504c82d"
+    },
+    {
+      "path": "analysis/manual_refine/west/README_WEST.txt",
+      "bytes": 9502,
+      "sha256": "0c7b99dce1438b0db9a014ab58fae7e81ab609f1eff80f20a766a5cac81ddce8"
+    },
+    {
+      "path": "analysis/manual_refine/west/apply_mc_candidate.py",
+      "bytes": 5504,
+      "sha256": "e66739cc80591dffe3c9956c87467768f53976e2658ed8760188f2981e3ae661"
+    },
+    {
+      "path": "analysis/manual_refine/west/attach_west_exit_variant.py",
+      "bytes": 7252,
+      "sha256": "951906c2e426293b47a013ac43ecbf4ddbdc5ff23ea515744eda5b81fae6b5a4"
+    },
+    {
+      "path": "analysis/manual_refine/west/build_west_corrected.py",
+      "bytes": 16288,
+      "sha256": "1a50b96127ec29a603d1b717ce457b71761a0d50b55e8a8f0324ba346ed420e9"
+    },
+    {
+      "path": "analysis/manual_refine/west/finalize_west_validation.py",
+      "bytes": 3920,
+      "sha256": "30c89dcabeb6d4da982ead53ffdb30d516e0cc0ec1a62ac7276a24a723fcd2fb"
+    },
+    {
+      "path": "analysis/manual_refine/west/refine_west_bodies.py",
+      "bytes": 5334,
+      "sha256": "cef3a4c71873b48e88c386e29b61c86623fcc0527e6afb629360cfdbe62316fd"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_coordinate_validation.json",
+      "bytes": 793,
+      "sha256": "2a67709f867ca506e119b0b749d405e0b34a6a8a7ed1624951cf7864e0e14dad"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_current_optical_seed_bodies_native.json",
+      "bytes": 110502,
+      "sha256": "359b0a4372daa8da1ba23a065ed6f74d4411d3a315a30ba4fd67b99c1ca836c7"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_exit_refinement_centers_survey_m.csv",
+      "bytes": 18833,
+      "sha256": "4a658b8b6dc3818fa53125470e12351f98dedeef3333f7e0ceb8db40d8555be6"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_historical_registration_reference.json",
+      "bytes": 143170,
+      "sha256": "0b6d44d33db45bd83b48b2418bdcba788fd448954a40c37751e4557b9e0101e4"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_manual_centers_native_m.csv",
+      "bytes": 17417,
+      "sha256": "1ec30b1e2977795ea956bfb1e6556d593707db2a9f16b87c71e91d80118cc008"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_manual_centers_survey_m.csv",
+      "bytes": 17537,
+      "sha256": "1b127e168caff21d6626b177c7333a984b3aa1e62f6daa3127c68ebf2d97df28"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_manual_corrected_survey.json",
+      "bytes": 4312070,
+      "sha256": "1d34c4bfc6dcf1d8e94b1893dbc60105de805accf62d74313b1eb37534d15f45"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_manual_face_points_survey_m.txt",
+      "bytes": 25176,
+      "sha256": "d85cb73145f115df75bb761069f49754f605a56ccdca7c4c9e3437fda9fec84d"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_mc_roll_seed_bodies_native.json",
+      "bytes": 108952,
+      "sha256": "665b67a361a862ed57f68cad93e148f361037b4f22f6762a04a40c23676a5b82"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_mc_roll_validation.json",
+      "bytes": 308769,
+      "sha256": "341cdf573a351cc1b2dc1e572d0d00285df1cce7ab816df4495c4566ef8471d4"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_mc_slide_roll_seed_bodies_native.json",
+      "bytes": 108954,
+      "sha256": "cdd1f0eba86d072cc1b9f65c1c28ed48db7837f54eb1012adbc3352a18eb96fc"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_mc_slide_roll_validation.json",
+      "bytes": 156761,
+      "sha256": "84f848534d72ed039e836a3af7fc61a870ebd8ae399ba30baaccc26405d39596"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_operational_seed_body_validation.json",
+      "bytes": 132210,
+      "sha256": "24bef9aaa9f8e90ea1aad8ff2eb0bd8be3f145145df89c6fb3ca677240bb9a99"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_refined_seed_centers_native_m.csv",
+      "bytes": 19812,
+      "sha256": "35f86a7d52df9cb7d0820fc827bace86ceb50c267ee5bd0694243bc5bad3ac43"
+    },
+    {
+      "path": "analysis/manual_refine/west/west_refined_seed_centers_survey_m.csv",
+      "bytes": 19960,
+      "sha256": "ff1d9745d6155602320cef544756cfe132599dc78b5faab06d0226605f11724a"
+    },
+    {
+      "path": "coordinates/east_centers_survey_m.csv",
+      "bytes": 30421,
+      "sha256": "96c6480f9755443ca3ef64c5cd62049d0af9f445dee3892e495cb48200502503"
+    },
+    {
+      "path": "coordinates/west_centers_survey_m.csv",
+      "bytes": 16017,
+      "sha256": "468fbbd38e55364ec9d4c86b451f07eae873671a8ee918d301da2bcdfca4d0c6"
+    },
+    {
+      "path": "coordinates/west_surface_points_survey_m.txt",
+      "bytes": 25176,
+      "sha256": "d85cb73145f115df75bb761069f49754f605a56ccdca7c4c9e3437fda9fec84d"
+    },
+    {
+      "path": "east_recovered_centers.json",
+      "bytes": 3228085,
+      "sha256": "9c830da208e795a859cffcb71c887ab697f1129cf065496c86f454578cf59e67"
+    },
+    {
+      "path": "package_validation.json",
+      "bytes": 1362,
+      "sha256": "5bdb2bd420d69327fb1512bb7f941e4c24b49cda90da92d514f09bfa19d2b1d3"
+    },
+    {
+      "path": "primary_measurements/Геодезические измерения из+к-.xlsx",
+      "bytes": 17139,
+      "sha256": "9716d062ebe785fe24f876dbdddac984af15f57ada151170d29e12ab9c79121f"
+    },
+    {
+      "path": "primary_measurements/Геодезические измерения из-к+.xlsx",
+      "bytes": 16844,
+      "sha256": "495236874c4c76b0c379498d273d8b69f40791e8c2923bd879a277aab6beeef7"
+    },
+    {
+      "path": "reference/west_reference_registration_hypotheses.json",
+      "bytes": 143170,
+      "sha256": "0b6d44d33db45bd83b48b2418bdcba788fd448954a40c37751e4557b9e0101e4"
+    },
+    {
+      "path": "upload/Координаты_микрозеркал_из+к-.txt",
+      "bytes": 23571,
+      "sha256": "561eaa2d9230863aa0669e4b263cbc8f524e69f9939fb2d442363d4033c319d8"
+    },
+    {
+      "path": "upload/из_к+_уравнения_лучей_восстановленные.txt",
+      "bytes": 9323,
+      "sha256": "bbca9e0bf0f31cb145e00b79c0023c23aade26d24b8734cf09db60781a11f29a"
+    },
+    {
+      "path": "validate_delivery.py",
+      "bytes": 7218,
+      "sha256": "b17e5451e9d2ac583f11d6c5f5f6818481748d1cd5def0992ba5900f07c6d0b7"
+    },
+    {
+      "path": "west_manual_corrected_survey.json",
+      "bytes": 4312070,
+      "sha256": "1d34c4bfc6dcf1d8e94b1893dbc60105de805accf62d74313b1eb37534d15f45"
+    }
+  ]
+}

@@ -14,7 +14,7 @@ class ConfigurationState {
     if (expectedVersion !== this.version) throw new Error('Конфигурация уже изменена. Запоздалый результат не применён.');
     if (!result?.document) return { ...result, configuration_version: this.version, active: false };
     this.candidate = { ...result, configuration_version: this.version };
-    if ((load || result.status === 'validated') && result.status !== 'infeasible' && result.can_activate !== false) {
+    if (result.status === 'validated' && result.can_activate !== false) {
       return this.accept(this.version, { load });
     }
     return { ...this.candidate, active: false };
@@ -24,8 +24,9 @@ class ConfigurationState {
     if (!this.candidate || expectedVersion !== this.version || this.candidate.configuration_version !== this.version) {
       throw new Error('Кандидат устарел. Запустите расчёт или загрузите файл заново.');
     }
-    if (!load && this.candidate.status === 'infeasible') throw new Error('Недопустимая конфигурация доступна только для диагностики.');
-    if (!load && this.candidate.can_activate === false) throw new Error('Для этой геометрии не установлена общая оптика. Результат можно сохранить как частичный импорт.');
+    if (this.candidate.status === 'infeasible') throw new Error('Недопустимая конфигурация доступна только для диагностики.');
+    if (isManualConfiguration(this.candidate.document) && this.candidate.status !== 'validated') throw new Error('Ручная реконструкция не прошла все проверки. Доступны уточнение, просмотр и сохранение кандидата.');
+    if (this.candidate.can_activate === false) throw new Error('Для этой геометрии не установлена общая оптика или конфигурация неполна. Результат можно сохранить как частичный импорт.');
     this.version++;
     this.active = { ...this.candidate, configuration_version: this.version, active: true };
     this.candidate = null;
@@ -39,4 +40,9 @@ class ConfigurationState {
   }
 }
 
-module.exports = { ConfigurationState };
+function isManualConfiguration(document) {
+  return Object.values(document?.datasets ?? {}).some(dataset =>
+    dataset?.model_kind === 'manual_reconstruction' || !!dataset?.manual_references);
+}
+
+module.exports = { ConfigurationState, isManualConfiguration };

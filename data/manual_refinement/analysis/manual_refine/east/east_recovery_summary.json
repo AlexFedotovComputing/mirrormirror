@@ -1,0 +1,1730 @@
+{
+  "summary": {
+    "mirror_count": 112,
+    "before_full_points_mm": {
+      "n": 170,
+      "median": 3.459018103428182e-07,
+      "rms": 20.03803131003347,
+      "max": 65.50328215921917,
+      "p90": 44.37208391714742
+    },
+    "after_full_points_mm": {
+      "n": 170,
+      "median": 0.47903327697658704,
+      "rms": 13.047645718062046,
+      "max": 55.447060573050095,
+      "p90": 21.387182077202013
+    },
+    "before_single_points_mm": {
+      "n": 17,
+      "median": 3.235166014466667e-07,
+      "rms": 16.393695686757837,
+      "max": 50.05581375646254,
+      "p90": 18.16907690960664
+    },
+    "after_single_points_mm": {
+      "n": 17,
+      "median": 0.24461610640320397,
+      "rms": 15.852080735386085,
+      "max": 38.98972958452019,
+      "p90": 31.06562243061681
+    },
+    "incoming_status_counts": {
+      "available": 112
+    },
+    "body_conflicts": 0,
+    "validated_reflections": 112,
+    "minimum_body_gap_m": 2.0004044677083107e-06,
+    "failed_reflections": 0,
+    "unavailable_reflections": 0,
+    "maximum_clearance_repair_shift_mm": 0.0747767920869256,
+    "maximum_path_repair_shift_mm": 0.4912642196832585,
+    "primary_conflict_groups": [
+      "2_1",
+      "2_2",
+      "3_4"
+    ],
+    "nonconflicting_groups_full_point_residual_mm": {
+      "n": 140,
+      "median": 0.36584605979865803,
+      "rms": 0.6593494841654218,
+      "max": 2.031851018091295,
+      "p90": 1.095264905012196
+    },
+    "initial_nonlinear_recovery_seconds": 177.9910171399997
+  },
+  "groups": [
+    {
+      "group": "1_1",
+      "raw_primary_anchor_m": [
+        0.45885971085551874,
+        -1.1795974908502127,
+        -0.34391583719729124
+      ],
+      "beam_anchor_m": [
+        0.4648166390845385,
+        -1.188078572780622,
+        -0.34391583719729124
+      ],
+      "anchor_to_current_beam_axis_mm": 10.364060238922193,
+      "center_mean_survey_m": [
+        0.45906019473909915,
+        -1.1803809826678682,
+        -0.343920885699768
+      ],
+      "bundle_radius_mm": 1.9258499982478134,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 3.2748558169447457e-07,
+        "rms": 3.852149020093207e-07,
+        "max": 5.728543948893804e-07,
+        "p90": 5.65900045825797e-07
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.44863729020731546,
+        "rms": 0.9159307115163224,
+        "max": 1.6463835773331306,
+        "p90": 1.551550257313811
+      },
+      "before_single_points_mm": {
+        "n": 0
+      },
+      "after_single_points_mm": {
+        "n": 0
+      },
+      "individual_position_rms_mm": 0.3504365638482903,
+      "max_individual_position_mm": 0.6526149826925309,
+      "angular_training_groups": [
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -4.0152557541217856e-05,
+        "candidate_feasible_for_enforced_constraints": false
+      },
+      "position_repair": {
+        "group": "1_1",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -2.8543833963112775e-13,
+        "maximum_center_shift_mm": 0.0040409499164097435,
+        "exact_conflicts": 0,
+        "gap_m": 2.0011561500628684e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": false,
+        "solver_message": "Iteration limit reached",
+        "iterations": 160,
+        "objective": 35.29451679966536,
+        "minimum_constraint_margin_mm": -4.0152557541217856e-05,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.862187934960467e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0006526149826925309,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "1_2",
+      "raw_primary_anchor_m": [
+        0.46666362014541046,
+        -1.181214366628785,
+        -0.67613482075124
+      ],
+      "beam_anchor_m": [
+        0.46481663908454907,
+        -1.188078572780698,
+        -0.6761348207512399
+      ],
+      "anchor_to_current_beam_axis_mm": 7.108351787520014,
+      "center_mean_survey_m": [
+        0.46470854271259593,
+        -1.179047828867235,
+        -0.6762141391835497
+      ],
+      "bundle_radius_mm": 1.9955420933156545,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 3.641474326056266e-07,
+        "rms": 3.644348080923174e-07,
+        "max": 4.846705249972789e-07,
+        "p90": 4.820164214222098e-07
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 0.27554621514544814,
+        "rms": 0.5595507392648056,
+        "max": 1.0795496013965218,
+        "p90": 0.9398800891876518
+      },
+      "before_single_points_mm": {
+        "n": 2,
+        "median": 1.130750604909934e-07,
+        "rms": 1.2645257247995739e-07,
+        "max": 1.6968145396167004e-07,
+        "p90": 1.5836017526753472e-07
+      },
+      "after_single_points_mm": {
+        "n": 2,
+        "median": 0.15226951806347166,
+        "rms": 0.15350430428739392,
+        "max": 0.17170055775451498,
+        "p90": 0.16781434981630633
+      },
+      "individual_position_rms_mm": 0.17939618710748295,
+      "max_individual_position_mm": 0.3096694925678683,
+      "angular_training_groups": [
+        "1_1",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -1.400052194606537e-06,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "1_2",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -6.639133687258436e-14,
+        "maximum_center_shift_mm": 0.002034076073590657,
+        "exact_conflicts": 0,
+        "gap_m": 2.001119882133338e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": false,
+        "solver_message": "Iteration limit reached",
+        "iterations": 160,
+        "objective": 7.473414582711427,
+        "minimum_constraint_margin_mm": -1.400052194606537e-06,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.001119881242101e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0003096694925678683,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "1_3",
+      "raw_primary_anchor_m": [
+        0.4601194743113348,
+        -1.1869577617703073,
+        -1.0051578781114634
+      ],
+      "beam_anchor_m": [
+        0.4648166390845595,
+        -1.1880785727807732,
+        -1.0051578781114634
+      ],
+      "anchor_to_current_beam_axis_mm": 4.829034502672815,
+      "center_mean_survey_m": [
+        0.45868491004895434,
+        -1.185081803558974,
+        -1.0050747698030726
+      ],
+      "bundle_radius_mm": 2.0143264092616664,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 3.3303589542769024e-07,
+        "rms": 3.6313121943702027e-07,
+        "max": 5.764184778178404e-07,
+        "p90": 5.253585076247931e-07
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 0.4277090094258495,
+        "rms": 0.5677309307417435,
+        "max": 1.0837359978545038,
+        "p90": 0.8065853864128767
+      },
+      "before_single_points_mm": {
+        "n": 1,
+        "median": 2.569734292737345e-07,
+        "rms": 2.569734292737345e-07,
+        "max": 2.569734292737345e-07,
+        "p90": 2.569734292737345e-07
+      },
+      "after_single_points_mm": {
+        "n": 1,
+        "median": 0.07213225110972649,
+        "rms": 0.07213225110972649,
+        "max": 0.07213225110972649,
+        "p90": 0.07213225110972649
+      },
+      "individual_position_rms_mm": 0.19401185216003816,
+      "max_individual_position_mm": 0.28470321024806616,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -0.11065733489155827,
+        "candidate_feasible_for_enforced_constraints": false
+      },
+      "position_repair": {
+        "group": "1_3",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -1.0436096431476471e-14,
+        "maximum_center_shift_mm": 0.055914776508635834,
+        "exact_conflicts": 0,
+        "gap_m": 2.0064295132417286e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": false,
+        "solver_message": "Iteration limit reached",
+        "iterations": 160,
+        "objective": 9.131028423118588,
+        "minimum_constraint_margin_mm": -0.11065733489155827,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.0064295132079828e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.00028470321024806616,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "1_4",
+      "raw_primary_anchor_m": [
+        0.46580465574619107,
+        -1.1872409796562249,
+        -1.3347008963039244
+      ],
+      "beam_anchor_m": [
+        0.46481663908457,
+        -1.1880785727808485,
+        -1.3347008963039244
+      ],
+      "anchor_to_current_beam_axis_mm": 1.2952757104406758,
+      "center_mean_survey_m": [
+        0.46409863831117987,
+        -1.1845491673393933,
+        -1.3347699656983605
+      ],
+      "bundle_radius_mm": 2.047034311622063,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 2.7184504094901846e-07,
+        "rms": 3.622437285154162e-07,
+        "max": 5.361609419879731e-07,
+        "p90": 5.218980078266808e-07
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 0.2855204952663358,
+        "rms": 0.6076302786013447,
+        "max": 1.376082350701029,
+        "p90": 1.119674666186185
+      },
+      "before_single_points_mm": {
+        "n": 1,
+        "median": 3.7917657379464597e-07,
+        "rms": 3.7917657379464597e-07,
+        "max": 3.7917657379464597e-07,
+        "p90": 3.7917657379464597e-07
+      },
+      "after_single_points_mm": {
+        "n": 1,
+        "median": 0.07103861987174426,
+        "rms": 0.07103861987174426,
+        "max": 0.07103861987174426,
+        "p90": 0.07103861987174426
+      },
+      "individual_position_rms_mm": 0.17631823214988246,
+      "max_individual_position_mm": 0.3138900146916849,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -6.3535033214465176e-09,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "1_4",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -2.140954080687152e-11,
+        "maximum_center_shift_mm": 0.002739100631772393,
+        "exact_conflicts": 0,
+        "gap_m": 4.0934244083009416e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 65,
+        "objective": 6.60932246639505,
+        "minimum_constraint_margin_mm": -6.3535033214465176e-09,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 4.093424407881425e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0003138900146916849,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "2_1",
+      "raw_primary_anchor_m": [
+        -1.183509672059884,
+        -0.5265607070215683,
+        -0.34521721338491984
+      ],
+      "beam_anchor_m": [
+        -1.1868599274471119,
+        -0.46421849998344306,
+        -0.34521721338491984
+      ],
+      "anchor_to_current_beam_axis_mm": 62.43216310159471,
+      "center_mean_survey_m": [
+        -1.1826827279056271,
+        -0.4725938884773037,
+        -0.34532018093286787
+      ],
+      "bundle_radius_mm": 1.897689630926536,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 3.502093778777771e-07,
+        "rms": 3.113351449556279e-07,
+        "max": 3.9828092151647325e-07,
+        "p90": 3.976045080175475e-07
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 28.01345799742922,
+        "rms": 28.203590037688866,
+        "max": 42.11933481144367,
+        "p90": 37.68326052132772
+      },
+      "before_single_points_mm": {
+        "n": 2,
+        "median": 1.58410250207564e-07,
+        "rms": 1.6739239022876314e-07,
+        "max": 2.1250650641513801e-07,
+        "p90": 2.0168725517362322e-07
+      },
+      "after_single_points_mm": {
+        "n": 2,
+        "median": 18.85863163211687,
+        "rms": 22.218661562296568,
+        "max": 30.606862757864945,
+        "p90": 28.257216532715333
+      },
+      "individual_position_rms_mm": 1.338809121405957,
+      "max_individual_position_mm": 1.5000000000515346,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -0.0005797010199055313,
+        "candidate_feasible_for_enforced_constraints": false
+      },
+      "position_repair": {
+        "group": "2_1",
+        "solver_success": false,
+        "message": "Positive directional derivative for linesearch",
+        "min_margin_mm": -8.270386597786228e-10,
+        "maximum_center_shift_mm": 0.003874020694020227,
+        "exact_conflicts": 0,
+        "gap_m": 2.049247413128978e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conflict_with_primary_under_fixed_current_optics",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": false,
+        "solver_message": "Iteration limit reached",
+        "iterations": 160,
+        "objective": 9342.738918848909,
+        "minimum_constraint_margin_mm": -0.0005797010199055313,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.0540589564337585e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0015000000000515345,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "2_2",
+      "raw_primary_anchor_m": [
+        -1.1873489460227693,
+        -0.537533506579703,
+        -0.6780583257772267
+      ],
+      "beam_anchor_m": [
+        -1.1868599274470482,
+        -0.46421849998338593,
+        -0.6780583257772266
+      ],
+      "anchor_to_current_beam_axis_mm": 73.31663748007962,
+      "center_mean_survey_m": [
+        -1.1833194220285495,
+        -0.4727195147880665,
+        -0.677542453498189
+      ],
+      "bundle_radius_mm": 1.89989329210475,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 4.011884786468334e-07,
+        "rms": 3.955371360355995e-07,
+        "max": 5.313073492136593e-07,
+        "p90": 5.198529375642126e-07
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 34.47249976588675,
+        "rms": 35.79986875388972,
+        "max": 55.447060573050095,
+        "p90": 47.11904750417018
+      },
+      "before_single_points_mm": {
+        "n": 2,
+        "median": 3.4096997264051723e-07,
+        "rms": 3.950544810573719e-07,
+        "max": 5.404881942671003e-07,
+        "p90": 5.005845499417837e-07
+      },
+      "after_single_points_mm": {
+        "n": 2,
+        "median": 29.61911594068546,
+        "rms": 29.695938150680924,
+        "max": 31.753761939744606,
+        "p90": 31.326832739932776
+      },
+      "individual_position_rms_mm": 1.3221899505738002,
+      "max_individual_position_mm": 1.5000000004164782,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -4.035691616269688e-06,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "2_2",
+        "solver_success": false,
+        "message": "Positive directional derivative for linesearch",
+        "min_margin_mm": -6.860033374689323e-10,
+        "maximum_center_shift_mm": 0.011009907332780787,
+        "exact_conflicts": 0,
+        "gap_m": 2.0990052312372698e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conflict_with_primary_under_fixed_current_optics",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": false,
+        "solver_message": "Iteration limit reached",
+        "iterations": 160,
+        "objective": 14949.839550666478,
+        "minimum_constraint_margin_mm": -4.035691616269688e-06,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 4.142604875733893e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.001500000000416478,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "2_3",
+      "raw_primary_anchor_m": [
+        -1.1843684547426945,
+        -0.45451943152591084,
+        -1.0077654176910247
+      ],
+      "beam_anchor_m": [
+        -1.186859927446985,
+        -0.46421849998332937,
+        -1.007765417691025
+      ],
+      "anchor_to_current_beam_axis_mm": 10.013958516886126,
+      "center_mean_survey_m": [
+        -1.1846851211979625,
+        -0.45554617932930797,
+        -1.0077617172778752
+      ],
+      "bundle_radius_mm": 1.7634952701536268,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 47.05473394124722,
+        "rms": 46.23980132571588,
+        "max": 64.40039762000089,
+        "p90": 58.70226105458495
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.5408708328410239,
+        "rms": 0.857763119111581,
+        "max": 2.031851018091295,
+        "p90": 1.2678559567366938
+      },
+      "before_single_points_mm": {
+        "n": 1,
+        "median": 50.05581375646254,
+        "rms": 50.05581375646254,
+        "max": 50.05581375646254,
+        "p90": 50.05581375646254
+      },
+      "after_single_points_mm": {
+        "n": 1,
+        "median": 0.24461610640320397,
+        "rms": 0.24461610640320397,
+        "max": 0.24461610640320397,
+        "p90": 0.24461610640320397
+      },
+      "individual_position_rms_mm": 0.40172451433144796,
+      "max_individual_position_mm": 0.7226368803341141,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -9.05559792852283e-10,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "2_3",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -2.040034807748725e-12,
+        "maximum_center_shift_mm": 0.0031438123449755878,
+        "exact_conflicts": 0,
+        "gap_m": 2.0284859547712e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 73,
+        "objective": 16.81677512001088,
+        "minimum_constraint_margin_mm": -9.05559792852283e-10,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.4698837379924834e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0007226368803341141,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "2_4",
+      "raw_primary_anchor_m": [
+        -1.1889356564968363,
+        -0.4605022765585024,
+        -1.3365097444676004
+      ],
+      "beam_anchor_m": [
+        -1.1868599274469223,
+        -0.46421849998327297,
+        -1.3365097444676004
+      ],
+      "anchor_to_current_beam_axis_mm": 4.256638066769427,
+      "center_mean_survey_m": [
+        -1.1866920285918905,
+        -0.46064577324214234,
+        -1.3364388104574467
+      ],
+      "bundle_radius_mm": 2.0595104857097173,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 40.511056376374654,
+        "rms": 42.10497761912524,
+        "max": 56.01982899296759,
+        "p90": 55.792882564497745
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.380603861994083,
+        "rms": 0.6705948239767493,
+        "max": 1.5212505446482891,
+        "p90": 1.1721632490695963
+      },
+      "before_single_points_mm": {
+        "n": 0
+      },
+      "after_single_points_mm": {
+        "n": 0
+      },
+      "individual_position_rms_mm": 0.18437848368165882,
+      "max_individual_position_mm": 0.27925903231427757,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -3.3812114209944e-09,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "2_4",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": 2.62234678416462e-13,
+        "maximum_center_shift_mm": 0.0027412924523332024,
+        "exact_conflicts": 0,
+        "gap_m": 5.408284650422114e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 57,
+        "objective": 13.04954136340941,
+        "minimum_constraint_margin_mm": -3.3812114209944e-09,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 5.408284649949014e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0002792590323142776,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "3_1",
+      "raw_primary_anchor_m": [
+        -0.4596207902107154,
+        1.1823878907453995,
+        -0.3486038502424159
+      ],
+      "beam_anchor_m": [
+        -0.4637862033709731,
+        1.186132937491406,
+        -0.348603850242416
+      ],
+      "anchor_to_current_beam_axis_mm": 5.601432131644728,
+      "center_mean_survey_m": [
+        -0.4588287075004338,
+        1.1794690908052385,
+        -0.3484091682865073
+      ],
+      "bundle_radius_mm": 1.9803125764425202,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 8,
+        "median": 3.480221543350189e-07,
+        "rms": 3.658198644053072e-07,
+        "max": 5.031822320217213e-07,
+        "p90": 4.960325546401466e-07
+      },
+      "after_full_points_mm": {
+        "n": 8,
+        "median": 0.18283141611186682,
+        "rms": 0.38448459772577437,
+        "max": 0.8369617385840317,
+        "p90": 0.5789877430748618
+      },
+      "before_single_points_mm": {
+        "n": 2,
+        "median": 3.072947329699484e-07,
+        "rms": 3.0772260548738994e-07,
+        "max": 3.235166014466667e-07,
+        "p90": 3.2027222775132307e-07
+      },
+      "after_single_points_mm": {
+        "n": 2,
+        "median": 0.26130737162794576,
+        "rms": 0.3326221062342112,
+        "max": 0.4671129184156296,
+        "p90": 0.4259518090580928
+      },
+      "individual_position_rms_mm": 0.16406272846240247,
+      "max_individual_position_mm": 0.294131229964952,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -9.673929269513038e-10,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "3_1",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -1.127986593019159e-13,
+        "maximum_center_shift_mm": 0.001988712933745743,
+        "exact_conflicts": 0,
+        "gap_m": 2.6939618055780756e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 64,
+        "objective": 5.923328047757412,
+        "minimum_constraint_margin_mm": -9.673929269513038e-10,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.6939618055928864e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.000294131229964952,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "3_2",
+      "raw_primary_anchor_m": [
+        -0.4637045740310807,
+        1.1815759065726168,
+        -0.6791086640957548
+      ],
+      "beam_anchor_m": [
+        -0.46378620337104487,
+        1.186132937491282,
+        -0.6791086640957549
+      ],
+      "anchor_to_current_beam_axis_mm": 4.5577619664494025,
+      "center_mean_survey_m": [
+        -0.462155661719165,
+        1.1796237874009556,
+        -0.67909077640286
+      ],
+      "bundle_radius_mm": 2.1848741889691916,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 2.1889922007639476e-07,
+        "rms": 2.630209279058669e-07,
+        "max": 4.6702579903328694e-07,
+        "p90": 4.474810267916966e-07
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.3716665392370474,
+        "rms": 0.5369375208870885,
+        "max": 1.042492279532714,
+        "p90": 0.7828088674705953
+      },
+      "before_single_points_mm": {
+        "n": 0
+      },
+      "after_single_points_mm": {
+        "n": 0
+      },
+      "individual_position_rms_mm": 0.26156030380517054,
+      "max_individual_position_mm": 0.49913035083949325,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -4.021194387789361e-09,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "3_2",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -2.0738966099997924e-13,
+        "maximum_center_shift_mm": 0.00206478791795784,
+        "exact_conflicts": 0,
+        "gap_m": 2.713044241678247e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 64,
+        "objective": 6.924715222984749,
+        "minimum_constraint_margin_mm": -4.021194387789361e-09,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 9.02148454693496e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0004991303508394933,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "3_3",
+      "raw_primary_anchor_m": [
+        -0.45485974180914035,
+        1.185239753419092,
+        -1.0082017473465748
+      ],
+      "beam_anchor_m": [
+        -0.46378620337111626,
+        1.1861329374911582,
+        -1.0082017473465748
+      ],
+      "anchor_to_current_beam_axis_mm": 8.971036384054313,
+      "center_mean_survey_m": [
+        -0.45532516815911045,
+        1.1851881649214495,
+        -1.0081792067003474
+      ],
+      "bundle_radius_mm": 1.8363592597039764,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 2.679548359167429e-07,
+        "rms": 2.9635019685860686e-07,
+        "max": 5.028701631006429e-07,
+        "p90": 4.016648887150181e-07
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.41289143134020934,
+        "rms": 0.7559224075057468,
+        "max": 1.9603083937999748,
+        "p90": 1.0225837195706353
+      },
+      "before_single_points_mm": {
+        "n": 0
+      },
+      "after_single_points_mm": {
+        "n": 0
+      },
+      "individual_position_rms_mm": 0.33126689935907333,
+      "max_individual_position_mm": 0.5030867381011114,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -8.681679059581725e-09,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "3_3",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -7.636558052581677e-12,
+        "maximum_center_shift_mm": 0.027531803420334705,
+        "exact_conflicts": 0,
+        "gap_m": 9.079658206471432e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 84,
+        "objective": 11.609524268202483,
+        "minimum_constraint_margin_mm": -8.681679059581725e-09,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 9.241940458469588e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0005030867381011114,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "3_4",
+      "raw_primary_anchor_m": [
+        -0.5283696922716212,
+        1.1916473182333203,
+        -1.336177767198493
+      ],
+      "beam_anchor_m": [
+        -0.4637862033711875,
+        1.186132937491035,
+        -1.3361777671984931
+      ],
+      "anchor_to_current_beam_axis_mm": 64.81848064806314,
+      "center_mean_survey_m": [
+        -0.47188340668396045,
+        1.1827208439944827,
+        -1.3378196746984798
+      ],
+      "bundle_radius_mm": 3.0517208215048637,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 46.90631946948619,
+        "rms": 46.181682937648915,
+        "max": 65.50328215921917,
+        "p90": 60.820513460160406
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 27.13169006849011,
+        "rms": 28.476982303740463,
+        "max": 41.03299767872079,
+        "p90": 39.927108708146434
+      },
+      "before_single_points_mm": {
+        "n": 1,
+        "median": 45.422691463284266,
+        "rms": 45.422691463284266,
+        "max": 45.422691463284266,
+        "p90": 45.422691463284266
+      },
+      "after_single_points_mm": {
+        "n": 1,
+        "median": 38.98972958452019,
+        "rms": 38.98972958452019,
+        "max": 38.98972958452019,
+        "p90": 38.98972958452019
+      },
+      "individual_position_rms_mm": 1.1863846590911267,
+      "max_individual_position_mm": 1.5000000009055792,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "4_1",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -2.576358659744926e-07,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "3_4",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -8.111913918362745e-11,
+        "maximum_center_shift_mm": 0.0747767920869256,
+        "exact_conflicts": 0,
+        "gap_m": 2.684308248293221e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conflict_with_primary_under_fixed_current_optics",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": false,
+        "solver_message": "Iteration limit reached",
+        "iterations": 160,
+        "objective": 10011.210519306496,
+        "minimum_constraint_margin_mm": -2.576358659744926e-07,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.16699927048243e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0015000000009055792,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "4_1",
+      "raw_primary_anchor_m": [
+        1.1801794019947358,
+        0.4611727979966432,
+        -0.3457392613877016
+      ],
+      "beam_anchor_m": [
+        1.1863733811782466,
+        0.4638189480923538,
+        -0.3457392613877015
+      ],
+      "anchor_to_current_beam_axis_mm": 6.735539210396957,
+      "center_mean_survey_m": [
+        1.1781914594433676,
+        0.46012374074441625,
+        -0.3460055576620554
+      ],
+      "bundle_radius_mm": 1.9399727185220506,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 8,
+        "median": 2.1338774338873074e-07,
+        "rms": 2.729667139940036e-07,
+        "max": 4.544244397793303e-07,
+        "p90": 4.033076010676109e-07
+      },
+      "after_full_points_mm": {
+        "n": 8,
+        "median": 0.3353133328941239,
+        "rms": 0.5079812298442876,
+        "max": 0.7545674751290957,
+        "p90": 0.7541989990290716
+      },
+      "before_single_points_mm": {
+        "n": 2,
+        "median": 4.280921988813221e-07,
+        "rms": 4.283146795094439e-07,
+        "max": 4.4189560209329246e-07,
+        "p90": 4.391349214508984e-07
+      },
+      "after_single_points_mm": {
+        "n": 2,
+        "median": 0.2970677926156361,
+        "rms": 0.30173740378023534,
+        "max": 0.34994678116978867,
+        "p90": 0.33937098345895816
+      },
+      "individual_position_rms_mm": 0.1956456275103106,
+      "max_individual_position_mm": 0.28893204476270645,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_2",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -1.666653129643868e-09,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "4_1",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -1.6431300764452317e-13,
+        "maximum_center_shift_mm": 0.0026705804050078663,
+        "exact_conflicts": 0,
+        "gap_m": 2.000404467569774e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 86,
+        "objective": 17.892454073270837,
+        "minimum_constraint_margin_mm": -1.666653129643868e-09,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.0004044677083107e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.00028893204476270644,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "4_2",
+      "raw_primary_anchor_m": [
+        1.1829243263547986,
+        0.4674761595134501,
+        -0.6755293367164633
+      ],
+      "beam_anchor_m": [
+        1.1863733811783428,
+        0.4638189480923835,
+        -0.6755293367164634
+      ],
+      "anchor_to_current_beam_axis_mm": 5.027044315917011,
+      "center_mean_survey_m": [
+        1.1802825694499666,
+        0.4663033651002027,
+        -0.6755839808136773
+      ],
+      "bundle_radius_mm": 1.9965722068550902,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 2.2371940961018302e-07,
+        "rms": 2.1749581506827755e-07,
+        "max": 3.2199872918656016e-07,
+        "p90": 2.953237237691278e-07
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.2974514360005295,
+        "rms": 0.5994022178981357,
+        "max": 1.3680089415857288,
+        "p90": 0.8103658365794975
+      },
+      "before_single_points_mm": {
+        "n": 0
+      },
+      "after_single_points_mm": {
+        "n": 0
+      },
+      "individual_position_rms_mm": 0.18311722682408588,
+      "max_individual_position_mm": 0.32478233696493775,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_3",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -4.1250345924365053e-10,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "4_2",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -5.654143819810997e-12,
+        "maximum_center_shift_mm": 0.002491506742735386,
+        "exact_conflicts": 0,
+        "gap_m": 3.34868964966852e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 75,
+        "objective": 7.41141244865173,
+        "minimum_constraint_margin_mm": -4.1250345924365053e-10,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 3.34868964996372e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.00032478233696493775,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "4_3",
+      "raw_primary_anchor_m": [
+        1.18661271518251,
+        0.458486096677742,
+        -1.0071806740694684
+      ],
+      "beam_anchor_m": [
+        1.1863733811784394,
+        0.4638189480924133,
+        -1.0071806740694684
+      ],
+      "anchor_to_current_beam_axis_mm": 5.338219270174884,
+      "center_mean_survey_m": [
+        1.1831651636557812,
+        0.45763203310438955,
+        -1.0071053329449657
+      ],
+      "bundle_radius_mm": 1.9864852027100746,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 10,
+        "median": 9.554116657896408e-08,
+        "rms": 2.1850019981913863e-07,
+        "max": 4.423585314854998e-07,
+        "p90": 3.5519711882572677e-07
+      },
+      "after_full_points_mm": {
+        "n": 10,
+        "median": 0.40015445311880943,
+        "rms": 0.6285254865186407,
+        "max": 1.1999764703452132,
+        "p90": 1.1828713789009644
+      },
+      "before_single_points_mm": {
+        "n": 2,
+        "median": 3.280193344655053e-07,
+        "rms": 3.3496969322772284e-07,
+        "max": 3.95901670885827e-07,
+        "p90": 3.8232520360176267e-07
+      },
+      "after_single_points_mm": {
+        "n": 2,
+        "median": 0.15246656128387523,
+        "rms": 0.15748522026605166,
+        "max": 0.1919069250311472,
+        "p90": 0.18401885228169282
+      },
+      "individual_position_rms_mm": 0.16451449087455797,
+      "max_individual_position_mm": 0.2864026764914469,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_4"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -9.843394232239458e-11,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "4_3",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -6.372680161348399e-13,
+        "maximum_center_shift_mm": 0.002535268203196809,
+        "exact_conflicts": 0,
+        "gap_m": 2.0152467699192564e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 93,
+        "objective": 8.394378202209113,
+        "minimum_constraint_margin_mm": -9.843394232239458e-11,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 2.0152467705552964e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0002864026764914469,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    },
+    {
+      "group": "4_4",
+      "raw_primary_anchor_m": [
+        1.1892710480122308,
+        0.4627819545061287,
+        -1.3347190624108656
+      ],
+      "beam_anchor_m": [
+        1.1863733811785349,
+        0.4638189480924428,
+        -1.3347190624108654
+      ],
+      "anchor_to_current_beam_axis_mm": 3.077633632705195,
+      "center_mean_survey_m": [
+        1.184120099890467,
+        0.46255026269035593,
+        -1.3348908822468168
+      ],
+      "bundle_radius_mm": 2.023353179657394,
+      "candidate_feasible_for_enforced_constraints": true,
+      "before_full_points_mm": {
+        "n": 12,
+        "median": 3.242495818447094e-07,
+        "rms": 3.457633861473987e-07,
+        "max": 6.111043151875184e-07,
+        "p90": 4.25629848445228e-07
+      },
+      "after_full_points_mm": {
+        "n": 12,
+        "median": 0.483115057340345,
+        "rms": 0.625796990282463,
+        "max": 1.131984738961137,
+        "p90": 0.8879401166526149
+      },
+      "before_single_points_mm": {
+        "n": 1,
+        "median": 3.5617076336687957e-07,
+        "rms": 3.5617076336687957e-07,
+        "max": 3.5617076336687957e-07,
+        "p90": 3.5617076336687957e-07
+      },
+      "after_single_points_mm": {
+        "n": 1,
+        "median": 0.3152102741726501,
+        "rms": 0.3152102741726501,
+        "max": 0.3152102741726501,
+        "p90": 0.3152102741726501
+      },
+      "individual_position_rms_mm": 0.1901386570900126,
+      "max_individual_position_mm": 0.3114487878532594,
+      "angular_training_groups": [
+        "1_1",
+        "1_2",
+        "1_3",
+        "1_4",
+        "2_1",
+        "2_2",
+        "2_3",
+        "2_4",
+        "3_1",
+        "3_2",
+        "3_3",
+        "3_4",
+        "4_1",
+        "4_2",
+        "4_3"
+      ],
+      "before_position_repair": {
+        "minimum_constraint_margin_mm": -2.182657361174677e-09,
+        "candidate_feasible_for_enforced_constraints": true
+      },
+      "position_repair": {
+        "group": "4_4",
+        "solver_success": true,
+        "message": "Optimization terminated successfully",
+        "min_margin_mm": -2.886579864025407e-13,
+        "maximum_center_shift_mm": 0.0020873028348715396,
+        "exact_conflicts": 0,
+        "gap_m": 3.5139386075418295e-06
+      },
+      "optical_validated_count": 7,
+      "data_consistency": {
+        "status": "conditional_fit_to_primary",
+        "measured_point_sigma_scenario_m": 0.001,
+        "diagnostic_group_rms_threshold_mm": 5.0,
+        "threshold_is_instrument_specification": false,
+        "optical_validation_does_not_establish_measurement_accuracy": true
+      },
+      "known_physical_constraints_passed": true,
+      "initial_nonlinear_pose_fit": {
+        "solver_success": true,
+        "solver_message": "Optimization terminated successfully",
+        "iterations": 74,
+        "objective": 13.500336800836385,
+        "minimum_constraint_margin_mm": -2.182657361174677e-09,
+        "diagnostic_stage": "before_clearance_and_optical_path_repairs"
+      },
+      "final_validation": {
+        "diagnostic_stage": "after_clearance_and_optical_path_repairs",
+        "optical_validated_count": 7,
+        "cylinder_conflict_count": 0,
+        "minimum_body_gap_m": 3.5139386078497052e-06,
+        "individual_center_limit_m": 0.0015,
+        "max_individual_center_delta_m": 0.0003114487878532594,
+        "all_missing_mechanical_constraints_verified": false
+      }
+    }
+  ]
+}
