@@ -430,6 +430,8 @@ const trajectoryReasonLabels = {
   one_to_one_conflict: 'Подходящий путь назначен другому измерению',
   intercepted_before_mirror: 'До нужного зеркала встретилась другая поверхность',
   incoming_branch_missing: 'Входящая ветвь не достигнута',
+  incoming_trace_time_limit: 'Время трассировки закончилось до нужного зеркала',
+  incoming_trace_boundary: 'Граница расчёта достигнута до нужного зеркала',
   outside_illumination: 'Центр среза вне входящего пучка',
   incoming_ambiguous: 'Неоднозначная входящая ветвь',
   incoming_verification_failed: 'Не подтверждено попадание входящего луча',
@@ -439,6 +441,7 @@ const trajectoryReasonLabels = {
   no_reflected_child: 'Нужный отражённый луч не возник',
   outgoing_mirror_interception: 'Выходной путь перехвачен зеркалом до измеренных точек',
   trace_time_limit: 'Время трассировки закончилось до измеренных точек',
+  trace_boundary: 'Граница расчёта достигнута до измеренных точек',
   path_turn_or_discontinuity: 'Поворот или разрыв пути до измеренных точек',
   trace_ended_before_points: 'Сохранённый участок закончился до измеренных точек',
   physical_path_mismatch: 'Прослеженный путь вне допуска',
@@ -490,15 +493,18 @@ function renderTrajectoryDiagnostics(parent, report) {
       if (mirror) {
         paragraph(card, `Для зеркала подгонки ${mirror.mirror_id}: ${mirror.optical_reason_codes.length
           ? mirror.optical_reason_codes.map(reasonLabel).join('; ') : 'нет зарегистрированной ошибки входа и отражения'}.`);
-        if (mirror.first_surface) paragraph(card, `Первая достигнутая поверхность вместо нужного среза: ${mirror.first_surface}.`);
+        if (mirror.first_surface) paragraph(card, `Вместо нужного среза путь завершился на: ${mirror.first_surface}.`);
         if (mirror.incident_segment) paragraph(card, `Входящий участок: ${point(mirror.incident_segment.start_m)} → ${point(mirror.incident_segment.end_m)} м; поверхность ${mirror.incident_segment.surface}.`);
         if (mirror.outgoing_blockers?.length) paragraph(card, `В дальнейших ветвях встретились тела: ${mirror.outgoing_blockers.join(', ')}. Это само по себе не означает остановку до измеренных точек.`);
         const dimensions = mirror.dimensions;
         if (dimensions) paragraph(card, `Размеры в сохранённой модели: цилиндр Ø ${format(dimensions.cylinder_diameter_mm)} мм; оси эллипса ${format(dimensions.ellipse_minor_axis_mm)} × ${format(dimensions.ellipse_major_axis_mm)} мм.`);
         if (mirror.axial_shift_m != null) paragraph(card, `Подстройка центра вдоль выходной линии: ${mm(mirror.axial_shift_m)} мм. Это результат поиска, не измеренный допуск крепления.`);
         if (mirror.body_conflicts?.length) comparisonTable(card, ['Пара тел', 'Состояние'],
-          mirror.body_conflicts.map(c => [c.pair.join(' / '), c.status ?? 'Зазор не подтверждён']), 'Механические конфликты зеркала');
-        if (mirror.violations?.length) paragraph(card, `Ограничения конфигурации: ${mirror.violations.join('; ')}.`);
+          mirror.body_conflicts.map(c => [c.pair.join(' / '), ({ intersecting: 'Пересечение тел', touching: 'Касание',
+            indeterminate: 'Разделение не подтверждено', separated: 'Недостаточный зазор' })[c.status] ?? 'Зазор не подтверждён']), 'Механические конфликты зеркала');
+        if (mirror.violations?.length) paragraph(card, `Ограничения конфигурации: ${[...new Set(mirror.violations.map(v =>
+          v.startsWith('reflection:') ? 'оптическая проверка не пройдена' : v.startsWith('incoming_field:') ? 'входящий пучок не подтверждён'
+            : v === 'body_clearance_not_certified' ? 'зазор между телами не подтверждён' : v))].join('; ')}.`);
       }
       if (path) {
         paragraph(card, `Показан ${row.path_basis === 'matched_physical_path' ? 'совпавший физический путь' : 'лучший сохранённый путь зеркала подгонки'}: ${path.trajectory_id}.`);

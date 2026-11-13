@@ -23,6 +23,10 @@ def _optical_causes(check):
         return [{"outside_illumination": "outside_illumination", "ambiguous": "incoming_ambiguous",
                  "branch_not_reached": "incoming_branch_missing",
                  "verification_failed": "incoming_verification_failed"}.get(status, "incoming_unavailable")]
+    if check.get("first_surface") == "<time_limit>":
+        return ["incoming_trace_time_limit"]
+    if (check.get("first_surface") or "").startswith("<bundle_"):
+        return ["incoming_trace_boundary"]
     if check.get("first_surface"):
         return ["intercepted_before_mirror"]
     if check.get("reason") == "Incoming branch not present in physical scene":
@@ -57,6 +61,8 @@ def _path_evidence(row, points, path, tolerance):
             code = "outgoing_mirror_interception"
         elif surface == "<time_limit>":
             code = "trace_time_limit"
+        elif surface.startswith("<bundle_"):
+            code = "trace_boundary"
         elif path.get("stop_reason") == "direction_change_or_discontinuity":
             code = "path_turn_or_discontinuity"
         else:

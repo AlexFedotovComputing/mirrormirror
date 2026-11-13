@@ -48,7 +48,7 @@ class TrajectoryDiagnosticsTests(unittest.TestCase):
 
     def test_time_limit_and_unknown_endpoint_are_not_called_opaque_blockers(self):
         for surface, expected in [('<time_limit>', 'trace_time_limit'), (None, 'trace_ended_before_points'),
-                                  ('SCREEN', 'trace_ended_before_points')]:
+                                  ('SCREEN', 'trace_ended_before_points'), ('<bundle_system_boundary>', 'trace_boundary')]:
             with self.subTest(surface=surface):
                 row = diagnose(dataset(surface=surface))['observations'][0]
                 self.assertEqual([expected], row['reason_codes'])
@@ -83,6 +83,8 @@ class TrajectoryDiagnosticsTests(unittest.TestCase):
 
     def test_incoming_and_coating_failures(self):
         for check, expected in [
+            (dict(first_surface='<time_limit>'), 'incoming_trace_time_limit'),
+            (dict(first_surface='<bundle_system_boundary>'), 'incoming_trace_boundary'),
             (dict(incoming=dict(status='outside_illumination')), 'outside_illumination'),
             (dict(reason='Incoming branch not present in physical scene'), 'incoming_branch_missing'),
             (dict(incident_dot_normal=1., actual_reflected_child=False), 'wrong_reflecting_side'),

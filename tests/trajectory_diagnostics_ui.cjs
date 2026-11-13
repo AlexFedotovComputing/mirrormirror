@@ -33,7 +33,7 @@ const { _electron } = require('playwright-core');
       const win = BrowserWindow.getAllWindows()[0];
       win.webContents.setBackgroundThrottling(false); win.setSize(1440, 1100);
     });
-    await page.waitForFunction(() => typeof renderTrajectoryComparison === 'function');
+    await page.waitForFunction(() => typeof ready !== 'undefined' && ready);
     await page.evaluate(data => renderTrajectoryComparison([data], 'Сохранённая реконструкция'), report);
     const panel = page.locator('.trajectory-diagnostics');
     await panel.locator(':scope > summary').click();
@@ -51,8 +51,11 @@ const { _electron } = require('playwright-core');
     assert.ok(text.includes('За концом, мм'));
     assert.ok(text.includes('Подгонка'));
     assert.equal(await rows.first().locator('table').count() >= 3, true);
-    await rows.first().evaluate(el => el.scrollIntoView({ block: 'start' }));
-    await page.evaluate(() => window.scrollBy(0, -70));
+    await rows.first().evaluate(el => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await page.evaluate(async () => {
+      window.scrollBy({ top: -70, behavior: 'instant' });
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
     const png = await app.evaluate(async ({ BrowserWindow }) =>
       (await BrowserWindow.getAllWindows()[0].webContents.capturePage(undefined, { stayHidden: true })).toPNG().toString('base64'));
     await fs.writeFile(path.join(output, 'trajectory-detail.png'), Buffer.from(png, 'base64'));

@@ -220,6 +220,8 @@ class PhysicalStateTests(unittest.TestCase):
             result = dispatch('load_configuration', dict(path=str(source)))
             matching = result['reports'][0]['diagnostics']['trajectory_matching']
             geometric = result['reports'][0]['diagnostics']['geometric_fit']
+            reasons = result['reports'][0]['diagnostics']['trajectory_diagnostics']
+            self.assertEqual('matched', reasons['observations'][0]['status'])
             self.assertEqual(1, matching['matched_count'])
             self.assertEqual(1, geometric['matched_count'])
             self.assertEqual(before, doc)
@@ -229,6 +231,7 @@ class PhysicalStateTests(unittest.TestCase):
             dispatch('save_configuration', dict(document=result['document'], path=str(saved)))
             self.assertEqual(matching, load_document(saved)['datasets']['west_to_east']['diagnostics']['trajectory_matching'])
             self.assertEqual(geometric, load_document(saved)['datasets']['west_to_east']['diagnostics']['geometric_fit'])
+            self.assertEqual(reasons, load_document(saved)['datasets']['west_to_east']['diagnostics']['trajectory_diagnostics'])
             traced = dispatch('trace', dict(direction='west_to_east', kind='real', ray_count=1,
                                             max_interactions=1, active_configuration=result['document']))
             self.assertEqual(geometric, traced['comparison_reports'][0]['diagnostics']['geometric_fit'])
