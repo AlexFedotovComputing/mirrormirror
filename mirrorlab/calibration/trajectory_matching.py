@@ -161,19 +161,30 @@ def traced_output_trajectories(reflections, frame):
             if length <= 1e-12:
                 continue
             direction = delta / length
+            last = segments[0]
+            stop_reason = "trace_endpoint"
+            prefix = [last]
             for segment in segments[1:]:
                 start, end = np.asarray(segment["start_m"], float), np.asarray(segment["end_m"], float)
                 step = end - start
                 size = np.linalg.norm(step)
                 if (size <= 1e-12 or np.linalg.norm(step / size - direction) > 1e-7 or
                         np.linalg.norm(start - (origin + length * direction)) > 1e-6):
+                    stop_reason = "direction_change_or_discontinuity"
                     break
                 length = float((end - origin) @ direction)
+                last = segment
+                prefix.append(segment)
             key = tuple(np.round(np.r_[origin, direction], 9))
             if key not in unique or length > unique[key]["length_m"]:
                 unique[key] = dict(id=f"path:{mirror_id}:{len(unique)}", mirror_id=mirror_id,
                                    point_m=(origin @ q.T + t).tolist(), direction=(direction @ q.T).tolist(),
-                                   length_m=length)
+                                   length_m=length,
+                                   end_m=(np.asarray(last["end_m"]) @ q.T + t).tolist(),
+                                   terminal_surface=last.get("surface"), stop_reason=stop_reason,
+                                   segments=[dict(start_m=(np.asarray(s["start_m"]) @ q.T + t).tolist(),
+                                                  end_m=(np.asarray(s["end_m"]) @ q.T + t).tolist(),
+                                                  surface=s.get("surface")) for s in prefix])
     # Stable geometry order, independent of the input dictionary/old IDs.
     return [unique[k] for k in sorted(unique)]
 
@@ -234,6 +245,9 @@ def compare_dataset_trajectories(dataset, *, distance_tolerance_m=.003):
 
 def dataset_comparison_report(dataset):
     """Recompute both reports from embedded data, without mutating the dataset."""
+    from .trajectory_diagnostics import diagnose_trajectories
+    fit = compare_dataset_geometric_fit(dataset)
+    physical = compare_dataset_trajectories(dataset)
     return dict(direction=dataset["direction"], status=dataset["status"], diagnostics=dict(
-        geometric_fit=compare_dataset_geometric_fit(dataset),
-        trajectory_matching=compare_dataset_trajectories(dataset)))
+        geometric_fit=fit, trajectory_matching=physical,
+        trajectory_diagnostics=diagnose_trajectories(dataset, fit, physical)))

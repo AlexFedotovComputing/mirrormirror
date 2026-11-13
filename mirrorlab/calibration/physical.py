@@ -2,8 +2,9 @@
 
 No direction here is inferred from an archive filename or replaced by +/-Z.
 The current common optics are planar: tracing three non-collinear launch
-points gives an affine incident field. Every requested field sample is also
-checked by a new, full traversal of the common optics at its solved launch.
+points gives an affine incident field. Every distinct field sample is checked
+by a full traversal of the common optics at its solved launch. Exact repeated
+requests may reuse that check; full scenes containing bodies are always traced.
 """
 from __future__ import annotations
 
@@ -492,6 +493,7 @@ approximated. Full-source tracing remains the final, independent check.
 
 
 _FIELD_CACHE = {}
+_INCOMING_CACHE = {}
 
 
 def _common_config(config):
@@ -525,10 +527,20 @@ def _records(result):
     return rows
 
 
+def _record_indexes(rows):
+    """Preserve trace insertion order, including equal-distance tie order."""
+    by_branch, by_parent = {}, {}
+    for row in rows.values():
+        by_branch.setdefault((row["root"], tuple(row["chain"])), []).append(row)
+        by_parent.setdefault(row["parent"], []).append(row)
+    return by_branch, by_parent
+
+
 def _field_models(config):
     common = _common_config(config)
     state = {"elements": [asdict(e) for e in common.scene.elements], "source": asdict(common.source),
-             "time": common.integration_time_s, "trace": common.tracer_options}
+             "time": common.integration_time_s, "trace": common.tracer_options,
+             "max_interactions": max(48, common.max_interactions)}
     encoded = json.dumps(state, default=lambda v: to_numpy(v).tolist(), sort_keys=True)
     digest = hashlib.sha256(encoded.encode()).hexdigest()
     if digest in _FIELD_CACHE:
@@ -588,6 +600,13 @@ only a test of illumination; reconstruction may choose a different cut hit.
     if not points:
         return {}
     models, digest = _field_models(config)
+    # Exact coordinates and request order are significant: order determines
+    # root IDs and therefore deterministic branch/tie ordering in the trace.
+    point_key = tuple((identifier, np.asarray(center, dtype=float).shape,
+                       np.asarray(center, dtype=float).tobytes()) for identifier, center in points.items())
+    cache_key = (digest, point_key)
+    if cache_key in _INCOMING_CACHE:
+        return copy.deepcopy(_INCOMING_CACHE[cache_key])
     output, tests = {}, []
     radius = config.source.waist_radius * config.source.cutoff_ratio
     for identifier, center in points.items():
@@ -613,8 +632,9 @@ only a test of illumination; reconstruction may choose a different cut hit.
         output[identifier] = {"status": "unavailable", "alternatives": alternatives, "field_hash": digest}
     if tests:
         rows = _records(_trace(_common_config(config), _launch_bundle(config, [t[2] for t in tests])))
+        by_branch, _ = _record_indexes(rows)
         for index, (identifier, item, launch) in enumerate(tests):
-            matches = [r for r in rows.values() if r["root"] == index and r["chain"] == item["interaction_chain"]]
+            matches = by_branch.get((index, tuple(item["interaction_chain"])), [])
             errors = []
             for row in matches:
                 actual = unit(row["end"] - row["start"])
@@ -640,6 +660,10 @@ only a test of illumination; reconstruction may choose a different cut hit.
             # Retain a traced branch's direction for diagnostics outside its
             # footprint, while keeping the failed illumination status explicit.
             output[identifier] = {**value["alternatives"][0], "alternatives": value["alternatives"]}
+    if len(_INCOMING_CACHE) >= 8:
+        _INCOMING_CACHE.pop(next(iter(_INCOMING_CACHE)))
+    # Neither the first result nor later hits expose the private cached value.
+    _INCOMING_CACHE[cache_key] = copy.deepcopy(output)
     return output
 
 
@@ -685,27 +709,31 @@ and the downstream segment. An absence of random samples is never a verdict.
         records = _records(traced)
         trace_diagnostics = traced.diagnostics
     reports = {}
+    by_branch, by_parent = _record_indexes(records)
     for body in bodies:
         incoming = field[body.mirror_id]
         reports[body.mirror_id] = {"status": "unavailable", "incoming": incoming,
+                                    "target_surface": body.build_surfaces()[0].name,
                                     "waist_side": "not_evaluated"}
     for root, body in enumerate(launched):
         incoming = field[body.mirror_id]
         branch = incoming["interaction_chain"]
-        candidates = [r for r in records.values() if r["root"] == root and r["chain"] == branch]
+        candidates = by_branch.get((root, tuple(branch)), [])
         report = reports[body.mirror_id]
         wanted = body.build_surfaces()[0].name
         if not candidates:
             report.update(status="infeasible", reason="Incoming branch not present in physical scene")
             continue
         row = min(candidates, key=lambda r: np.linalg.norm(r["end"] - body.center_m))
+        report["incident_segment"] = dict(start_m=row["start"].tolist(), end_m=row["end"].tolist(),
+                                          surface=row["surface"])
         if row["surface"] != wanted:
             report.update(status="infeasible", reason="Another physical surface is hit before the requested cut",
                           first_surface=row["surface"])
             continue
         din = unit(row["end"] - row["start"])
         expected = din - 2 * np.dot(din, body.normal) * body.normal
-        children = [r for r in records.values() if r["parent"] == row["id"]]
+        children = by_parent.get(row["id"], [])
         valid_children = [r for r in children if np.linalg.norm(r["end"] - r["start"]) > 1e-12 and
                           np.linalg.norm(unit(r["end"] - r["start"]) - expected) < 1e-7]
         side = float(np.dot(din, body.normal))
@@ -723,7 +751,7 @@ and the downstream segment. An absence of random samples is never a verdict.
             next_points = points + [current["end"].tolist()]
             if current["surface"].startswith("BUNDLE_"):
                 downstream_body.append(current["surface"])
-            descendants = [r for r in records.values() if r["parent"] == current["id"]]
+            descendants = by_parent.get(current["id"], [])
             if descendants:
                 pending.extend((child, next_path, next_points) for child in descendants)
             else:

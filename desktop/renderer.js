@@ -10,9 +10,7 @@ let defaultCamera = null;
 let overview = true;
 const volumeRanges = { xaxis: [-1.5, 1.5], yaxis: [-1.5, 1.5], zaxis: [-1.95, 1.95] };
 let elapsedTimer;
-let capabilities = [];
 let measurementReports = [];
-let measurementContext = null;
 let configurationVersion = 0;
 let activeConfiguration = false;
 let reconstructionResult = null;
@@ -24,7 +22,6 @@ let currentJob = null;
 let busyText = '';
 const sideNames = {};
 const routes = {};
-let directions = [];
 const directionLabel = (direction) => direction === 'both' ? 'WEST и EAST' : sideNames[direction];
 const labels = {
   ray_count: 'Исходных лучей', initial_rays: 'Исходных лучей', rays: 'Исходных лучей',
@@ -58,12 +55,11 @@ function updateControls() {
   $('optimize-reason').hidden = !historicalIdeal;
   $('kind').disabled = locked || activeConfiguration;
   $('historical-kind').hidden = activeConfiguration;
-  $('calculation-source').hidden = !activeConfiguration && !reconstructionResult;
+  $('calculation-source').hidden = !activeConfiguration;
   $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}`
     : $('kind').selectedOptions[0].textContent;
   $('save-source').options[0].textContent = activeConfiguration ? 'Принятая конфигурация' : 'Текущая историческая конфигурация';
   for (const button of document.querySelectorAll('[data-result-target]')) button.disabled = $(button.dataset.resultTarget).hidden;
-  showSideStatus();
 }
 
 function screensLabel(status, ideal = false) {
@@ -75,36 +71,6 @@ function screensLabel(status, ideal = false) {
   if (status.status === 'rejected') return 'Дополнительные экраны: обработаны, уточнения не приняты';
   if (status.status === 'not_requested') return 'Дополнительные экраны: не использованы в этом расчёте';
   return 'Дополнительные экраны: доступны · будут использованы автоматически';
-}
-
-function showSideStatus() {
-  const selected = $('direction').value;
-  const kind = $('kind').value;
-  const current = measurementContext?.direction === selected && measurementContext?.kind === kind;
-  $('side-status').replaceChildren();
-  for (const direction of directions) {
-    const included = selected === 'both' || selected === direction;
-    const report = current ? measurementReports.find(item => item.direction === direction) : null;
-    const status = report?.additional_screens || capabilities.find(item => item.direction === direction);
-    const card = document.createElement('div');
-    card.className = 'side-status-item';
-    card.dataset.direction = direction;
-    card.dataset.included = String(included);
-    const title = document.createElement('strong');
-    title.textContent = `${sideNames[direction]} (${included ? 'лазер ' + routes[direction].laser_side : 'не выбрана'})`;
-    card.append(title);
-    if (included && status?.available) {
-      const badge = document.createElement('span');
-      badge.className = 'screen-status';
-      badge.dataset.status = report ? status.status : 'pending';
-      badge.textContent = status.refined_ray_count && kind === 'real'
-        ? `Доп. экраны: использованы${status.status === 'used_partial' ? ' частично' : ''}, ${status.refined_ray_count} лучей`
-        : kind === 'ideal' ? 'Доп. экраны: для реальной конфигурации' : 'Доп. экраны: доступны';
-      badge.title = screensLabel(status, kind === 'ideal');
-      card.append(badge);
-    }
-    $('side-status').append(card);
-  }
 }
 
 function setBusy(active, label = 'Трассировка лучей') {
@@ -139,8 +105,9 @@ function metadata(result) {
 
 function showCoordinateFrame(frame) {
   const survey = frame === 'survey';
-  $('coordinate-title').textContent = survey ? 'Геодезические XYZ · метры' : 'Расчётная сцена · метры';
-  $('coordinate-note').textContent = survey ? 'Знак Z — по измерениям. Центральная плоскость объёма: z = 0.'
+  $('coordinate-title').hidden = false;
+  $('coordinate-title').textContent = survey ? 'Геодезические XYZ · м' : 'Расчётная сцена · м';
+  $('coordinate-title').title = survey ? 'Знак Z — по измерениям. Центральная плоскость объёма: z = 0.'
     : 'Координаты сохранённого источника. Привязка к геодезии не установлена.';
 }
 
@@ -269,7 +236,8 @@ async function drawSceneLayers() {
   await drawScene(result.figure);
   $('filtered-scene').hidden = result.figure.data.length > 0;
   const hiddenLayers = [...document.querySelectorAll('.scene-layers input')].filter(input => !input.checked).length;
-  $('layers-summary').textContent = hiddenLayers ? `Отключено фильтров: ${hiddenLayers}` : 'Все слои включены';
+  $('layers-summary').textContent = hiddenLayers ? `Скрыто групп: ${hiddenLayers}` : '';
+  $('layers-summary').hidden = !hiddenLayers;
   showCoordinateFrame(result.frame);
   $('scene-label').textContent = result.label;
   $('scene-comparison-note').textContent = result.note;
@@ -279,11 +247,11 @@ async function drawSceneLayers() {
 function candidateBlockReason(result) {
   if (!result?.document) return 'Нет конфигурации для принятия.';
   if (result.active) return 'Эта конфигурация уже принята.';
-  if (hasManualReconstruction(result) && result.status !== 'validated') return 'Ручная реконструкция не прошла все проверки. Доступны уточнение, просмотр и сохранение диагностического кандидата.';
+  if (hasManualReconstruction(result) && result.status !== 'validated') return 'Ручная реконструкция не прошла все проверки.';
   if (result.status === 'infeasible' || reconstructionReports(result).some(report => report.status === 'infeasible')) {
-    return 'Принятие недоступно: проверка физической допустимости не пройдена (infeasible). Причины приведены ниже для каждой стороны. Кандидат доступен для сравнения и сохранения.';
+    return 'Физические проверки не пройдены. Причины — в отчёте реконструкции.';
   }
-  if (result.can_activate === false) return 'Принятие недоступно: общая оптика не установлена или конфигурация неполна. Кандидат доступен для просмотра и сохранения.';
+  if (result.can_activate === false) return 'Не установлена общая оптика или конфигурация неполна.';
   return '';
 }
 
@@ -320,7 +288,6 @@ function showSummary(result, request) {
 async function showCalibration(result) {
   measurementReports = result.reports || [result];
   sceneMeasurements = measurementReports.map(report => ({ ...report, side: sideNames[report.direction] }));
-  measurementContext = { direction: result.direction, kind: $('kind').value };
   $('measurement-sides').replaceChildren();
   for (const report of measurementReports) {
     const button = document.createElement('button');
@@ -332,7 +299,6 @@ async function showCalibration(result) {
   }
   await showMeasurementSide(measurementReports[0]);
   await drawSceneLayers();
-  showSideStatus();
 }
 
 async function showMeasurementSide(result) {
@@ -343,9 +309,10 @@ async function showMeasurementSide(result) {
   const summary = $('calibration-summary');
   summary.replaceChildren();
   const route = routes[result.direction];
-  paragraph(summary, `Лазер: ${route.laser_side}; кольцо: ${route.ring_side}; ввод: ${route.injection_side}. Геодезия: ${route.survey_file}.`);
+  const sources = comparisonDetails(summary, 'Источники и привязка');
+  paragraph(sources, `Лазер: ${route.laser_side}; кольцо: ${route.ring_side}; ввод: ${route.injection_side}. Геодезия: ${route.survey_file}.`);
   paragraph(summary, screensLabel(result.additional_screens));
-  paragraph(summary, 'Измерения и статическая сцена отображаются в общей геодезической системе координат. Привязка сцены по лучам не заменяет юстировку отдельных зеркал.');
+  paragraph(sources, 'Измерения и статическая сцена отображаются в общей геодезической системе координат. Привязка сцены по лучам не заменяет юстировку отдельных зеркал.');
   paragraph(summary, `Лучей: ${counts.total ?? '—'}; полных измерений: ${counts.complete ?? '—'}; с одним экраном: ${counts.single_screen ?? '—'}; без измерений: ${counts.missing ?? '—'}.`);
   const comparison = result.saved_equations_comparison;
   if (comparison) paragraph(summary, `Сравнение с сохранёнными уравнениями: совпало ${comparison.matched ?? '—'} из ${comparison.compared ?? '—'}.`);
@@ -357,7 +324,8 @@ async function showMeasurementSide(result) {
       paragraph(summary, `Стержень ${rod.rod}: ${rod.accepted ? 'преобразование принято' : 'преобразование не принято'}; RMS ${format(rod.rms_mm)} мм; максимум ${format(rod.max_mm)} мм; точек ${rod.point_count ?? '—'}.`);
     }
   }
-  if (result.sources?.length) paragraph(summary, `Источники: ${result.sources.join('; ')}.`);
+  if (result.sources?.length) paragraph(sources, `Источники: ${result.sources.join('; ')}.`);
+  summary.append(sources);
   const table = document.createElement('table');
   const head = document.createElement('thead');
   const row = document.createElement('tr');
@@ -454,6 +422,110 @@ function comparisonScore(parent, report, className) {
   score.append(percent); parent.append(score);
 }
 
+const trajectoryReasonLabels = {
+  matched: 'Измерение воспроизведено',
+  geometric_mismatch: 'Подогнанная линия вне допуска',
+  no_fitted_assignment: 'Не назначена подогнанная линия',
+  geometric_fit_unavailable: 'Нет данных геометрической подгонки',
+  one_to_one_conflict: 'Подходящий путь назначен другому измерению',
+  intercepted_before_mirror: 'До нужного зеркала встретилась другая поверхность',
+  incoming_branch_missing: 'Входящая ветвь не достигнута',
+  outside_illumination: 'Центр среза вне входящего пучка',
+  incoming_ambiguous: 'Неоднозначная входящая ветвь',
+  incoming_verification_failed: 'Не подтверждено попадание входящего луча',
+  incoming_unavailable: 'Нет доступной входящей ветви',
+  wrong_reflecting_side: 'Неверная сторона отражения или скользящее падение',
+  outside_reflecting_ellipse: 'Попадание вне отражающего эллипса',
+  no_reflected_child: 'Нужный отражённый луч не возник',
+  outgoing_mirror_interception: 'Выходной путь перехвачен зеркалом до измеренных точек',
+  trace_time_limit: 'Время трассировки закончилось до измеренных точек',
+  path_turn_or_discontinuity: 'Поворот или разрыв пути до измеренных точек',
+  trace_ended_before_points: 'Сохранённый участок закончился до измеренных точек',
+  physical_path_mismatch: 'Прослеженный путь вне допуска',
+  points_behind_reflection: 'Измеренная точка позади начала отражённого пути',
+  reflected_path_missing: 'Нет сохранённых отражённых участков',
+  optical_evidence_missing: 'В сохранении нет оптической диагностики зеркала',
+  physical_comparison_unavailable: 'Физическое сравнение недоступно',
+  two_complete_points_required: 'Нужны две полностью измеренные точки',
+  invalid_or_coincident_points: 'Точки некорректны или совпадают',
+};
+
+function renderTrajectoryDiagnostics(parent, report) {
+  if (report?.status !== 'evaluated') return;
+  const rows = report.observations ?? [];
+  const section = comparisonDetails(parent, `Причины по траекториям · ${rows.length}`);
+  section.className = 'trajectory-diagnostics';
+  paragraph(section, `Линия попадает в допуск, но физический путь не воспроизведён: ${report.fit_only_count}.`);
+  paragraph(section, 'Зеркало подгонки — гипотеза геометрического сопоставления. Ближайший физический путь может принадлежать другому зеркалу. Механические конфликты показаны отдельно.');
+  const controls = document.createElement('div'); controls.className = 'trajectory-diagnostic-controls';
+  const filter = document.createElement('select'); filter.setAttribute('aria-label', 'Фильтр траекторий');
+  for (const [value, label] of [['fit_only', 'Подгонка есть, пути нет'], ['unmatched', 'Все невоспроизведённые'],
+    ['matched', 'Воспроизведённые'], ['excluded', 'Неполные измерения'], ['all', 'Все траектории']]) {
+    const option = document.createElement('option'); option.value = value; option.textContent = label; filter.append(option);
+  }
+  filter.value = report.fit_only_count ? 'fit_only' : 'all';
+  const search = document.createElement('input'); search.type = 'search'; search.placeholder = 'Измерение, зеркало, поверхность или причина';
+  search.setAttribute('aria-label', 'Поиск траектории'); controls.append(filter, search); section.append(controls);
+  const count = paragraph(section, ''); count.setAttribute('aria-live', 'polite');
+  const list = document.createElement('div'); list.className = 'trajectory-diagnostic-list'; section.append(list);
+  const reasonLabel = code => trajectoryReasonLabels[code] ?? code;
+  const mm = value => value == null ? '—' : format(value * 1000);
+  const point = value => value ? value.map(v => Number(v).toFixed(6)).join('; ') : 'Нет данных';
+  const renderRow = row => {
+    const card = comparisonDetails(list, `${row.observation_id} · ${row.reason_codes.map(reasonLabel).join('; ')}`);
+    card.className = 'trajectory-diagnostic-row'; card.dataset.observationId = row.observation_id;
+    card.dataset.status = row.status;
+    // Render detailed tables on first expansion; a side may contain 112 rows.
+    card.addEventListener('toggle', () => {
+      if (!card.open || card.dataset.loaded) return;
+      card.dataset.loaded = 'true';
+      const fit = row.fitted; const actual = row.physical; const mirror = row.fitted_mirror; const path = row.path;
+      comparisonTable(card, ['Проверка', 'Зеркало', 'Ошибка по двум точкам, мм', 'Результат'], [
+        ['Подгонка', fit?.mirror_id ?? '—', mm(fit?.maximum_distance_m), fit ? (fit.within_tolerance ? 'В допуске' : 'Вне допуска') : 'Нет данных'],
+        [actual?.matched ? 'Совпавший физический путь' : 'Ближайший физический путь', actual?.mirror_id ?? '—',
+          mm(actual?.maximum_distance_m), actual ? (actual.matched ? 'Воспроизведено' : 'Не засчитан') : 'Нет пути'],
+      ], 'Подгонка и физическая траектория');
+      if (actual?.assigned_observation_id && actual.assigned_observation_id !== row.observation_id)
+        paragraph(card, `Этот физический путь назначен измерению ${actual.assigned_observation_id}.`);
+      if (mirror) {
+        paragraph(card, `Для зеркала подгонки ${mirror.mirror_id}: ${mirror.optical_reason_codes.length
+          ? mirror.optical_reason_codes.map(reasonLabel).join('; ') : 'нет зарегистрированной ошибки входа и отражения'}.`);
+        if (mirror.first_surface) paragraph(card, `Первая достигнутая поверхность вместо нужного среза: ${mirror.first_surface}.`);
+        if (mirror.incident_segment) paragraph(card, `Входящий участок: ${point(mirror.incident_segment.start_m)} → ${point(mirror.incident_segment.end_m)} м; поверхность ${mirror.incident_segment.surface}.`);
+        if (mirror.outgoing_blockers?.length) paragraph(card, `В дальнейших ветвях встретились тела: ${mirror.outgoing_blockers.join(', ')}. Это само по себе не означает остановку до измеренных точек.`);
+        const dimensions = mirror.dimensions;
+        if (dimensions) paragraph(card, `Размеры в сохранённой модели: цилиндр Ø ${format(dimensions.cylinder_diameter_mm)} мм; оси эллипса ${format(dimensions.ellipse_minor_axis_mm)} × ${format(dimensions.ellipse_major_axis_mm)} мм.`);
+        if (mirror.axial_shift_m != null) paragraph(card, `Подстройка центра вдоль выходной линии: ${mm(mirror.axial_shift_m)} мм. Это результат поиска, не измеренный допуск крепления.`);
+        if (mirror.body_conflicts?.length) comparisonTable(card, ['Пара тел', 'Состояние'],
+          mirror.body_conflicts.map(c => [c.pair.join(' / '), c.status ?? 'Зазор не подтверждён']), 'Механические конфликты зеркала');
+        if (mirror.violations?.length) paragraph(card, `Ограничения конфигурации: ${mirror.violations.join('; ')}.`);
+      }
+      if (path) {
+        paragraph(card, `Показан ${row.path_basis === 'matched_physical_path' ? 'совпавший физический путь' : 'лучший сохранённый путь зеркала подгонки'}: ${path.trajectory_id}.`);
+        paragraph(card, `Длина: ${mm(path.length_m)} мм. Конец: ${point(path.end_m)} м. Последняя поверхность: ${path.terminal_surface ?? 'не сохранена'}.`);
+        comparisonTable(card, ['Точка', 'До подгонки, мм', 'До участка, мм', 'До продолжения, мм', 'За концом, мм', 'Позади начала, мм'],
+          path.point_checks.map((p, i) => [p.point_index, mm(fit?.point_distances_m?.[i]), mm(p.distance_m),
+            mm(p.extension_distance_m), mm(p.beyond_end_m), mm(p.behind_origin_m)]), 'Ошибки и положение измеренных точек');
+        paragraph(card, 'Продолжение используется только для объяснения причины; за пределами прослеженного участка оно не засчитывается. Координаты — геодезические, м.');
+        comparisonTable(card, ['Поверхность', 'Начало XYZ, м', 'Конец XYZ, м'],
+          path.segments.map(s => [s.surface ?? 'Не сохранена', point(s.start_m), point(s.end_m)]), 'Последовательность прослеженных участков');
+      } else {
+        if (row.screens_m) comparisonTable(card, ['Точка', 'XYZ, м', 'До подгонки, мм'],
+          row.screens_m.map((p, i) => [i + 1, point(p), mm(fit?.point_distances_m?.[i])]), 'Измеренные точки');
+        paragraph(card, 'Нет связанного прослеженного участка для проверки положения точек относительно его конца.');
+      }
+    });
+  };
+  const refresh = () => {
+    const query = search.value.trim().toLocaleLowerCase();
+    const selected = rows.filter(row => (filter.value === 'all' || (filter.value === 'fit_only' ? row.fit_only : row.status === filter.value)) &&
+      (!query || `${JSON.stringify(row)} ${row.reason_codes.map(reasonLabel).join(' ')}`.toLocaleLowerCase().includes(query)));
+    list.replaceChildren(); count.textContent = `Показано: ${selected.length} из ${rows.length}`;
+    selected.forEach(renderRow);
+  };
+  filter.addEventListener('change', refresh); search.addEventListener('input', refresh); refresh();
+}
+
 function renderTrajectoryComparison(reports, context) {
   const container = $('trajectory-comparison-sides'); container.replaceChildren();
   const preview = $('trajectory-comparison-preview');
@@ -469,19 +541,17 @@ function renderTrajectoryComparison(reports, context) {
     const panels = document.createElement('div'); panels.className = 'comparison-panels'; side.append(panels);
     const fitPanel = document.createElement('section'); fitPanel.className = 'comparison-panel geometric-fit-panel';
     const fitHeading = document.createElement('h4'); fitHeading.textContent = 'Точность подгонки'; fitPanel.append(fitHeading);
-    paragraph(fitPanel, 'Насколько подогнанные прямые совпадают с измерениями. Перекрытия зеркалами здесь не учитываются.').className = 'comparison-description';
     if (fit?.status === 'evaluated') {
       fitMatched += fit.matched_count; fitTotal += fit.observation_count;
       comparisonScore(fitPanel, fit, 'geometric-fit-summary');
-      paragraph(fitPanel, `В пределах ${format(fit.distance_tolerance_m * 1000)} мм. В пределах 1 мм: ${fit.counts_within_1mm}/${fit.observation_count}; в пределах 3 мм: ${fit.counts_within_3mm}/${fit.observation_count}. Углового отсечения нет.`);
-      paragraph(fitPanel, `Полных измеренных траекторий: ${fit.observation_count}; сопоставлено: ${fit.assigned_count}. Неполных или непригодных записей: ${(fit.excluded_observations ?? []).length}.`);
+      paragraph(fitPanel, `Порог: ${format(fit.distance_tolerance_m * 1000)} мм · сопоставлено: ${fit.assigned_count}/${fit.observation_count}`);
       const statistics = comparisonTable(fitPanel, ['Ошибка', 'Медиана', '90%', '95%', 'Максимум'], [
         ['Положение, мм', ...['median', 'p90', 'p95', 'maximum'].map(k => format(fit.position_error_mm?.[k]))],
         ['Угол, мрад', ...['median', 'p90', 'p95', 'maximum'].map(k => format(fit.angular_error_mrad?.[k]))],
       ], 'Распределение ошибок геометрической подгонки'); statistics.className = 'comparison-statistics';
-      paragraph(fitPanel, '90% и 95% — доли сопоставленных траекторий с ошибкой не больше указанной. 3 мм — порог сравнения, не подтверждённая погрешность измерений.');
       const pairs = [...(fit.matches ?? [])].sort((a, b) => b.maximum_distance_m - a.maximum_distance_m);
       const details = comparisonDetails(fitPanel, `Пары и наибольшие отклонения · ${pairs.length}`);
+      paragraph(details, `В пределах 1 мм: ${fit.counts_within_1mm}/${fit.observation_count}; в пределах 3 мм: ${fit.counts_within_3mm}/${fit.observation_count}.`);
       paragraph(details, 'Сначала показаны наибольшие ошибки. Строки выше порога выделены. Номера используются только для поиска записей.');
       comparisonTable(details, ['Измерение', 'Расчётная траектория', 'Ошибка, мм', 'Угол, мрад'], pairs.map(pair => ({
         outlier: !pair.within_tolerance, values: [pair.observation_id, pair.trajectory_id,
@@ -494,18 +564,16 @@ function renderTrajectoryComparison(reports, context) {
         for (const item of fit.excluded_observations) paragraph(excluded, item.observation_id);
       }
     } else {
-      paragraph(fitPanel, 'Оценка недоступна. Откройте сохранённую реконструкцию с измерениями или выполните «Восстановить зеркала» для исторической реальной конфигурации.').className = 'comparison-empty';
+      paragraph(fitPanel, 'Нет реконструкции с измерениями. Загрузите её или восстановите зеркала.').className = 'comparison-empty';
     }
     panels.append(fitPanel);
     const physicalPanel = document.createElement('section'); physicalPanel.className = 'comparison-panel physical-path-panel';
     const physicalHeading = document.createElement('h4'); physicalHeading.textContent = 'Физическая проходимость'; physicalPanel.append(physicalHeading);
-    paragraph(physicalPanel, 'Сколько измеренных траекторий воспроизводится на фактически прослеженных участках. Луч не продолжается за препятствие или конец расчёта.').className = 'comparison-description';
     if (physical?.status === 'evaluated') {
       physicalMatched += physical.matched_count; physicalTotal += physical.observation_count;
       comparisonScore(physicalPanel, physical, 'physical-path-summary');
-      paragraph(physicalPanel, `В пределах ${format(physical.distance_tolerance_m * 1000)} мм; углового отсечения нет. Без совпадения: ${physical.unmatched_observation_count}.`);
-      paragraph(physicalPanel, 'Проверка по сохранённым адресным физическим путям реконструкции, а не по случайной сетке лучей последней трассировки.');
-      paragraph(physicalPanel, `Расчётных путей без пары измерений: ${physical.unmatched_trajectory_count}. Измерения неполны, поэтому такой путь не обязательно ошибочен. Совпадение не отменяет механические ограничения конфигурации.`);
+      paragraph(physicalPanel, `Порог: ${format(physical.distance_tolerance_m * 1000)} мм · не воспроизведено: ${physical.unmatched_observation_count}`);
+      paragraph(physicalPanel, `Расчётных путей без пары измерений: ${physical.unmatched_trajectory_count}`);
       const details = comparisonDetails(physicalPanel, 'Прошедшие пути и несовпавшие измерения');
       comparisonTable(details, ['Измерение', 'Прослеженный путь', 'Ошибка, мм', 'Угол, мрад'], (physical.matches ?? []).map(pair => [
         pair.observation_id, pair.trajectory_id, format(pair.maximum_distance_m * 1000), format(pair.angular_error_rad * 1000),
@@ -514,15 +582,18 @@ function renderTrajectoryComparison(reports, context) {
         `Не воспроизведено: ${item.observation_id}${item.nearest ? `; ближайший путь ${item.nearest.trajectory_id}, ${format(item.nearest.maximum_distance_m * 1000)} мм${item.reason === 'one_to_one_conflict' ? ' — уже сопоставлен другому измерению' : ''}` : '; расчётного пути нет'}.`);
       for (const id of physical.unmatched_trajectory_ids ?? []) paragraph(details, `Путь без пары измерений: ${id}.`);
     } else {
-      paragraph(physicalPanel, 'Проверка недоступна: необходимы измерения, сохранённые физические пути и их привязка к общей системе координат.').className = 'comparison-empty';
+      paragraph(physicalPanel, 'Нет измерений, сохранённых физических путей или их общей привязки.').className = 'comparison-empty';
     }
-    panels.append(physicalPanel); container.append(side);
+    panels.append(physicalPanel);
+    renderTrajectoryDiagnostics(side, report.diagnostics?.trajectory_diagnostics);
+    container.append(side);
   }
   const toleranceLabels = [...new Set(reports.flatMap(report => [report.diagnostics?.geometric_fit, report.diagnostics?.trajectory_matching])
     .filter(value => value?.status === 'evaluated').map(value => format(value.distance_tolerance_m * 1000)))];
+  preview.hidden = !fitTotal && !physicalTotal;
   $('trajectory-comparison-summary').textContent = fitTotal || physicalTotal
-    ? `Подгонка: ${fitMatched}/${fitTotal}${fitTotal ? ` (${(fitMatched * 100 / fitTotal).toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%)` : ''} · Проходимость: ${physicalMatched}/${physicalTotal} · ${toleranceLabels.length === 1 ? `в пределах ${toleranceLabels[0]} мм` : 'пороги в отчёте'}, без ограничения по углу`
-    : 'Для сравнения с экспериментом откройте реконструкцию с измерениями или восстановите зеркала.';
+    ? `Подгонка: ${fitTotal ? `${fitMatched}/${fitTotal}` : 'недоступна'} · Проходимость: ${physicalTotal ? `${physicalMatched}/${physicalTotal}` : 'недоступна'} · ${toleranceLabels.length === 1 ? `порог ${toleranceLabels[0]} мм` : 'пороги в отчёте'}`
+    : 'Нет реконструкции с измерениями для сравнения.';
 }
 
 function showMirror() {
@@ -583,8 +654,8 @@ async function showReconstruction(result) {
     if (baseScene) markSceneStale('Источник расчёта изменён. На сцене сохранена предыдущая трассировка для сравнения. Нажмите «Рассчитать лучи» для нового расчёта.');
   }
   const reports = reconstructionReports(result);
-  renderTrajectoryComparison(reports, result.active ? 'Принятая реконструкция: точность подгонки и сохранённые физические пути.'
-    : 'Диагностический кандидат: точность подгонки и сохранённые физические пути. Следующая трассировка использует прежнюю конфигурацию до принятия кандидата.');
+  renderTrajectoryComparison(reports, result.active ? 'Источник: принятая реконструкция.'
+    : 'Источник: кандидат, не принятый для расчётов.');
   if (result.active && reports.length === 1) $('direction').value = reports[0].direction;
   reconstructionScene = null;
   if (result.figure) {
@@ -602,16 +673,13 @@ async function showReconstruction(result) {
   $('preview-candidate').textContent = 'Показать кандидата в сцене';
   // Manual candidates require an explicit comparison preview; the accepted base stays intact.
   if (hasManualReconstruction(result) && !result.active) $('show-reconstruction').checked = false;
-  $('candidate-note').textContent = result.active
-    ? 'Эта конфигурация принята для следующих расчётов и сохранения. Принятие не меняет статус физических проверок. Для новой трассировки нажмите «Рассчитать лучи».'
-    : hasManualReconstruction(result)
-      ? 'Ручной кандидат сохранён отдельно от принятой конфигурации. Покажите его для сравнения или запустите уточнение. Принятие доступно только после необходимых проверок.'
-      : 'Диагностический кандидат — результат для сравнения. Следующая трассировка использует прежнюю конфигурацию, пока вы не нажмёте «Принять для расчётов». Статус проверок при принятии сохраняется.';
+  $('candidate-note').textContent = result.active ? '' : 'Кандидат не принят для следующих расчётов.';
+  $('candidate-note').hidden = result.active;
   $('accept-candidate').hidden = !result.document;
   $('accept-candidate').textContent = result.active ? 'Конфигурация принята' : 'Принять для расчётов';
   $('accept-candidate').disabled = busy || !!candidateBlockReason(result);
   $('accept-reason').textContent = candidateBlockReason(result);
-  $('accept-reason').hidden = !candidateBlockReason(result);
+  $('accept-reason').hidden = result.active || !candidateBlockReason(result);
   $('save-source').hidden = $('save-source-label').hidden = result.active || !result.document;
   $('save-source').value = result.active ? 'active' : 'candidate';
   $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}` : 'Историческая конфигурация';
@@ -631,9 +699,11 @@ async function showReconstruction(result) {
       ? `Зеркал: ${mirrors.length}. Геометрия из исторического источника; независимые первичные измерения к этому импорту не привязаны.`
       : `Зеркал: ${mirrors.length || counts.total || '—'} · полные: ${counts.complete ?? counts.measured ?? count('measured')} · частичные: ${counts.partial ?? counts.single_screen ?? count('partial')} · предсказанные: ${counts.predicted ?? count('predicted')}`);
     if (report.manual_references) {
-      paragraph(card, `Ручной источник: ${report.manual_references.source_file ?? '—'} · система: ${report.manual_references.coordinate_frame ?? '—'} · единицы: ${report.manual_references.units ?? '—'}.`);
-      paragraph(card, 'Ручные ориентиры сохранены отдельно от первичных измерений и не увеличивают число независимых наблюдений.');
-      paragraph(card, `SHA-256: ${report.manual_references.sha256 ?? '—'}`).style.overflowWrap = 'anywhere';
+      paragraph(card, `Источник: ${report.manual_references.source_file ?? '—'}`).style.overflowWrap = 'anywhere';
+      const sourceDetails = comparisonDetails(card, 'Происхождение данных');
+      paragraph(sourceDetails, `Система: ${report.manual_references.coordinate_frame ?? '—'} · единицы: ${report.manual_references.units ?? '—'}.`);
+      paragraph(sourceDetails, 'Ручные ориентиры сохранены отдельно от первичных измерений и не увеличивают число независимых наблюдений.');
+      paragraph(sourceDetails, `SHA-256: ${report.manual_references.sha256 ?? '—'}`).style.overflowWrap = 'anywhere';
     }
     const ambiguous = mirrors.filter(mirror => mirror.status === 'ambiguous' || mirror.support_status === 'ambiguous').length;
     const failed = mirrors.filter(mirror => ['failed', 'infeasible'].includes(mirror.status)).length;
@@ -674,7 +744,6 @@ async function showReconstruction(result) {
   $('reconstruction-json').textContent = JSON.stringify(metadata(result), null, 2);
   $('reconstruction-result').hidden = false;
   for (const warning of result.warnings ?? []) paragraph($('reconstruction-sides'), warning);
-  showSideStatus();
 }
 
 const stageLabels = { data: 'Проверка данных', checking_data: 'Проверка данных', observations: 'Проверка данных',
@@ -719,10 +788,10 @@ async function run(method, payload) {
       const comparisons = result.comparison_reports ?? [];
       if (comparisons.some(report => report.diagnostics?.geometric_fit?.status === 'evaluated') || !reconstructionResult) {
         renderTrajectoryComparison(comparisons, result.active
-          ? 'Принятая конфигурация последнего расчёта. Сравнение использует подогнанные прямые и сохранённые адресные физические пути реконструкции.'
-          : 'Историческая конфигурация последнего расчёта. Для оценки подгонки нужна реконструкция с экспериментальными измерениями.');
+          ? 'Источник: принятая реконструкция.'
+          : 'Историческая геометрия. Нет реконструкции для оценки подгонки.');
       } else {
-        $('trajectory-comparison-context').textContent = 'Сравнение диагностического кандидата. Последняя трассировка использует другую конфигурацию; приведённые ниже оценки относятся к кандидату.';
+        $('trajectory-comparison-context').textContent = 'Сравнение кандидата. Последняя трассировка использует другую конфигурацию.';
       }
       baseScene = { figure: result.figure, frame: result.metadata?.coordinate_frame ?? 'survey',
         direction: payload.direction, label: $('scene-label').textContent };
@@ -732,7 +801,6 @@ async function run(method, payload) {
         session.calibrate = result.measurements;
         await showCalibration(result.measurements);
       } else {
-        measurementContext = null;
         measurementReports = [];
         delete session.calibrate;
         $('calibration-result').hidden = true;
@@ -757,7 +825,6 @@ async function run(method, payload) {
     } else await showReconstruction(result);
     $('run-status').textContent = method === 'trace' ? 'Конфигурация построена' : method === 'calibrate'
       ? 'Измерения обработаны' : method === 'save_configuration' ? 'Конфигурация сохранена' : 'Реконструкция обработана';
-    $('connection-label').textContent = 'Расчётный модуль подключён';
     if (method === 'calibrate') $('calibration-result').scrollIntoView({ block: 'start', behavior: 'smooth' });
   } catch (error) {
     notify(error.message || String(error), true);
@@ -833,7 +900,6 @@ function markSceneStale(message = 'Параметры изменены. На с�
 }
 for (const id of ['direction', 'kind', 'collision-mode', 'ray-count', 'max-interactions']) $(id).addEventListener('change', () => {
   if (id === 'direction' || id === 'kind') {
-    measurementContext = null;
     $('calibration-result').hidden = true;
   }
   markSceneStale();
@@ -880,20 +946,27 @@ for (const button of document.querySelectorAll('[data-tab]')) button.addEventLis
     nav.classList.toggle('active', active);
     if (active) nav.setAttribute('aria-current', 'page'); else nav.removeAttribute('aria-current');
   }
-  $('breadcrumb').textContent = { static: 'Статика', dynamic: 'Динамика', distributions: 'Распределения' }[selected];
+  $('breadcrumb').textContent = { static: 'Статическая конфигурация', dynamic: 'Динамический анализ', distributions: 'Распределения' }[selected];
   if (selected === 'static') {
     if ($('scene').data) Plotly.Plots.resize($('scene'));
     if ($('measurement-plot').data) Plotly.Plots.resize($('measurement-plot'));
   }
 });
 
+$('open-help').addEventListener('click', () => {
+  $('help-dialog').showModal();
+  $('help-dialog').scrollTop = 0;
+});
+
 updateControls();
 (async () => {
-  if (!bridge) { $('connection-label').textContent = 'Запустите через npm start'; return; }
+  if (!bridge) {
+    $('run-status').textContent = 'Расчёт недоступен';
+    notify('Запустите приложение через run.py или npm start.', true);
+    return;
+  }
   try {
     const catalog = await bridge.request('catalog');
-    capabilities = catalog.additional_screens || [];
-    directions = catalog.directions.filter(item => item.id !== 'both').map(item => item.id);
     for (const item of catalog.directions) {
       routes[item.id] = item;
       sideNames[item.id] = item.injection_side;
@@ -909,11 +982,9 @@ updateControls();
       if (defaults[key] !== undefined) $(id).value = defaults[key];
     }
     ready = true;
-    $('connection-label').textContent = 'Расчётный модуль подключён';
-    $('run-status').textContent = 'Готово к расчёту';
+    $('run-status').textContent = '';
     updateControls();
   } catch (error) {
-    $('connection-label').textContent = 'Модуль расчёта недоступен';
     $('run-status').textContent = 'Нет связи с расчётным модулем';
     notify(error.message, true);
   }

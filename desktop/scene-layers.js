@@ -32,9 +32,9 @@ function composeScene(base, reconstruction, measurements = [], visible = {}) {
   return { figure: { ...primary.figure, data }, frame: primary.frame,
     label: compare && visible.base !== false && visible.reconstruction !== false
       ? `${base.label} + реконструкция` : visible.base === false && reconstruction ? reconstruction.label : primary.label,
-    note: base && reconstruction && !compare
+    note: base && reconstruction && !compare && visible.base !== false && visible.reconstruction !== false
       ? 'Совместный просмотр недоступен: общая геодезическая система координат не установлена. Отключите слой реконструкции, чтобы увидеть сохранённую построенную сцену.'
-      : compare ? 'Построенная сцена и реконструкция показаны вместе. Слои можно отключать; принятие конфигурации не требуется.' : '',
+      : '',
   };
 }
 

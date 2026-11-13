@@ -7,6 +7,7 @@ edge omissions remain separate assignment hypotheses.
 from __future__ import annotations
 
 from itertools import combinations
+from functools import lru_cache
 
 import numpy as np
 
@@ -54,19 +55,64 @@ def local_fan(directions, anchor=None):
     return local[order], order, basis
 
 
+@lru_cache(maxsize=10)
+def _fan_hypotheses(count, allow_outlier):
+    """Immutable index blocks in the historical keep-then-subset order."""
+    masks = [np.arange(count)]
+    if allow_outlier and count > 4:
+        masks += [np.delete(np.arange(count), k) for k in range(count)]
+    blocks = []
+    for size in dict.fromkeys(map(len, masks)):
+        subsets = np.array(list(combinations(range(7), size)), dtype=int)
+        matching = [mask for mask in masks if len(mask) == size]
+        slots = np.tile(subsets, (len(matching), 1))
+        keeps = np.repeat(np.array(matching), len(subsets), axis=0)
+        omitted = np.array([np.setdiff1d(np.arange(count), keep) for keep in keeps], dtype=int)
+        for array in (slots, keeps, omitted):
+            array.setflags(write=False)
+        blocks.append((slots, keeps, omitted))
+    return tuple(blocks)
+
+
 def assign_fan(template, directions, *, ambiguity_rad=.002, max_alternatives=6, allow_outlier=True):
     """Enumerate monotone subsets and at most one explicitly excluded outlier."""
     template, directions = unit(template), unit(directions)
     if not 3 <= len(directions) <= 7:
         raise ValueError("A fan needs 3 to 7 complete rays")
     local, order, basis = local_fan(directions)
+    blocks = _fan_hypotheses(len(local), bool(allow_outlier))
+    batch_costs = []
+    scalar_fallback = False
+    screening_condition = 1.
+    for slots, keeps, _ in blocks:
+        source, target = template[slots], local[keeps]
+        u, singular, vt = np.linalg.svd(source.swapaxes(-1, -2) @ target)
+        correction = np.ones((len(slots), 3))
+        correction[:, 2] = np.linalg.det(vt.swapaxes(-1, -2) @ u.swapaxes(-1, -2))
+        # Proper Wahba rotations are not unique at rank one, or when enforcing
+        # det=+1 across equal smallest singular values of a reflection. Keep
+        # scalar LAPACK behavior for either degeneracy and guard near cases.
+        polar_gap = np.where(correction[:, 2] < 0, singular[:, 1] - singular[:, 2],
+                             singular[:, 1] + singular[:, 2])
+        scalar_fallback |= bool(np.any(polar_gap <= singular[:, 0] * 1e-10))
+        if not scalar_fallback:
+            screening_condition = max(screening_condition, float(np.max(singular[:, 0] / polar_gap)))
+        rotations = (vt.swapaxes(-1, -2) * correction[:, None, :]) @ u.swapaxes(-1, -2)
+        errors = angular_distance(source @ rotations.swapaxes(-1, -2), target)
+        batch_costs.append(np.sum(np.minimum(errors**2, (10 * ambiguity_rad)**2), axis=1)
+                           + (len(local) - slots.shape[1]) * (5 * ambiguity_rad)**2)
+    best_batch = min(float(np.min(cost)) for cost in batch_costs)
+    tolerance = len(directions) * ambiguity_rad**2
+    # Batching is only a screening operation. Re-evaluate every possible output
+    # with the original scalar arithmetic so cost ties, ordering, rotation and
+    # all subsequent template iterations stay identical. The guard is a
+    # floating-point screening margin, NOT a new assignment tolerance.
+    guard = max(1e-12, 128 * np.finfo(float).eps * screening_condition) * max(1., abs(best_batch), abs(tolerance))
+    scalar_fallback |= not np.isfinite(best_batch + tolerance + guard)
     candidates = []
-    masks = [np.arange(len(local))]
-    if allow_outlier and len(local) > 4:
-        masks += [np.delete(np.arange(len(local)), k) for k in range(len(local))]
-    for keep in masks:
-        for slots in combinations(range(7), len(keep)):
-            slots = np.asarray(slots, int)
+    for (slot_rows, keep_rows, omitted_rows), costs in zip(blocks, batch_costs):
+        selected = np.ones(len(costs), dtype=bool) if scalar_fallback else costs <= best_batch + tolerance + guard
+        for slots, keep, omitted in zip(slot_rows[selected], keep_rows[selected], omitted_rows[selected]):
             rotation = rigid_rotation(template[slots], local[keep])
             errors = angular_distance(template[slots] @ rotation.T, local[keep])
             # Removing a point requires a 5-sigma gross error, not an automatic match.
@@ -74,7 +120,7 @@ def assign_fan(template, directions, *, ambiguity_rad=.002, max_alternatives=6, 
                          + (len(local) - len(keep)) * (5 * ambiguity_rad)**2)
             global_rotation = basis @ rotation
             candidates.append(dict(slots=slots.tolist(), observation_indices=order[keep].tolist(),
-                                   outliers=order[np.setdiff1d(np.arange(len(local)), keep)].tolist(),
+                                   outliers=order[omitted].tolist(),
                                    cost=cost, rotation=global_rotation.tolist(), angular_residual_rad=errors.tolist()))
     candidates.sort(key=lambda c: (c["cost"], c["slots"]))
     best = candidates[0]

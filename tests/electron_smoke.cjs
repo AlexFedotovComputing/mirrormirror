@@ -30,7 +30,11 @@ const { _electron } = require('playwright-core');
     };
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setBackgroundThrottling(false));
     page.on('pageerror', error => errors.push(error.message));
-    await page.waitForFunction(() => document.querySelector('#connection-label')?.textContent.includes('подключён'));
+    await page.waitForFunction(() => !document.querySelector('#run').disabled);
+    await page.locator('#open-help').click();
+    assert.equal(await page.locator('#help-dialog').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#help-dialog').isVisible(), false);
     assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
     assert.equal(await page.locator('#direction').inputValue(), 'both');
     assert.equal(await page.locator('#use-lavsan').count(), 0);
@@ -158,8 +162,6 @@ const { _electron } = require('playwright-core');
     await page.locator('#kind').selectOption('real');
     await page.locator('#run').click();
     await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
-    assert.match(await page.locator('#side-status [data-direction="east_to_west"]').innerText(), /использованы частично.*75/s);
-    assert.equal(await page.locator('#side-status [data-direction="west_to_east"] .screen-status').count(), 0);
     assert.equal(await page.locator('#measurement-sides button').count(), 2);
     assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(trace => trace.meta?.kind === 'measurement_ray')));
     const measurementScene = await page.evaluate(() => {
@@ -171,6 +173,8 @@ const { _electron } = require('playwright-core');
       await page.locator(`#measurement-sides [data-direction="${direction}"]`).click();
       await page.waitForFunction(dir => document.querySelector(`#measurement-sides [data-direction="${dir}"]`).getAttribute('aria-pressed') === 'true', direction);
       assert.equal(await page.locator('#calibration-table tbody tr').count(), 112);
+      assert.match(await page.locator('#calibration-summary').innerText(), direction === 'east_to_west'
+        ? /Дополнительные экраны: использованы частично.*75/s : /Дополнительные экраны: нет данных/);
     }
     await capture('both-real.png');
     await page.locator('#layers-panel > summary').click();
@@ -207,7 +211,7 @@ const { _electron } = require('playwright-core');
       await page.locator('#collision-mode').selectOption('exhaustive');
       await page.locator('#run').click();
       await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
-      assert.match(await page.locator('#side-status').innerText(), /не выбрана/);
+      assert.match(await page.locator('#scene-label').innerText(), direction === 'east_to_west' ? /WEST/ : /EAST/);
       await page.locator('#calibrate').click();
       await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Измерения обработаны', null, { timeout: 60000 });
       assert.equal(await page.locator('#calibration-table tbody tr').count(), 112);
@@ -307,7 +311,7 @@ const { _electron } = require('playwright-core');
     assert.equal(await page.locator('#active-state').innerText(), activeBeforeFailure);
     assert.ok(await page.locator('#accept-candidate').isVisible());
     assert.ok(await page.locator('#accept-candidate').isDisabled());
-    assert.match(await page.locator('#accept-reason').innerText(), /infeasible/);
+    assert.match(await page.locator('#accept-reason').innerText(), /проверки не пройдены/);
     const layerState = () => page.evaluate(() => {
       const plot = document.querySelector('#scene');
       return { camera: plot._fullLayout.scene.camera, count: plot.data.length,
