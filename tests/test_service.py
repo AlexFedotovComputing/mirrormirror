@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 
 class ServiceTests(unittest.TestCase):
     def test_parameter_validation(self):
-        for payload in ({"ray_count": True}, {"ray_count": 0}, {"ray_count": 50001},
+        for payload in ({"ray_count": True}, {"ray_count": 0}, {"cpu_workers": 0}, {"cpu_workers": True},
                         {"max_interactions": 101}, {"collision_mode": "fast"},
                         {"direction": "east"}, {"kind": "dynamic"}):
             with self.subTest(payload=payload), self.assertRaises(ValueError):

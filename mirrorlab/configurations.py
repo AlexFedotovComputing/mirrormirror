@@ -57,18 +57,10 @@ class StaticConfiguration:
     overlays: list = field(default_factory=list)
 
     def emit(self, ray_count: int = 217):
-        """Sample a hexapolar Gaussian grid reproducibly, retaining its total power."""
-        if isinstance(ray_count, bool) or not isinstance(ray_count, int) or not 1 <= ray_count <= 50000:
-            raise ValueError("ray_count must be an integer from 1 to 50000")
-        source = copy.deepcopy(self.source)
-        source.radial_positions = max(1, math.ceil((math.sqrt(12 * ray_count - 3) - 3) / 6))
-        rays = source.emit()
-        if rays.n_rays != ray_count:
-            total_power = float(np.sum(to_numpy(rays.power)))
-            indices = np.floor(np.linspace(0, rays.n_rays, ray_count, endpoint=False)).astype(int)
-            rays = rays.subset(rays.xp.asarray(indices))
-            rays.power *= total_power / float(np.sum(to_numpy(rays.power)))
-        return rays
+        """Use one reproducible random ray per equal-area 2D aperture cell."""
+        if type(ray_count) is not int or ray_count < 1:
+            raise ValueError("ray_count must be a positive integer")
+        return self.source.emit(ray_count=ray_count)
 
 
 def load_configuration(direction: str = "west_to_east", kind: str = "ideal", backend: str = "numpy") -> StaticConfiguration:

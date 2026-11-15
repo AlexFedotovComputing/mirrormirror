@@ -32,8 +32,10 @@ class ConfigurationTests(unittest.TestCase):
                     self.assertEqual(displayed, 217)
                     starts = np.array([[t[a][i] for a in "xyz"] for t in figure["data"]
                                        if t.get("legendgroup") == "rays" for i in range(0, len(t["x"]), 3)])
-                    expected = frame.points(config.source.waist_position)
-                    self.assertLess(np.linalg.norm(starts - expected, axis=1).min(), 1e-12)
+                    expected = frame.points(config.emit(217).position)
+                    distances = np.linalg.norm(starts[:, None, :] - expected[None, :, :], axis=2)
+                    self.assertLess(distances.min(axis=0).max(), 1e-12)
+                    self.assertLess(distances.min(axis=1).max(), 1e-12)
                     self.assertTrue(np.all(np.abs(starts[:, 2]) > 5))
 
     def test_archive_names_and_side_labels_do_not_control_geometry(self):
@@ -103,6 +105,9 @@ class ConfigurationTests(unittest.TestCase):
                 self.assertLess(source_sign * reference["point_m"][2], 0)
 
     def test_ideal_micro_mirrors_turn_rays_into_both_halves(self):
+        # Coverage of every small cut requires a converged spatial sample;
+        # 721 stratified points can miss individual mirrors by construction.
+        ray_count = 4000
         for direction in ("west_to_east", "east_to_west"):
             config = load_configuration(direction)
             surfaces = {s.name: s for s in config.scene.build_surfaces()}
@@ -110,12 +115,12 @@ class ConfigurationTests(unittest.TestCase):
                 with self.subTest(direction=direction, mode=mode):
                     result = RayTracer(config.scene, collision_mode=mode, max_interactions=48,
                                        max_time_s=config.integration_time_s,
-                                       **config.tracer_options).trace(config.emit(721))
+                                       **config.tracer_options).trace(config.emit(ray_count))
                     # The supplied PR2 position and common PR3 correction
                     # keep both prisms on their intended entrance/exit route.
                     hits = Counter(name for block in result.segments for name in block["surface"])
                     for face in ("PR2:side_0", "PR2:side_1", "PR3:side_1", "PR3:side_2"):
-                        self.assertEqual(hits[face], 721, face)
+                        self.assertEqual(hits[face], ray_count, face)
                     first_hits = {}
                     for block in result.segments:
                         for i, name in enumerate(block["surface"]):
@@ -141,7 +146,7 @@ class ConfigurationTests(unittest.TestCase):
                     self.assertEqual(children, len(first_hits))
                     self.assertEqual(result.diagnostics["unfinished_count"], 0)
 
-    def test_sampling_is_reproducible_and_preserves_grid_power(self):
+    def test_sampling_is_reproducible_uniform_in_area_and_preserves_power(self):
         config = load_configuration()
         for count in (1, 19, 100, 217):
             first, second = config.emit(count), config.emit(count)
@@ -149,9 +154,16 @@ class ConfigurationTests(unittest.TestCase):
             np.testing.assert_array_equal(first.position, second.position)
             self.assertTrue(np.isfinite(first.power).all())
             self.assertGreater(float(first.power.sum()), 0)
-        # 100 is sampled from a 127-point grid; sampling changes no total power.
+            radius = config.source.waist_radius * config.source.cutoff_ratio
+            distance = np.linalg.norm(first.position - np.asarray(config.source.waist_position), axis=1)
+            self.assertTrue(np.all(distance < radius))
+            expected_intensity = config.source.peak_intensity * np.exp(-2*(distance/config.source.waist_radius)**2)
+            np.testing.assert_allclose(first.intensity, expected_intensity)
+            expected_power = config.source.peak_intensity * np.pi * config.source.waist_radius**2 / 2 * (-np.expm1(-2*config.source.cutoff_ratio**2))
+            self.assertAlmostEqual(float(first.power.sum()) / expected_power, 1., places=12)
+        # Aperture power is independent of sampling density.
         self.assertAlmostEqual(float(config.emit(100).power.sum()), float(config.emit(127).power.sum()), places=7)
-        for invalid in (0, 50001, 1.5, True):
+        for invalid in (0, -1, 1.5, True):
             with self.assertRaises(ValueError):
                 config.emit(invalid)
 

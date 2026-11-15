@@ -29,6 +29,7 @@ const labels = {
   detector_hits: 'Попаданий на экраны', hits: 'Попаданий на экраны', hit_count: 'Попаданий на экраны',
   elapsed_s: 'Время расчёта, с', duration_s: 'Время расчёта, с', surfaces: 'Поверхностей',
   surface_count: 'Поверхностей', total_power_w: 'Мощность, Вт',
+  cpu_workers: 'CPU-процессов',
 };
 const format = (value) => typeof value === 'number'
   ? value.toLocaleString('ru-RU', { maximumFractionDigits: 4 }) : String(value ?? '—');
@@ -108,7 +109,7 @@ function paragraph(parent, text) {
 }
 
 function metadata(result) {
-  const { figure, ...rest } = result;
+  const { figure, visualization, ...rest } = result;
   return rest;
 }
 
@@ -203,18 +204,25 @@ async function drawScene(figure) {
     scene: { ...sourceLayout.scene, ...axes, dragmode: 'orbit', aspectmode: 'data',
       bgcolor: '#ffffff', camera: camera || defaultCamera },
   };
-  await Plotly.react($('scene'), themedPlotData(figure.data), layout, {
+  // Mesh picking in an incrementally replaced gl3d scene can retain an index
+  // into the previous mesh (Plotly V.pick then accesses an absent triangle).
+  // Recreate the GL scene on data changes; keep the user's camera separately.
+  const plot = $('optical-scene');
+  delete plot.dataset.scaleListener;
+  delete plot.dataset.cameraListener;
+  delete plot.dataset.mirrorListener;
+  await Plotly.newPlot(plot, themedPlotData(figure.data), layout, {
     responsive: true, displaylogo: false, scrollZoom: true,
     toImageButtonOptions: { format: 'png', filename: 'mirrorlab-scene', scale: 2 },
   });
-  await equalAxisScale($('scene'));
+  await equalAxisScale($('optical-scene'));
   if (!camera) await setSceneExtent();
-  if (!$('scene').dataset.cameraListener) {
-    $('scene').on('plotly_relayout', (event) => { if (event['scene.camera']) camera = event['scene.camera']; });
-    $('scene').dataset.cameraListener = 'true';
+  if (!$('optical-scene').dataset.cameraListener) {
+    $('optical-scene').on('plotly_relayout', (event) => { if (event['scene.camera']) camera = event['scene.camera']; });
+    $('optical-scene').dataset.cameraListener = 'true';
   }
-  if (!$('scene').dataset.mirrorListener) {
-    $('scene').on('plotly_click', event => {
+  if (!$('optical-scene').dataset.mirrorListener) {
+    $('optical-scene').on('plotly_click', event => {
       const point = event.points?.[0];
       const info = point?.customdata && typeof point.customdata === 'object' && !Array.isArray(point.customdata)
         ? point.customdata : point?.data?.meta;
@@ -226,15 +234,21 @@ async function drawScene(figure) {
         (!info.direction || item.direction === info.direction));
       if (selected >= 0) { $('mirror-select').value = String(selected); showMirror(); }
     });
-    $('scene').dataset.mirrorListener = 'true';
+    $('optical-scene').dataset.mirrorListener = 'true';
   }
   $('empty-scene').hidden = true;
-  $('reset-camera').disabled = !$('scene')._fullLayout?.scene;
-  $('scene-extent').disabled = !$('scene')._fullLayout?.scene;
+  $('reset-camera').disabled = !$('optical-scene')._fullLayout?.scene;
+  $('scene-extent').disabled = !$('optical-scene')._fullLayout?.scene;
   $('toggle-legend').disabled = !figure.data.length;
 }
 
-async function drawSceneLayers() {
+let sceneRenderQueue = Promise.resolve();
+function drawSceneLayers() {
+  const render = sceneRenderQueue.then(renderSceneLayers);
+  sceneRenderQueue = render.catch(() => {});
+  return render;
+}
+async function renderSceneLayers() {
   const result = composeScene(baseScene, reconstructionScene, sceneMeasurements, {
     base: $('show-base').checked, reconstruction: $('show-reconstruction').checked,
     measurements: $('show-measurements').checked,
@@ -821,6 +835,7 @@ async function run(method, payload) {
         activeConfiguration = false;
       }
       showSummary(result, payload);
+      window.mirrorVisualization.update(result);
       const comparisons = result.comparison_reports ?? [];
       if (comparisons.some(report => report.diagnostics?.geometric_fit?.status === 'evaluated') || !reconstructionResult) {
         renderTrajectoryComparison(comparisons, result.trace_source === 'candidate' ? 'Источник: геометрия диагностического кандидата.' : result.active
@@ -879,7 +894,7 @@ $('trace-form').addEventListener('submit', (event) => {
   event.preventDefault();
   if (!$('trace-form').reportValidity()) return;
   run('trace', { source: 'preset', direction: $('direction').value, kind: $('kind').value,
-    collision_mode: $('collision-mode').value, ray_count: Number($('ray-count').value),
+    collision_mode: $('collision-mode').value, ray_count: Number($('ray-count').value), cpu_workers: Number($('cpu-workers').value),
     max_interactions: Number($('max-interactions').value) });
 });
 $('trace-source').addEventListener('change', () => markSceneStale('Источник геометрии изменён. Нажмите «Выполнить трассировку» для обновления.'));
@@ -929,7 +944,7 @@ $('restore-layers').addEventListener('click', () => {
 $('toggle-legend').addEventListener('click', async () => {
   legendVisible = !legendVisible;
   $('toggle-legend').setAttribute('aria-pressed', String(legendVisible));
-  try { await Plotly.relayout($('scene'), { showlegend: legendVisible }); }
+  try { await Plotly.relayout($('optical-scene'), { showlegend: legendVisible }); }
   catch (error) { notify(error.message, true); }
 });
 for (const button of document.querySelectorAll('[data-result-target]')) button.addEventListener('click', () => {
@@ -939,11 +954,12 @@ for (const button of document.querySelectorAll('[data-result-target]')) button.a
   target.scrollIntoView({ block: 'start', behavior: 'smooth' });
 });
 function markSceneStale(message = 'Параметры изменены. На сцене предыдущий результат. Нажмите «Выполнить трассировку» для обновления.') {
+  window.mirrorVisualization.stale();
   if (!baseScene && !reconstructionScene) return;
   $('scene-stale').textContent = message;
   $('scene-stale').hidden = false;
 }
-for (const id of ['direction', 'kind', 'collision-mode', 'ray-count', 'max-interactions']) $(id).addEventListener('change', () => {
+for (const id of ['direction', 'kind', 'collision-mode', 'ray-count', 'cpu-workers', 'max-interactions']) $(id).addEventListener('change', () => {
   if (id === 'direction' || id === 'kind') {
     $('calibration-result').hidden = true;
   }
@@ -956,7 +972,7 @@ $('cancel').addEventListener('click', async () => {
 async function setSceneExtent() {
   // Keep every ray inside the axis bounds. A close-up changes the camera,
   // never the clipping box (which previously hid the laser-to-periscope path).
-  const scene = $('scene')._fullLayout.scene;
+  const scene = $('optical-scene')._fullLayout.scene;
   if (!scene) return;
   let view = structuredClone(defaultCamera);
   if (!overview) {
@@ -971,7 +987,7 @@ async function setSceneExtent() {
     view.eye = Object.fromEntries(['x', 'y', 'z'].map(axis => [axis, center[axis] + defaultCamera.eye[axis] * zoom]));
   }
   $('scene-extent').textContent = overview ? 'К объёму' : 'Вся схема';
-  await Plotly.relayout($('scene'), { 'scene.camera': view });
+  await Plotly.relayout($('optical-scene'), { 'scene.camera': view });
 }
 $('scene-extent').addEventListener('click', async () => {
   overview = !overview;
@@ -981,7 +997,7 @@ $('reset-camera').addEventListener('click', async () => {
   camera = null;
   overview = true;
   await setSceneExtent();
-  await Plotly.relayout($('scene'), { 'scene.camera': defaultCamera });
+  await Plotly.relayout($('optical-scene'), { 'scene.camera': defaultCamera });
 });
 for (const button of document.querySelectorAll('[data-tab]')) button.addEventListener('click', () => {
   const selected = button.dataset.tab;
@@ -991,9 +1007,10 @@ for (const button of document.querySelectorAll('[data-tab]')) button.addEventLis
     nav.classList.toggle('active', active);
     if (active) nav.setAttribute('aria-current', 'page'); else nav.removeAttribute('aria-current');
   }
-  $('breadcrumb').textContent = { static: 'Статическая конфигурация', dynamic: 'Динамический анализ', distributions: 'Распределения' }[selected];
+  $('breadcrumb').textContent = { static: 'Статическая конфигурация', dynamic: 'Динамический анализ', distributions: 'Визуализация' }[selected];
+  if (selected === 'distributions') window.mirrorVisualization.activate();
   if (selected === 'static') {
-    if ($('scene').data) Plotly.Plots.resize($('scene'));
+    if ($('optical-scene').data) Plotly.Plots.resize($('optical-scene'));
     if ($('measurement-plot').data) Plotly.Plots.resize($('measurement-plot'));
   }
 });
@@ -1023,7 +1040,7 @@ updateControls();
       return option;
     }));
     const defaults = catalog.defaults || {};
-    for (const [key, id] of Object.entries({ direction: 'direction', kind: 'kind', collision_mode: 'collision-mode', ray_count: 'ray-count', max_interactions: 'max-interactions' })) {
+    for (const [key, id] of Object.entries({ direction: 'direction', kind: 'kind', collision_mode: 'collision-mode', ray_count: 'ray-count', cpu_workers: 'cpu-workers', max_interactions: 'max-interactions' })) {
       if (defaults[key] !== undefined) $(id).value = defaults[key];
     }
     ready = true;

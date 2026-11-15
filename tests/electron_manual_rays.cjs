@@ -30,15 +30,15 @@ const { _electron } = require('playwright-core');
     console.log('Manual rays computed');
     assert.match(await page.locator('.manual-rays-summary').innerText(), /\/83/);
     assert.equal(await page.locator('#trace-source').inputValue(), 'candidate');
-    const count = () => page.evaluate(() => document.querySelector('#scene').data.filter(t => t.meta?.kind === 'manual_aperture_ray').length);
+    const count = () => page.evaluate(() => document.querySelector('#optical-scene').data.filter(t => t.meta?.kind === 'manual_aperture_ray').length);
     const initialCount = await count();
     assert.ok(await page.locator('#accept-candidate').isDisabled());
     // Open the layer details without relying on its current expanded state.
     await page.locator('#show-manual-rays').evaluate(el => { const d = el.closest('details'); if (d) d.open = true; });
     await page.uncheck('#show-manual-rays');
-    await page.waitForFunction(() => !document.querySelector('#scene').data.some(t => t.meta?.kind === 'manual_aperture_ray'));
+    await page.waitForFunction(() => !document.querySelector('#optical-scene').data.some(t => t.meta?.kind === 'manual_aperture_ray'));
     await page.check('#show-manual-rays');
-    await page.waitForFunction(() => document.querySelector('#scene').data.some(t => t.meta?.kind === 'manual_aperture_ray'));
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.some(t => t.meta?.kind === 'manual_aperture_ray'));
     await page.click('#add-manual-rays');
     await finish('Лучи из ручного анализа добавлены');
     assert.equal(await count(), initialCount);

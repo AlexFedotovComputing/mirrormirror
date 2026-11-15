@@ -44,7 +44,8 @@ class TraceRequest:
     direction: str = "both"
     kind: str = "ideal"
     collision_mode: str = "expected"
-    ray_count: int = 217
+    ray_count: int = 1000
+    cpu_workers: int = 6
     max_interactions: int = 48
 
     def __post_init__(self):
@@ -54,7 +55,10 @@ class TraceRequest:
             raise ValueError("Выберите идеальную или реальную конфигурацию.")
         if self.collision_mode not in {"exhaustive", "expected"}:
             raise ValueError("Неизвестный режим поиска пересечений.")
-        for name, maximum in (("ray_count", 50000), ("max_interactions", 100)):
+        for name in ('ray_count', 'cpu_workers'):
+            if type(getattr(self, name)) is not int or getattr(self, name) < 1:
+                raise ValueError(f'{name}: требуется положительное целое число.')
+        for name, maximum in (("max_interactions", 100),):
             value = getattr(self, name)
             if type(value) is not int or not 1 <= value <= maximum:
                 raise ValueError(f"{name}: требуется целое число от 1 до {maximum}.")
@@ -68,7 +72,7 @@ def catalog():
         side_designations=SIDE_DESIGNATIONS,
         configurations=["ideal", "real"], collision_modes=["exhaustive", "expected"],
         defaults=asdict(TraceRequest()), units="m", separator_z_m=0, coordinate_frame="survey",
-        modules={"static": "ready", "distributions": "stub", "dynamic": "stub"},
+        modules={"static": "ready", "distributions": "ready", "dynamic": "stub"},
     )
 
 
@@ -99,13 +103,14 @@ def _trace_one(request, dataset=None):
         from .state import configuration_from_dataset
         configuration = configuration_from_dataset(dataset)
     rays = configuration.emit(request.ray_count)
-    tracer = RayTracer(scene=configuration.scene, collision_mode=request.collision_mode,
+    from .engine.parallel import trace_cpu
+    result = trace_cpu(configuration.scene, rays, cpu_workers=request.cpu_workers, collision_mode=request.collision_mode,
                        max_interactions=request.max_interactions, max_time_s=configuration.integration_time_s,
                        **configuration.tracer_options)
-    result = tracer.trace(rays)
     frame = survey_frames()[request.direction] if dataset is None else _dataset_frame(dataset)
     figure, displayed = PlotlyRenderer().render(configuration, result, frame=frame)
-    compiled = tracer.compiled_scene
+    from .visualization import build_visualization
+    visualization = build_visualization(configuration, rays, result, frame)
     segment_count = sum(len(block["x0"]) for block in result.segments)
     warnings = ["Исходные геодезические точки можно включить в легенде сцены."]
     if dataset is None:
@@ -122,15 +127,16 @@ def _trace_one(request, dataset=None):
     if unfinished:
         warnings.append(f"Лимит взаимодействий достигнут для {unfinished} лучей. Увеличьте лимит.")
     return dict(
-        figure=figure, request=asdict(request), metadata={**configuration.metadata, "coordinate_frame": "survey" if frame else "legacy", "separator_z_m": 0,
+        figure=figure, visualization=visualization, request=asdict(request), metadata={**configuration.metadata, "coordinate_frame": "survey" if frame else "legacy", "separator_z_m": 0,
                                                         "frame_registration": frame.metadata() if frame else None}, warnings=warnings,
-        summary=dict(ray_count=rays.n_rays, surface_count=len(compiled.surfaces), segment_count=segment_count,
+        summary=dict(ray_count=rays.n_rays, surface_count=len(result.surface_names), segment_count=segment_count,
+                     cpu_workers=result.diagnostics['cpu_workers'],
                      displayed_segments=displayed, detector_hits=sum(len(b["position"]) for b in result.detector_hits),
                      source_power_w=float(np.sum(to_numpy(rays.power))),
                      detector_power_w=result.detector_power_summary(),
                      integration_time_ns=configuration.integration_time_s * 1e9,
                      elapsed_s=round(time.perf_counter() - started, 3),
-                     intersection_tests=compiled.intersection_tests, possible_tests=compiled.possible_tests,
+                     intersection_tests=result.diagnostics['intersection_tests'], possible_tests=result.diagnostics['possible_tests'],
                      unfinished_count=unfinished),
     )
 
@@ -207,6 +213,7 @@ def trace(payload):
                       metadata=dict(direction="both", separator_z_m=0, units="m",
                                     coordinate_frame="survey", trace_strategy="independent_sources"),
                       warnings=list(dict.fromkeys(warning for item in results for warning in item["warnings"])))
+    result["visualization"] = dict(sides=[item['visualization'] for item in results])
     result["sides"] = [dict(direction=item["request"]["direction"], metadata=item["metadata"],
                             summary=item["summary"]) for item in results]
     if request.kind == "real" and document is None:
@@ -218,6 +225,7 @@ def trace(payload):
             trajectory_matching=dict(status="not_evaluated", reason="reconstruction_required")))
         for d in directions]
     result["summary"]["elapsed_s"] = round(time.perf_counter() - started, 3)
+    result["summary"]["cpu_workers"] = max(item['summary']['cpu_workers'] for item in results)
     return result
 
 

@@ -1,4 +1,4 @@
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { createInterface } = require('node:readline');
 const { existsSync } = require('node:fs');
 const path = require('node:path');
@@ -92,7 +92,13 @@ class WorkerClient {
       reject(new Error(reason));
     }
     this.pending.clear();
-    if (child && !child.killed) child.kill();
+    if (child && !child.killed) {
+      // Python now owns CPU worker processes: stopping only its parent leaks them.
+      if (process.platform === 'win32' && child.pid) {
+        spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+      }
+      child.kill();
+    }
   }
 }
 
@@ -126,12 +132,16 @@ function validateRequest(method, payload) {
   }
   if (!['ideal', 'real'].includes(payload.kind)) throw new Error('Выберите конфигурацию.');
   if (!['exhaustive', 'expected'].includes(payload.collision_mode)) throw new Error('Выберите режим пересечений.');
-  for (const [name, max] of [['ray_count', 50000], ['max_interactions', 100]]) {
+  for (const name of ['ray_count', 'cpu_workers']) {
+    const value = payload[name] ?? (name === 'cpu_workers' ? 6 : undefined);
+    if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name}: требуется положительное целое число.`);
+  }
+  for (const [name, max] of [['max_interactions', 100]]) {
     if (!Number.isInteger(payload[name]) || payload[name] < 1 || payload[name] > max) throw new Error(`${name}: требуется целое число от 1 до ${max}.`);
   }
   if (!['active', 'candidate', 'preset'].includes(payload.source ?? 'active')) throw new Error('Выберите источник геометрии для трассировки.');
   return { ...(payload.source !== undefined ? { source: payload.source } : {}), direction: payload.direction, kind: payload.kind, collision_mode: payload.collision_mode,
-    ray_count: payload.ray_count, max_interactions: payload.max_interactions };
+    ray_count: payload.ray_count, cpu_workers: payload.cpu_workers ?? 6, max_interactions: payload.max_interactions };
 }
 
 module.exports = { WorkerClient, validateRequest };

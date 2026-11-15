@@ -1,4 +1,26 @@
 :root { color-scheme:light; --background:#ffffff; --sidebar:#f6f4f1; --card:#ffffff; --border:#dedbd7; --text:#303136; --muted:#696965; --accent:#705f89; --rose:#956f7b; }
+.viz-toolbar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; padding:12px 16px; }
+.viz-toolbar label { margin:0; }
+.viz-toolbar select { margin-top:6px; }
+.viz-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.viz-tabs [aria-pressed=true] { background:#ebe5f0; color:#58476f; border-color:#b5a1c7; }
+.viz-card { padding:16px; margin-bottom:14px; min-width:0; }
+.viz-checks { display:flex; flex-wrap:wrap; gap:22px; }
+.viz-checks label { margin:0; }
+.viz-scene { width:100%; height:620px; }
+.viz-endcap-plot { width:100%; height:580px; min-width:0; }
+.viz-camera-grid,.viz-unwrap-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.viz-plot { width:100%; height:380px; min-width:0; }
+.viz-camera-side { min-width:0; }
+.viz-table-scroll { overflow:auto; max-height:600px; }
+.viz-table { width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
+.viz-table th,.viz-table td { padding:9px 10px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+.viz-table th:first-child,.viz-table td:first-child { text-align:left; }
+.viz-table th { position:sticky; top:0; background:#f6f4f1; font-weight:600; z-index:1; }
+.viz-table tbody tr:hover { background:#faf8fc; }
+.viz-method { margin-top:16px; color:var(--muted); font-size:12px; }
+.viz-method summary { cursor:pointer; }
+@media(max-width:1100px) { .viz-unwrap-grid { grid-template-columns:1fr; } .viz-plot { height:340px; } }
 * { box-sizing:border-box; }
 [hidden] { display:none !important; }
 body { margin:0; background:var(--background); color:var(--text); font:14px/1.55 "Segoe UI",Arial,sans-serif; }
@@ -119,7 +141,7 @@ input[type=checkbox] { accent-color:var(--accent); margin:0; }
 .text-button { background:none; border:0; padding:5px 0; color:#57535e; font-size:13px; }
 .text-button:hover { color:var(--accent); }
 .plot-container { position:relative; background:#ffffff; }
-#scene { width:100%; height:clamp(360px, calc(100dvh - 300px), 800px); }
+#optical-scene { width:100%; height:clamp(360px, calc(100dvh - 300px), 800px); }
 #measurement-plot { width:100%; height:420px; }
 .measurement-heading { font-size:13px; margin:22px 0 4px; }
 .empty-scene { position:absolute; inset:0; display:flex; justify-content:center; flex-direction:column; align-items:center; text-align:center; pointer-events:none; }

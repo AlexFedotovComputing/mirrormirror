@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="styles.css">
   <script defer src="../node_modules/plotly.js-dist-min/plotly.min.js"></script>
   <script defer src="scene-layers.js"></script>
+  <script defer src="ray-hover.js"></script>
+  <script defer src="visualization.js"></script>
   <script defer src="renderer.js"></script>
 </head>
 <body>
@@ -16,7 +18,7 @@
     <nav aria-label="Модули приложения">
       <button class="nav-button active" data-tab="static" aria-current="page" title="Статическая конфигурация"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></svg></span><span class="nav-text">Статическая конфигурация</span></button>
       <button class="nav-button" data-tab="dynamic" title="Динамический анализ — в разработке"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M3 12h3l3-7 6 14 3-7h3"/></svg></span><span class="nav-text">Динамический анализ<small>В разработке</small></span></button>
-      <button class="nav-button" data-tab="distributions" title="Распределения — в разработке"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M4 4v16h16M8 16v-4m5 4V7m5 9v-6"/></svg></span><span class="nav-text">Распределения<small>В разработке</small></span></button>
+      <button class="nav-button" data-tab="distributions" title="Визуализация"><span class="nav-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M4 4v16h16M8 16v-4m5 4V7m5 9v-6"/></svg></span><span class="nav-text">Визуализация</span></button>
     </nav>
   </aside>
 
@@ -51,13 +53,14 @@
               </div>
               <div id="calculation-source" class="configuration-context legacy-workflow" hidden><span>Для следующего расчёта</span><p id="active-state" aria-live="polite">Идеальная</p><button id="use-historical" type="button" class="text-button" hidden>Вернуться к исторической</button></div>
               <select id="trace-source" class="legacy-workflow" hidden aria-label="Источник геометрии"><option value="active">Текущая конфигурация</option><option value="candidate" disabled>Кандидат с ручными зеркалами</option></select>
+              <div class="ray-count-field"><label for="ray-count">Лучей на каждый лазер</label><input id="ray-count" type="number" min="1" step="1" value="1000" required></div>
+              <label for="cpu-workers">Ядер CPU для расчёта</label><input id="cpu-workers" type="number" min="1" step="1" value="6" required>
               <details id="trace-settings" class="trace-settings"><summary>Параметры трассировки</summary>
                 <label for="direction">Сторона ввода</label>
                 <select id="direction"><option value="both">Обе: WEST и EAST</option><option value="east_to_west">WEST</option><option value="west_to_east">EAST</option></select>
-                <div class="ray-count-field"><label for="ray-count">Лучей на каждый лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div>
                 <label for="collision-mode">Поиск пересечений</label>
                 <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
-                <label for="max-interactions">Максимум взаимодействий</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required>
+                <label for="max-interactions">Максимум взаимодействий на путь луча</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required>
               </details>
               <button id="run" type="submit" class="primary-button">Выполнить трассировку</button>
             </fieldset>
@@ -121,7 +124,7 @@
               </fieldset>
             </details>
             <p id="scene-stale" class="scene-stale" aria-live="polite" hidden>Параметры изменены. На сцене предыдущий результат. Нажмите «Выполнить трассировку» для обновления.</p>
-            <div class="plot-container"><div id="scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 8 5v8l-8 5-8-5V8l8-5Zm-8 5 8 5 8-5m-8 5v8"/></svg></div><h3>Выберите конфигурацию и выполните трассировку</h3><div class="empty-actions"><button id="start-trace" type="button" class="primary-button">Выполнить трассировку</button><button id="start-load" type="button" class="secondary-button legacy-workflow" hidden>Открыть конфигурацию</button></div></div><div id="filtered-scene" class="filtered-scene" aria-live="polite" hidden><strong>Все слои скрыты</strong><button id="restore-layers" type="button" class="secondary-button">Показать все слои</button></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong></div></div>
+            <div class="plot-container"><div id="optical-scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 8 5v8l-8 5-8-5V8l8-5Zm-8 5 8 5 8-5m-8 5v8"/></svg></div><h3>Выберите конфигурацию и выполните трассировку</h3><div class="empty-actions"><button id="start-trace" type="button" class="primary-button legacy-workflow" hidden>Выполнить трассировку</button><button id="start-load" type="button" class="secondary-button legacy-workflow" hidden>Открыть конфигурацию</button></div></div><div id="filtered-scene" class="filtered-scene" aria-live="polite" hidden><strong>Все слои скрыты</strong><button id="restore-layers" type="button" class="secondary-button">Показать все слои</button></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong></div></div>
             <p id="scene-comparison-note" class="scene-comparison-note" aria-live="polite" hidden></p>
           </section>
           <div id="metrics" class="metrics" aria-live="polite"></div>
@@ -158,9 +161,61 @@
     </section>
 
     <section id="distributions-panel" class="panel" hidden>
-      <div class="page-heading"><div><h1>Распределения</h1><p>Результаты на экранах и характеристики пучков.</p></div><span class="planned">В разработке</span></div>
-      <div class="stub-intro"><h2>Модуль пока недоступен</h2><p>Здесь будут доступны распределения мощности, профили пучков и сравнение расчётных и измеренных точек.</p><p>Текущая оптическая сцена и численные результаты доступны в разделе статической конфигурации.</p></div>
-      <button class="secondary-button" data-tab="static">Вернуться к статической конфигурации</button>
+      <div class="page-heading"><div><h1>Визуализация</h1><p id="viz-context">Сцена, экраны и характеристики последней трассировки.</p></div><button class="secondary-button" data-tab="static">Параметры расчёта</button></div>
+      <p id="viz-empty" class="card viz-card">Выполните трассировку в разделе «Статическая конфигурация». Здесь появятся результаты того же расчёта.</p>
+      <div id="viz-content" hidden>
+        <p id="viz-stale" class="scene-stale" hidden>Параметры изменены. Здесь показан предыдущий расчёт.</p>
+        <div class="viz-toolbar card">
+          <label>Сторона ввода<select id="viz-side"></select></label>
+          <label>Стержень<select id="viz-rod"><option value="all">Все стержни</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+          <label>Бандл на стержне<select id="viz-bundle"><option value="all">Все бандлы</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+          <label>Зеркало<select id="viz-mirror"><option value="all">Все зеркала</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></label>
+        </div>
+        <nav class="viz-tabs" aria-label="Виды визуализации">
+          <button class="secondary-button" data-viz-view="scene" aria-pressed="true">3D-сцена</button>
+          <button class="secondary-button" data-viz-view="endcaps" aria-pressed="false">Торцы ROC</button>
+          <button class="secondary-button" data-viz-view="cameras" aria-pressed="false">Четыре камеры</button>
+          <button class="secondary-button" data-viz-view="gas" aria-pressed="false">Газовый объём</button>
+          <button class="secondary-button" data-viz-view="source" aria-pressed="false">Исходный пучок</button>
+        </nav>
+        <section id="viz-scene-view" class="card viz-card" data-viz-panel="scene">
+          <div class="card-heading"><h2>Оптическая сцена</h2><button id="viz-reset-camera" class="text-button">Сбросить вид</button></div>
+          <div class="viz-checks"><label><input id="viz-optics" type="checkbox" checked> Общая оптика</label><label><input id="viz-common-rays" type="checkbox" checked> Лучи до микрозеркал</label></div>
+          <p id="viz-scene-note" class="field-note"></p><div id="viz-scene" class="viz-scene"></div>
+        </section>
+        <section id="viz-endcaps-view" data-viz-panel="endcaps" hidden>
+          <div class="card viz-card">
+            <h2>Проекции на плоскости считывания</h2>
+            <p>Виды ориентированы по схемам со стороны распределительного кольца: труба перископа вниз. Показана поперечная проекция лучей своей половины газового объёма. Это проекция траекторий, а не попадания фотонов в ROC и не расчёт дрейфа электронов.</p>
+            <div class="viz-checks"><label><input id="viz-roc-outlines" type="checkbox" checked> Контуры ROC</label><label><input id="viz-roc-landmarks" type="checkbox" checked> Перископ и ориентиры</label><label><input id="viz-roc-hover" type="checkbox" checked> Координаты луча при наведении</label></div>
+            <p class="field-note">Наведите на луч: имя, стержень, бандл и координаты X, Y, Z в метрах. Координаты вычисляются в ближайшей к курсору точке отрезка; при наложении лучей уточните выбор фильтрами выше.</p>
+            <p id="viz-roc-note" class="field-note"></p>
+          </div>
+          <div id="viz-endcaps" class="viz-camera-grid"></div>
+        </section>
+        <section id="viz-cameras-view" class="card viz-card" data-viz-panel="cameras" hidden>
+          <div class="card-heading"><h2>Пятна на четырёх камерах</h2><button id="viz-reference" class="secondary-button">Запомнить идеальную юстировку</button></div>
+          <p id="viz-reference-note" class="field-note"></p>
+          <div class="viz-checks"><label><input id="viz-smooth" type="checkbox" checked> Карта интенсивности</label><label><input id="viz-points" type="checkbox" checked> Точки попаданий</label></div>
+          <p class="field-note">Камеры показывают весь падающий пучок выбранной стороны; фильтры стержней и бандлов относятся к 3D-сцене и газовому объёму.</p>
+          <div id="viz-cameras"></div><div id="viz-camera-table" class="viz-table-scroll"></div>
+        </section>
+        <section id="viz-gas-view" data-viz-panel="gas" hidden>
+          <p class="field-note">Координаты центров — в системе сцены. Развёртка: s — длина дуги, h — координата вдоль оси цилиндра. Номера зеркал — идентификаторы модели. Таблица учитывает все попадания; графики используют ограниченную выборку точек.</p>
+          <div id="viz-gas-table" class="card viz-card viz-table-scroll"></div>
+          <div id="viz-unwraps" class="viz-unwrap-grid"></div>
+        </section>
+        <section id="viz-source-view" class="card viz-card" data-viz-panel="source" hidden>
+          <h2>Характеристики источника</h2><div id="viz-source-summary" class="viz-table-scroll"></div>
+          <p class="field-note">Точки лучей распределены по равноплощадным ячейкам сечения: по одной случайной точке в каждой. Распределение воспроизводится при повторном расчёте. Цвет показывает гауссову интенсивность, а не плотность точек.</p>
+          <label><input id="viz-source-map" type="checkbox" checked> Гауссова карта под точками лучей</label>
+          <div id="viz-source" class="viz-camera-grid"></div>
+          <h3>Ориентация зеркал общей оптики</h3>
+          <p class="field-note">Углы между нормалью зеркала и осями X, Y, Z расчётной системы. Это справочная ориентация поверхности; углы регулировки в сохранённых конфигурациях не заданы.</p>
+          <div id="viz-angles" class="viz-table-scroll"></div>
+        </section>
+        <details class="card viz-card viz-method"><summary>Как считаются характеристики</summary><p>Как в legacy, диаметр — среднее двух полных размеров пятна вдоль главных осей. Эллиптичность — отношение меньшего среднеквадратичного размера к большему (от 0 до 1; для круга — 1). Центр взвешен по интенсивности; Ī = суммарная мощность / площадь эллипса по полным размерам. Для одного попадания или вырожденного пятна недоступные величины отмечены «—». Карта показывает сглаженную среднюю интенсивность попавших лучей в Вт/м². Сглаживание не меняет таблицы. Отсутствие попаданий при редкой сетке не доказывает отсутствие пучка.</p></details>
+      </div>
     </section>
   </main>
   <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">

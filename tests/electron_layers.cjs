@@ -17,27 +17,27 @@ const { _electron } = require('playwright-core');
     await page.locator('#ray-count').fill('19');
     await page.locator('#run').click();
     await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
-    const before = await page.evaluate(() => ({ count: document.querySelector('#scene').data.length,
-      camera: document.querySelector('#scene')._fullLayout.scene.camera }));
+    const before = await page.evaluate(() => ({ count: document.querySelector('#optical-scene').data.length,
+      camera: document.querySelector('#optical-scene')._fullLayout.scene.camera }));
     await page.locator('#layers-panel > summary').click();
     // Await the same renderer used by change events to ensure WebGL updates finish.
     for (const id of ['show-east', 'show-west', 'show-boundary']) {
       await page.locator('#' + id).uncheck();
       await page.evaluate(() => drawSceneLayers());
     }
-    assert.equal(await page.evaluate(() => document.querySelector('#scene').data.length), 0);
+    assert.equal(await page.evaluate(() => document.querySelector('#optical-scene').data.length), 0);
     assert.ok(await page.locator('#filtered-scene').isVisible());
     await page.locator('#restore-layers').click();
     await page.evaluate(() => drawSceneLayers());
     assert.equal(await page.locator('#filtered-scene').isVisible(), false);
-    assert.deepEqual(await page.evaluate(() => ({ count: document.querySelector('#scene').data.length,
-      camera: document.querySelector('#scene')._fullLayout.scene.camera })), before);
+    assert.deepEqual(await page.evaluate(() => ({ count: document.querySelector('#optical-scene').data.length,
+      camera: document.querySelector('#optical-scene')._fullLayout.scene.camera })), before);
     await page.locator('#show-west').uncheck();
     await page.locator('#show-traced-rays').uncheck();
     await page.evaluate(() => drawSceneLayers());
     await page.locator('#run').click();
     await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
-    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.every(t => t.meta?.side !== 'WEST' && t.meta?.layer !== 'traced_rays')));
+    assert.ok(await page.evaluate(() => document.querySelector('#optical-scene').data.every(t => t.meta?.side !== 'WEST' && t.meta?.layer !== 'traced_rays')));
     assert.equal(await page.locator('#notice').innerText(), '');
     assert.deepEqual(errors, []);
     console.log('Layer UI passed: empty scene, restored camera, combined filters and persistence after tracing.');

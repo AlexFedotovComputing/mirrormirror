@@ -52,9 +52,9 @@ const { _electron } = require('playwright-core');
     }
     await page.locator('#run').click();
     await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
-    assert.ok(await page.locator('#scene .gl-container').count());
+    assert.ok(await page.locator('#optical-scene .gl-container').count());
     const plotted = await page.evaluate(() => {
-      const plot = document.querySelector('#scene');
+      const plot = document.querySelector('#optical-scene');
       return { axis: plot._fullLayout.scene.xaxis.title.text,
         scale: plot._fullData.find(trace => trace.marker?.showscale)?.marker.colorscale,
         dragmode: plot._fullLayout.scene.dragmode, aspectmode: plot._fullLayout.scene.aspectmode,
@@ -65,18 +65,18 @@ const { _electron } = require('playwright-core');
     assert.equal(plotted.dragmode, 'orbit');
     assert.equal(plotted.aspectmode, 'manual');
     const axisScales = await page.evaluate(() => {
-      const scene = document.querySelector('#scene')._fullLayout.scene;
+      const scene = document.querySelector('#optical-scene')._fullLayout.scene;
       return ['x', 'y', 'z'].map(axis => scene.aspectratio[axis] /
         Math.abs(scene[axis + 'axis'].range[1] - scene[axis + 'axis'].range[0]));
     });
     assert.ok(Math.max(...axisScales) - Math.min(...axisScales) < 1e-12);
     assert.equal(plotted.projection, 'perspective');
-    const sources = await page.evaluate(() => document.querySelector('#scene').data
+    const sources = await page.evaluate(() => document.querySelector('#optical-scene').data
       .filter(trace => trace.name?.includes('Лазер')).map(trace => trace.name));
     assert.deepEqual(sources.sort(), ['Лазер EAST → ввод WEST', 'Лазер WEST → ввод EAST']);
     const inwardSegments = await page.evaluate(() => {
       const counts = { WEST: 0, EAST: 0 };
-      for (const trace of document.querySelector('#scene').data) {
+      for (const trace of document.querySelector('#optical-scene').data) {
         if (!trace.name?.endsWith('· Лучи')) continue;
         for (let i = 0; i < trace.x.length; i += 3) {
           if (Math.hypot(trace.x[i], trace.y[i]) > 1.2 &&
@@ -89,7 +89,7 @@ const { _electron } = require('playwright-core');
     });
     assert.ok(inwardSegments.WEST > 0 && inwardSegments.EAST > 0, JSON.stringify(inwardSegments));
     const coordinates = await page.evaluate(() => {
-      const data = document.querySelector('#scene').data;
+      const data = document.querySelector('#optical-scene').data;
       return {
         lasers: data.filter(t => t.name?.includes('Лазер')).map(t => ({ name: t.name, z: t.z[0] })),
         westSurvey: data.find(t => t.name === 'WEST · Геодезические точки').z,
@@ -103,18 +103,18 @@ const { _electron } = require('playwright-core');
     assert.ok(Math.min(...coordinates.prismZ) < -1.7 && Math.max(...coordinates.prismZ) > 1.7);
     assert.equal(await page.locator('#export, .local-badge, #kind-note, #collision-note, #coverage-label').count(), 0);
     const layout = await page.evaluate(() => ({
-      top: document.querySelector('#scene').getBoundingClientRect().top,
-      height: document.querySelector('#scene').clientHeight,
+      top: document.querySelector('#optical-scene').getBoundingClientRect().top,
+      height: document.querySelector('#optical-scene').clientHeight,
       viewport: window.innerHeight,
       labels: [...document.querySelector('#direction').options].map(option => option.textContent),
-      range: document.querySelector('#scene')._fullLayout.scene.zaxis.range,
+      range: document.querySelector('#optical-scene')._fullLayout.scene.zaxis.range,
     }));
     assert.ok(layout.top < 300 && layout.height > layout.viewport * .5, JSON.stringify(layout));
-    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.showlegend), false);
+    assert.equal(await page.evaluate(() => document.querySelector('#optical-scene')._fullLayout.showlegend), false);
     assert.ok(layout.labels.every(label => !/[.·]/.test(label)));
     assert.ok(layout.range[0] < -5.08537 && layout.range[1] > 5.08537);
     const laserPathsVisible = await page.evaluate(() => {
-      const plot = document.querySelector('#scene');
+      const plot = document.querySelector('#optical-scene');
       const lines = plot.data.filter(t => t.name?.endsWith('· Лучи'));
       return plot.data.filter(t => t.name?.includes('Лазер')).every(laser =>
         ['x', 'y', 'z'].every(a => laser[a][0] >= plot._fullLayout.scene[a + 'axis'].range[0] &&
@@ -125,13 +125,13 @@ const { _electron } = require('playwright-core');
     assert.ok(laserPathsVisible, 'Laser-to-periscope paths must be present inside the visible bounds');
     await page.locator('#scene-extent').click();
     await page.waitForFunction(() => document.querySelector('#scene-extent').textContent === 'Вся схема' &&
-      document.querySelector('#scene')._fullLayout.scene.zaxis.range[1] > 5);
-    assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.zaxis.range), layout.range);
-    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'manual');
+      document.querySelector('#optical-scene')._fullLayout.scene.zaxis.range[1] > 5);
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#optical-scene')._fullLayout.scene.zaxis.range), layout.range);
+    assert.equal(await page.evaluate(() => document.querySelector('#optical-scene')._fullLayout.scene.aspectmode), 'manual');
     await page.locator('#reset-camera').click();
     await page.waitForFunction(() => document.querySelector('#scene-extent').textContent === 'К объёму');
-    assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.zaxis.range), layout.range);
-    assert.equal(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.aspectmode), 'manual');
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#optical-scene')._fullLayout.scene.zaxis.range), layout.range);
+    assert.equal(await page.evaluate(() => document.querySelector('#optical-scene')._fullLayout.scene.aspectmode), 'manual');
     await capture('static.png');
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1100, 820));
     await page.waitForFunction(() => window.innerWidth < 1200);
@@ -141,7 +141,7 @@ const { _electron } = require('playwright-core');
     await page.waitForFunction(() => window.innerWidth > 1200);
     // Inspect the actual scene's prism faces at a scale where closure is visible.
     const prismImage = await page.evaluate(async () => {
-      const faces = document.querySelector('#scene').data.filter(trace => trace.name?.startsWith('WEST · PR3:'));
+      const faces = document.querySelector('#optical-scene').data.filter(trace => trace.name?.startsWith('WEST · PR3:'));
       const preview = document.createElement('div');
       preview.id = 'prism-preview';
       preview.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:640px;z-index:10000';
@@ -163,7 +163,7 @@ const { _electron } = require('playwright-core');
     await page.locator('#run').click();
     await page.waitForFunction(() => document.querySelector('#run-status').textContent === 'Конфигурация построена');
     assert.equal(await page.locator('#measurement-sides button').count(), 2);
-    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(trace => trace.meta?.kind === 'measurement_ray')));
+    assert.ok(await page.evaluate(() => document.querySelector('#optical-scene').data.some(trace => trace.meta?.kind === 'measurement_ray')));
     const measurementScene = await page.evaluate(() => {
       const scene = document.querySelector('#measurement-plot')._fullLayout.scene;
       return { dragmode: scene.dragmode, aspectmode: scene.aspectmode, projection: scene.camera.projection.type };
@@ -179,30 +179,30 @@ const { _electron } = require('playwright-core');
     await capture('both-real.png');
     await page.locator('#layers-panel > summary').click();
     const beforeFilters = await page.evaluate(() => ({
-      count: document.querySelector('#scene').data.length,
-      camera: document.querySelector('#scene')._fullLayout.scene.camera,
+      count: document.querySelector('#optical-scene').data.length,
+      camera: document.querySelector('#optical-scene')._fullLayout.scene.camera,
     }));
     await page.locator('#show-east').uncheck();
-    await page.waitForFunction(() => document.querySelector('#scene').data.every(t => t.meta?.side !== 'EAST'));
-    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(t => t.meta?.side === 'WEST')));
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.every(t => t.meta?.side !== 'EAST'));
+    assert.ok(await page.evaluate(() => document.querySelector('#optical-scene').data.some(t => t.meta?.side === 'WEST')));
     await page.locator('#show-traced-rays').uncheck();
-    await page.waitForFunction(() => document.querySelector('#scene').data.every(t => t.meta?.layer !== 'traced_rays'));
-    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.every(t => !t.marker?.showscale)));
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.every(t => t.meta?.layer !== 'traced_rays'));
+    assert.ok(await page.evaluate(() => document.querySelector('#optical-scene').data.every(t => !t.marker?.showscale)));
     await page.locator('#show-optics').uncheck();
-    await page.waitForFunction(() => document.querySelector('#scene').data.every(t => t.meta?.layer !== 'optics'));
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.every(t => t.meta?.layer !== 'optics'));
     await page.locator('#show-east').check();
     await page.locator('#show-traced-rays').check();
     await page.locator('#show-optics').check();
-    await page.waitForFunction(count => document.querySelector('#scene').data.length === count, beforeFilters.count);
-    assert.deepEqual(await page.evaluate(() => document.querySelector('#scene')._fullLayout.scene.camera), beforeFilters.camera);
+    await page.waitForFunction(count => document.querySelector('#optical-scene').data.length === count, beforeFilters.count);
+    assert.deepEqual(await page.evaluate(() => document.querySelector('#optical-scene')._fullLayout.scene.camera), beforeFilters.camera);
     await page.locator('#show-east').uncheck();
     await page.locator('#show-west').uncheck();
     await page.locator('#show-boundary').uncheck();
-    await page.waitForFunction(() => document.querySelector('#scene').data.length === 0);
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.length === 0);
     await page.locator('#show-east').check();
     await page.locator('#show-west').check();
     await page.locator('#show-boundary').check();
-    await page.waitForFunction(count => document.querySelector('#scene').data.length === count, beforeFilters.count);
+    await page.waitForFunction(count => document.querySelector('#optical-scene').data.length === count, beforeFilters.count);
     assert.equal(await page.locator('#notice').innerText(), '');
     await page.locator('#trace-settings > summary').click();
     for (const direction of ['west_to_east', 'east_to_west']) {
@@ -252,7 +252,7 @@ const { _electron } = require('playwright-core');
     await page.locator('#load-configuration').click();
     await waitForStatus('Реконструкция обработана');
     assert.ok(await page.evaluate(() => {
-      const data = document.querySelector('#scene').data;
+      const data = document.querySelector('#optical-scene').data;
       return data.some(trace => trace.meta?.scene_source === 'base' && trace.name?.includes('Лучи')) &&
         data.some(trace => trace.meta?.scene_source === 'reconstruction');
     }), 'Loading a reconstruction preserves the previous traced rays');
@@ -274,7 +274,7 @@ const { _electron } = require('playwright-core');
     });
     assert.ok(selectedGeometry.expected.every((value, i) => Math.abs(value - selectedGeometry.displayed[i]) < 1e-9));
     const mirrorClicked = await page.evaluate(() => {
-      const plot = document.querySelector('#scene');
+      const plot = document.querySelector('#optical-scene');
       const target = plot.data.find(trace => trace.meta?.mirror_id === '1_1_2' && trace.meta?.direction === 'west_to_east');
       if (!target) return null;
       plot.emit('plotly_click', { points: [{ data: target }] });
@@ -313,7 +313,7 @@ const { _electron } = require('playwright-core');
     assert.ok(await page.locator('#accept-candidate').isDisabled());
     assert.match(await page.locator('#accept-reason').innerText(), /проверки не пройдены/);
     const layerState = () => page.evaluate(() => {
-      const plot = document.querySelector('#scene');
+      const plot = document.querySelector('#optical-scene');
       return { camera: plot._fullLayout.scene.camera, count: plot.data.length,
         base: plot.data.filter(t => t.meta?.scene_source === 'base').length,
         reconstructed: plot.data.filter(t => t.meta?.kind === 'reconstructed_ray').length };
@@ -321,15 +321,15 @@ const { _electron } = require('playwright-core');
     const combined = await layerState();
     assert.ok(combined.base > 0 && combined.reconstructed === 1);
     await page.locator('#show-reconstructed-rays').uncheck();
-    await page.waitForFunction(() => !document.querySelector('#scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
-    assert.ok(await page.evaluate(() => document.querySelector('#scene').data.some(t => t.meta?.scene_source === 'reconstruction' && t.meta?.layer === 'optics')));
+    await page.waitForFunction(() => !document.querySelector('#optical-scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
+    assert.ok(await page.evaluate(() => document.querySelector('#optical-scene').data.some(t => t.meta?.scene_source === 'reconstruction' && t.meta?.layer === 'optics')));
     await page.locator('#show-reconstructed-rays').check();
-    await page.waitForFunction(() => document.querySelector('#scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
     await page.locator('#show-reconstruction').uncheck();
-    await page.waitForFunction(() => !document.querySelector('#scene').data.some(t => t.meta?.scene_source === 'reconstruction'));
+    await page.waitForFunction(() => !document.querySelector('#optical-scene').data.some(t => t.meta?.scene_source === 'reconstruction'));
     assert.equal((await layerState()).base, combined.base);
     await page.locator('#show-reconstruction').check();
-    await page.waitForFunction(() => document.querySelector('#scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
+    await page.waitForFunction(() => document.querySelector('#optical-scene').data.some(t => t.meta?.kind === 'reconstructed_ray'));
     assert.deepEqual(await layerState(), combined);
     await page.locator('#run').click();
     await waitForStatus('Конфигурация построена');
@@ -419,7 +419,7 @@ const { _electron } = require('playwright-core');
       [mirrors[0].old_id, mirrors[1].old_id] = [mirrors[1].canonical_id, mirrors[0].canonical_id];
       candidate.reports = [candidate.document.datasets.west_to_east];
       await showReconstruction(candidate);
-      document.querySelector('#scene').emit('plotly_click', { points: [{ data: { meta: {
+      document.querySelector('#optical-scene').emit('plotly_click', { points: [{ data: { meta: {
         direction: 'west_to_east', mirror_id: mirrors[1].canonical_id,
       } } }] });
       const selected = JSON.parse(document.querySelector('#mirror-technical').textContent).mirror.canonical_id;

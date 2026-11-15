@@ -73,10 +73,12 @@ test('timeout stops calculation instead of leaving a busy orphan process', async
 
 test('IPC allowlist and numeric bounds reject arbitrary methods and parameters', () => {
   const payload = { direction: 'west_to_east', kind: 'ideal', collision_mode: 'exhaustive', ray_count: 217, max_interactions: 48 };
-  assert.deepEqual(validateRequest('trace', payload), payload);
+  assert.deepEqual(validateRequest('trace', payload), { ...payload, cpu_workers: 6 });
   assert.equal(validateRequest('trace', { ...payload, direction: 'both' }).direction, 'both');
   assert.deepEqual(validateRequest('calibrate', { direction: 'both' }), { direction: 'both' });
-  for (const ray_count of [0, 50001, NaN, 1.5, '217']) assert.throws(() => validateRequest('trace', { ...payload, ray_count }));
+  for (const ray_count of [0, NaN, 1.5, '217', Number.MAX_SAFE_INTEGER + 1]) assert.throws(() => validateRequest('trace', { ...payload, ray_count }));
+  assert.equal(validateRequest('trace', { ...payload, ray_count: 1000000 }).ray_count, 1000000);
+  for (const cpu_workers of [0, -1, 1.5, '6']) assert.throws(() => validateRequest('trace', { ...payload, cpu_workers }));
   assert.throws(() => validateRequest('exec', {}));
   assert.throws(() => validateRequest('trace', { ...payload, collision_mode: 'unexpected' }));
   assert.throws(() => validateRequest('calibrate', { direction: 'west_to_east', use_lavsan: 'false' }));
