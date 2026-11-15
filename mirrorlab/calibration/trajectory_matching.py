@@ -213,11 +213,12 @@ def compare_dataset_geometric_fit(dataset, *, distance_tolerance_m=.003):
     for mirror in dataset.get("mirrors", []):
         # Do not substitute a traced direction for a missing fitted direction:
         # these reports answer different questions.
-        if mirror.get("outgoing_direction") is None:
+        direction = mirror.get("outgoing_direction", mirror.get("target_outgoing_native"))
+        if direction is None:
             continue
         trajectories.append(dict(id=f"fit:{mirror['mirror_id']}", mirror_id=mirror["mirror_id"],
             point_m=(np.asarray(mirror["center_m"], float) @ q.T + t).tolist(),
-            direction=(np.asarray(mirror["outgoing_direction"], float) @ q.T).tolist()))
+            direction=(np.asarray(direction, float) @ q.T).tolist()))
     if not trajectories:
         return dict(status="not_evaluated", reason="fitted_directions_unavailable")
     report = best_fit_trajectories(observations, trajectories, distance_tolerance_m=distance_tolerance_m)
@@ -231,7 +232,7 @@ def compare_dataset_trajectories(dataset, *, distance_tolerance_m=.003):
     observations, frame, reason = _dataset_context(dataset)
     if reason:
         return dict(status="not_evaluated", reason=reason)
-    reflections = dataset.get("diagnostics", {}).get("reflections")
+    reflections = dataset.get("physical_validation") or dataset.get("diagnostics", {}).get("reflections")
     if reflections is None:
         return dict(status="not_evaluated", reason="traced_reflections_unavailable")
     trajectories = traced_output_trajectories(reflections, frame)

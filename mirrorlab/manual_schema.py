@@ -26,6 +26,33 @@ def is_manual_data(data):
     return isinstance(data, dict) and data.get("format") in FORMATS
 
 
+def manual_starting_geometry(dataset):
+    """Select the supplied physical mirror poses and their matching optics."""
+    if not dataset.get("manual_references"):
+        raise ValueError("Для загрузки ручной геометрии нужна ручная реконструкция.")
+    result = copy.deepcopy(dataset)
+    if result.get("manual_refinement") or result.get("manual_ray_seed"):
+        return result
+    if result["direction"] == "east_to_west":
+        raw = result["manual_references"]["payload"]
+        candidate = raw["recommended_optimization_candidate"]
+        optics = candidate["calibrated_optics_snapshot"]
+        if digest(optics) != candidate["calibrated_optics_sha256"]:
+            raise ValueError("Supplied calibrated optics hash mismatch")
+        result["optics_snapshot"] = copy.deepcopy(optics)
+        result["optics_sha256"] = digest(optics)
+        result["optics_origin"] = "supplied_calibrated_manual_snapshot"
+        sources = {m["source_manual_id"]: m for m in raw["mirrors"]}
+        for mirror in result["mirrors"]:
+            mirror.update(copy.deepcopy(sources[mirror["source_manual_id"]]["recommended_optimization_seed"]["body_native"]))
+        result["manual_ray_seed"] = "supplied_conditional_west_seed"
+    else:
+        result["manual_ray_seed"] = "imported_east_bodies"
+    for mirror in result["mirrors"]:
+        mirror["outgoing_direction"] = copy.deepcopy(mirror["target_outgoing_native"])
+    return result
+
+
 def _loads(raw):
     from .legacy_import import _loads as strict_loads
     return strict_loads(raw)

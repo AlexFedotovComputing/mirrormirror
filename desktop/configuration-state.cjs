@@ -10,6 +10,14 @@ class ConfigurationState {
     return { active_configuration: this.active?.document ?? null, configuration_version: this.version };
   }
 
+  tracePayload(source = 'active') {
+    if (!['active', 'candidate', 'preset'].includes(source)) throw new Error('Выберите источник геометрии для трассировки.');
+    if (source === 'preset') return { active_configuration: null, configuration_version: this.version };
+    if (source === 'candidate' && !this.candidate) throw new Error('Сначала добавьте ручные зеркала или загрузите диагностический кандидат.');
+    const selected = source === 'candidate' ? this.candidate : this.active;
+    return { active_configuration: selected?.document ?? null, configuration_version: this.version };
+  }
+
   offer(result, expectedVersion, { load = false } = {}) {
     if (expectedVersion !== this.version) throw new Error('Конфигурация уже изменена. Запоздалый результат не применён.');
     if (!result?.document) return { ...result, configuration_version: this.version, active: false };

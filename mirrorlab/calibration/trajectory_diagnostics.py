@@ -117,7 +117,7 @@ def diagnose_trajectories(dataset, fit, physical):
     assigned_to = {p["trajectory_id"]: p["observation_id"] for p in physical.get("matches", [])}
     mirrors = {m.get("mirror_id", m.get("canonical_id")): m for m in dataset.get("mirrors", [])}
     diagnostics = dataset.get("diagnostics", {})
-    reflections = diagnostics.get("reflections", {}).get("mirrors", {})
+    reflections = (dataset.get("physical_validation") or diagnostics.get("reflections", {})).get("mirrors", {})
     tolerance = physical.get("distance_tolerance_m", fit.get("distance_tolerance_m", .003))
     rows = []
     for row, points in complete:

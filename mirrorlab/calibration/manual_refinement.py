@@ -92,6 +92,7 @@ def refine_manual(dataset, options=None, progress=None):
             progress(dict(stage=stage, fraction=fraction))
     notify("manual_inputs", .02)
     result = copy.deepcopy(dataset)
+    result.pop("manual_rays", None)
     raw = result["manual_references"]["payload"]
     west = dataset["direction"] == "east_to_west"
     mirrors = result["mirrors"]
@@ -200,6 +201,7 @@ def refine_manual(dataset, options=None, progress=None):
         physical = chosen["optics"]["mirrors"][body.mirror_id]
         m["physics"] = physical
         m["target_outgoing_native"] = np.asarray(outgoing).tolist()
+        m["outgoing_direction"] = np.asarray(outgoing).tolist()
         m["trajectory"] = ({**physical["reflected_child"], "paths": physical.get("reflected_trajectories", [])}
                            if physical.get("actual_reflected_child") else None)
         m["status"] = "infeasible" if physical["status"] != "validated" else "prior_dominated"

@@ -98,7 +98,7 @@ class WorkerClient {
 
 function validateRequest(method, payload) {
   if (!['catalog', 'trace', 'calibrate', 'cancel', 'optimize', 'save_configuration',
-    'load_configuration', 'import_legacy', 'import_manual', 'refine_manual', 'accept_candidate', 'use_historical'].includes(method)) throw new Error('Неизвестная команда.');
+    'load_configuration', 'import_legacy', 'import_manual', 'refine_manual', 'add_manual_rays', 'accept_candidate', 'use_historical'].includes(method)) throw new Error('Неизвестная команда.');
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Некорректные параметры.');
   if (method === 'catalog' || method === 'cancel') return {};
   if (method === 'accept_candidate') {
@@ -106,7 +106,7 @@ function validateRequest(method, payload) {
     return { configuration_version: payload.configuration_version };
   }
   if (!['both', 'west_to_east', 'east_to_west'].includes(payload.direction)) throw new Error('Выберите направление лучей.');
-  if (['save_configuration', 'load_configuration', 'import_legacy', 'import_manual', 'refine_manual', 'optimize', 'use_historical'].includes(method)) {
+  if (['save_configuration', 'load_configuration', 'import_legacy', 'import_manual', 'refine_manual', 'add_manual_rays', 'optimize', 'use_historical'].includes(method)) {
     if (!['ideal', 'real'].includes(payload.kind)) throw new Error('Выберите конфигурацию.');
     const clean = { direction: payload.direction, kind: payload.kind };
     if (method === 'save_configuration') {
@@ -129,7 +129,8 @@ function validateRequest(method, payload) {
   for (const [name, max] of [['ray_count', 50000], ['max_interactions', 100]]) {
     if (!Number.isInteger(payload[name]) || payload[name] < 1 || payload[name] > max) throw new Error(`${name}: требуется целое число от 1 до ${max}.`);
   }
-  return { direction: payload.direction, kind: payload.kind, collision_mode: payload.collision_mode,
+  if (!['active', 'candidate', 'preset'].includes(payload.source ?? 'active')) throw new Error('Выберите источник геометрии для трассировки.');
+  return { ...(payload.source !== undefined ? { source: payload.source } : {}), direction: payload.direction, kind: payload.kind, collision_mode: payload.collision_mode,
     ray_count: payload.ray_count, max_interactions: payload.max_interactions };
 }
 

@@ -25,7 +25,10 @@ test('protocol transports UTF-8 data and correlates out-of-order responses', asy
   const child = children[0];
   assert.equal(child.config.windowsHide, true);
   assert.deepEqual(child.args, ['-u', '-m', 'mirrorlab.worker']);
-  const requests = child.stdin.read().toString().trim().split('\n').map(JSON.parse);
+  // Drain all chunks: read() need not coalesce separate writes (Node 26).
+  const chunks = [];
+  for (let chunk; (chunk = child.stdin.read()) !== null;) chunks.push(chunk);
+  const requests = Buffer.concat(chunks).toString().trim().split('\n').map(JSON.parse);
   assert.equal(requests[1].payload.direction, 'west_to_east');
   child.stdout.write(JSON.stringify({ id: 2, result: { name: 'Измерения' } }) + '\n');
   child.stdout.write(JSON.stringify({ id: 1, result: { directions: [] } }) + '\n');
@@ -178,9 +181,50 @@ test('manual candidates remain diagnostic through load and explicit acceptance',
 test('manual IPC commands discard renderer-supplied documents and file paths', () => {
   const payload = { direction: 'both', kind: 'ideal', path: 'untrusted', candidate_configuration: { forged: true },
     document: { forged: true }, active_configuration: { forged: true } };
-  for (const method of ['import_manual', 'refine_manual']) {
+  for (const method of ['import_manual', 'refine_manual', 'add_manual_rays']) {
     assert.deepEqual(validateRequest(method, payload), { direction: 'both', kind: 'ideal' });
   }
+});
+
+test('candidate tracing selects its physical document without accepting it', () => {
+  const state = new ConfigurationState();
+  state.offer({ document: { id: 'active' }, status: 'validated' }, 0);
+  assert.throws(() => state.tracePayload('candidate'), /Сначала/);
+  const candidate = { datasets: { east_to_west: { model_kind: 'manual_reconstruction' } } };
+  state.offer({ document: candidate, status: 'infeasible', can_activate: false }, 1);
+  assert.equal(state.tracePayload('candidate').active_configuration, candidate);
+  assert.equal(state.tracePayload('active').active_configuration.id, 'active');
+  assert.equal(state.version, 1);
+  assert.equal(state.active.document.id, 'active');
+  assert.equal(state.candidate.document, candidate);
+  assert.throws(() => state.tracePayload('unknown'));
+  const clean = validateRequest('trace', { direction: 'east_to_west', kind: 'real', source: 'candidate',
+    collision_mode: 'exhaustive', ray_count: 721, max_interactions: 48,
+    active_configuration: { forged: true }, candidate_configuration: { forged: true } });
+  assert.equal(clean.source, 'candidate');
+  assert.equal(clean.ray_count, 721);
+  assert.equal(clean.active_configuration, undefined);
+  assert.equal(clean.candidate_configuration, undefined);
+  assert.throws(() => validateRequest('trace', { ...clean, source: 'forged' }));
+});
+
+test('static presets ignore existing documents and leave accepted state untouched', () => {
+  const state = new ConfigurationState();
+  state.offer({ document: { id: 'accepted' }, status: 'validated' }, 0);
+  state.offer({ document: { id: 'candidate' }, status: 'partial', can_activate: false }, 1);
+  for (const kind of ['ideal', 'real']) {
+    const clean = validateRequest('trace', { direction: 'both', kind, source: 'preset',
+      collision_mode: 'expected', ray_count: 217, max_interactions: 48,
+      active_configuration: { forged: true }, candidate_configuration: { forged: true } });
+    assert.equal(clean.source, 'preset');
+    assert.equal(clean.kind, kind);
+    assert.equal(clean.active_configuration, undefined);
+    assert.equal(clean.candidate_configuration, undefined);
+    assert.deepEqual(state.tracePayload(clean.source), { active_configuration: null, configuration_version: 1 });
+  }
+  assert.equal(state.active.document.id, 'accepted');
+  assert.equal(state.candidate.document.id, 'candidate');
+  assert.equal(state.version, 1);
 });
 
 test('scene comparison retains base rays, replaces overlays and keeps source data immutable', () => {

@@ -29,7 +29,7 @@
 
       <div class="workspace">
         <div class="controls-column">
-          <section class="card file-card" aria-label="Файл конфигурации">
+          <section class="card file-card legacy-workflow" aria-label="Файл конфигурации" hidden>
             <div class="file-actions"><button id="load-configuration" type="button" class="secondary-button">Открыть конфигурацию</button><button id="save-configuration" type="button" class="secondary-button">Сохранить</button></div>
             <button id="load-manual" type="button" class="secondary-button full-width">Загрузить ручную реконструкцию</button>
             <label id="save-source-label" for="save-source" hidden>Что сохранить</label>
@@ -43,31 +43,35 @@
             </div>
           </section>
           <form id="trace-form" class="card control-card">
-            <div class="card-heading"><h2>Трассировка</h2></div>
+            <div class="card-heading"><h2>Конфигурация</h2></div>
             <fieldset id="controls">
-              <label for="direction">Сторона ввода</label>
-              <select id="direction"><option value="both">Обе: WEST и EAST</option><option value="east_to_west">WEST</option><option value="west_to_east">EAST</option></select>
-              <div id="historical-kind"><label for="kind">Исходная геометрия</label>
-                <select id="kind"><option value="ideal">Историческая идеальная</option><option value="real">Историческая реальная</option></select>
+              <div id="historical-kind"><label for="kind" class="sr-only">Конфигурация зеркал</label>
+                <select id="kind"><option value="ideal">Идеальная</option><option value="real">Реальная</option></select>
+                <p id="configuration-description" class="field-note">Зеркала в идеальном расположении.</p>
               </div>
-              <div id="calculation-source" class="configuration-context" hidden><span>Для следующего расчёта</span><p id="active-state" aria-live="polite">Историческая идеальная</p><button id="use-historical" type="button" class="text-button" hidden>Вернуться к исторической</button></div>
-              <div class="ray-count-field"><label for="ray-count">Лучей на каждый лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div>
+              <div id="calculation-source" class="configuration-context legacy-workflow" hidden><span>Для следующего расчёта</span><p id="active-state" aria-live="polite">Идеальная</p><button id="use-historical" type="button" class="text-button" hidden>Вернуться к исторической</button></div>
+              <select id="trace-source" class="legacy-workflow" hidden aria-label="Источник геометрии"><option value="active">Текущая конфигурация</option><option value="candidate" disabled>Кандидат с ручными зеркалами</option></select>
               <details id="trace-settings" class="trace-settings"><summary>Параметры трассировки</summary>
+                <label for="direction">Сторона ввода</label>
+                <select id="direction"><option value="both">Обе: WEST и EAST</option><option value="east_to_west">WEST</option><option value="west_to_east">EAST</option></select>
+                <div class="ray-count-field"><label for="ray-count">Лучей на каждый лазер</label><input id="ray-count" type="number" min="1" max="50000" step="1" value="217" required></div>
                 <label for="collision-mode">Поиск пересечений</label>
                 <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
                 <label for="max-interactions">Максимум взаимодействий</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required>
               </details>
-              <button id="run" type="submit" class="primary-button">Рассчитать лучи</button>
+              <button id="run" type="submit" class="primary-button">Выполнить трассировку</button>
             </fieldset>
             <button id="cancel" type="button" class="secondary-button full-width" hidden>Остановить расчёт</button>
             <div id="run-status" class="run-status" aria-live="polite">Запуск…</div>
           </form>
-          <section id="calibration-card" class="card calibration-card">
+          <section id="calibration-card" class="card calibration-card legacy-workflow" hidden>
             <div class="card-heading"><h2>Лучи по измерениям</h2></div>
             <button id="calibrate" class="secondary-button full-width">Восстановить лучи</button>
           </section>
-          <section class="card calibration-card reconstruction-controls">
+          <section class="card calibration-card reconstruction-controls legacy-workflow" hidden>
             <div class="card-heading"><h2>Реконструкция зеркал</h2></div>
+            <button id="add-manual-rays" type="button" class="primary-button full-width manual-rays-button" disabled>Добавить зеркала и лучи из ручного анализа</button>
+            <p class="manual-rays-help">Загружается ручная конфигурация целиком: зеркала и приложенная общая оптика (для WEST — калиброванная). Затем задайте число лучей и рассчитайте трассировку кандидата.</p>
             <button id="optimize" type="button" class="secondary-button full-width" aria-describedby="optimize-reason" disabled>Восстановить зеркала</button>
             <p id="optimize-reason">Для реконструкции выберите «Историческая реальная».</p>
             <p id="candidate-state" class="candidate-state" aria-live="polite" hidden></p>
@@ -83,11 +87,11 @@
           <nav class="result-navigation" aria-label="Перейти к результату">
             <button type="button" data-result-target="scene-card">Сцена</button>
             <button type="button" data-result-target="result-details" disabled>Трассировка</button>
-            <button type="button" data-result-target="calibration-result" disabled>Измерения</button>
-            <button type="button" data-result-target="trajectory-comparison-result" disabled>Сравнение с экспериментом</button>
-            <button type="button" data-result-target="reconstruction-result" disabled>Реконструкция</button>
+            <button type="button" data-result-target="calibration-result" class="legacy-workflow" hidden disabled>Измерения</button>
+            <button type="button" data-result-target="trajectory-comparison-result" class="legacy-workflow" hidden disabled>Сравнение с экспериментом</button>
+            <button type="button" data-result-target="reconstruction-result" class="legacy-workflow" hidden disabled>Реконструкция</button>
           </nav>
-          <div id="trajectory-comparison-preview" class="comparison-preview" hidden>
+          <div id="trajectory-comparison-preview" class="comparison-preview legacy-workflow" hidden>
             <p id="trajectory-comparison-summary" aria-live="polite"></p>
             <button type="button" class="text-button" data-result-target="trajectory-comparison-result">К сравнению →</button>
           </div>
@@ -107,6 +111,7 @@
               <fieldset class="scene-layer-group"><legend>Объекты</legend>
                 <label><input id="show-traced-rays" data-scene-layer="traced_rays" type="checkbox" checked> Лучи трассировки</label>
                 <label><input id="show-reconstructed-rays" data-scene-layer="reconstructed_rays" type="checkbox" checked> Реконструированные лучи</label>
+                <label><input id="show-manual-rays" data-scene-layer="manual_rays" type="checkbox" checked> Лучи ручного анализа</label>
                 <label><input id="show-optics" data-scene-layer="optics" type="checkbox" checked> Оптика и зеркала</label>
                 <label><input id="show-measured-rays" data-scene-layer="measurement_rays" type="checkbox" checked> Лучи по измерениям</label>
                 <label><input id="show-measured-points" data-scene-layer="measurement_points" type="checkbox" checked> Измеренные точки</label>
@@ -120,7 +125,7 @@
             <p id="scene-comparison-note" class="scene-comparison-note" aria-live="polite" hidden></p>
           </section>
           <div id="metrics" class="metrics" aria-live="polite"></div>
-          <section id="trajectory-comparison-result" class="card details-card" tabindex="-1" hidden>
+          <section id="trajectory-comparison-result" class="card details-card legacy-workflow" tabindex="-1" hidden>
             <div class="card-heading"><h2>Сравнение с экспериментом</h2></div>
             <p id="trajectory-comparison-context" class="comparison-context"></p>
             <details id="comparison-method" class="method-help">
@@ -132,7 +137,7 @@
             </details>
             <div id="trajectory-comparison-sides" class="comparison-sides"></div>
           </section>
-          <section id="reconstruction-result" class="card details-card" tabindex="-1" hidden>
+          <section id="reconstruction-result" class="card details-card legacy-workflow" tabindex="-1" hidden>
             <div class="card-heading"><h2>Реконструкция микрозеркал</h2><span id="reconstruction-status" class="tag"></span></div>
             <p id="candidate-note"></p>
             <div id="reconstruction-sides" class="reconstruction-sides" aria-live="polite"></div>

@@ -9,7 +9,7 @@
     "start": "node desktop/launch.cjs",
     "setup:electron": "node node_modules/electron/install.js",
     "test:desktop": "node --test tests/desktop.test.cjs",
-    "test:ui": "node tests/electron_smoke.cjs"
+    "test:ui": "node tests/electron_static.cjs"
   },
   "devDependencies": {
     "electron": "^45.3.0",

@@ -111,7 +111,7 @@ def _trace_one(request, dataset=None):
     if dataset is None:
         warnings.insert(0, f"{configuration.metadata['injection_side']}: привязка к геодезии по лучам — RMS {frame.report['rms_mm']:.1f} мм, максимум {frame.report['max_mm']:.1f} мм по центрам микросборок. Это оценка положения системы, без переюстировки зеркал.")
     else:
-        warnings.insert(0, f"Трассируется активная физическая конфигурация: {dataset['status']}. Оптика и тела взяты из её сохранённого состояния.")
+        warnings.insert(0, f"Трассируется выбранная физическая конфигурация: {dataset['status']}. Оптика и тела взяты из её сохранённого состояния.")
     if displayed < segment_count:
         warnings.append(f"На графике показано {displayed} из {segment_count} сегментов; расчёт выполнен для всех лучей.")
     if request.ray_count < 721:
@@ -133,6 +133,33 @@ def _trace_one(request, dataset=None):
                      intersection_tests=compiled.intersection_tests, possible_tests=compiled.possible_tests,
                      unfinished_count=unfinished),
     )
+
+
+def static_manual_document(direction):
+    """Load the reviewed manual mirrors with their supplied optics, without fitting."""
+    from .manual_schema import BUNDLE, import_manual, manual_starting_geometry
+    from .state import new_document
+    datasets = {}
+    for d in selected_directions(direction):
+        filename = 'west_manual_corrected_survey.json' if d == 'east_to_west' else 'east_recovered_centers.json'
+        imported = import_manual(BUNDLE / filename)['datasets'][d]
+        datasets[d] = manual_starting_geometry(imported)
+    return new_document(datasets)
+
+
+def trace_static(payload):
+    """Trace the selected built-in preset independently of any accepted candidate."""
+    clean = {k: v for k, v in payload.items() if k not in {
+        'active_configuration', 'candidate_configuration', 'configuration_version'}}
+    request = TraceRequest(**clean)
+    if request.kind == 'real':
+        clean['active_configuration'] = static_manual_document(request.direction)
+    result = trace(clean)
+    source = 'manual' if request.kind == 'real' else 'ideal'
+    result['metadata']['static_configuration'] = source
+    for side in result['sides']:
+        side['metadata']['static_configuration'] = source
+    return result
 
 
 def trace(payload):
@@ -261,6 +288,10 @@ def document_result(document):
                 title=dict(text="Частичный импорт: общая оптика отсутствует")))
         if dataset.get("manual_references"):
             figure["data"].extend(_manual_comparison_layers(dataset))
+            from .calibration.manual_rays import current_analysis, scene_traces
+            if dataset.get('manual_rays') and not current_analysis(dataset):
+                dataset.pop('manual_rays')
+            figure['data'].extend(scene_traces(dataset))
         for layer in figure["data"]:
             layer["name"] = f"{ROUTES[direction].injection_side} · {layer.get('name', '')}"
             meta = layer.setdefault("meta", {})
@@ -389,6 +420,30 @@ def refine_manual_configuration(payload, progress=None):
     return document_result(new_document(datasets, payload.get("configuration_version", 0)))
 
 
+def add_manual_analysis_rays(payload, progress=None):
+    from .state import new_document, validate_document
+    from .manual_schema import import_manual, BUNDLE
+    from .calibration.manual_rays import add_manual_rays
+    document = payload.get('candidate_configuration') or payload.get('active_configuration')
+    if document:
+        validate_document(document)
+    datasets = copy.deepcopy(document['datasets']) if document else {}
+    direction = payload.get('direction', 'both')
+    if direction not in {*DIRECTIONS, 'both'}:
+        raise ValueError('Неизвестная сторона')
+    for d in selected_directions(direction):
+        existing = datasets.get(d, {})
+        if not existing.get('manual_references') or existing.get('manual_geometry_base'):
+            filename = 'west_manual_corrected_survey.json' if d == 'east_to_west' else 'east_recovered_centers.json'
+            manual = import_manual(BUNDLE / filename)['datasets'][d]
+            datasets[d] = manual
+        def report(value, direction=d):
+            if progress:
+                progress(dict(direction=direction, **value))
+        datasets[d] = add_manual_rays(datasets[d], report)
+    return document_result(new_document(datasets, payload.get('configuration_version', 0)))
+
+
 def dispatch(method, payload, progress=None):
     if not isinstance(payload, dict):
         raise ValueError("Параметры должны быть JSON-объектом.")
@@ -396,12 +451,16 @@ def dispatch(method, payload, progress=None):
         return catalog()
     if method == "trace":
         return trace(payload)
+    if method == "trace_static":
+        return trace_static(payload)
     if method == "calibrate":
         return calibrate(payload)
     if method == "optimize":
         return optimize(payload, progress)
     if method == "refine_manual":
         return refine_manual_configuration(payload, progress)
+    if method == 'add_manual_rays':
+        return add_manual_analysis_rays(payload, progress)
     if method == "save_configuration":
         from .state import save_document
         document = payload.get("document") or payload.get("active_configuration") or _historical_document(payload)

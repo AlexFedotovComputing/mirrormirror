@@ -73,18 +73,26 @@ app.whenReady().then(() => {
         if (!isManualConfiguration(selected?.document)) throw new Error('Сначала загрузите ручную реконструкцию.');
         clean.candidate_configuration = selected.document;
       }
-      const result = await worker.request(method, { ...clean, ...configurations.payload() }, {
+      if (method === 'add_manual_rays') {
+        clean.candidate_configuration = (configurations.candidate ?? configurations.active)?.document ?? null;
+      }
+      const traceSource = method === 'trace' ? (clean.source ?? 'active') : null;
+      const context = method === 'trace' ? configurations.tracePayload(traceSource) : configurations.payload();
+      if (method === 'trace') delete clean.source;
+      const workerMethod = traceSource === 'preset' ? 'trace_static' : method;
+      const result = await worker.request(workerMethod, { ...clean, ...context }, {
         onProgress: message => {
           if (configurations.version === version && mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('mirrorlab:progress', message);
           }
         },
       });
-      if (['optimize', 'refine_manual', 'load_configuration', 'import_legacy', 'import_manual'].includes(method)) {
+      if (['optimize', 'refine_manual', 'add_manual_rays', 'load_configuration', 'import_legacy', 'import_manual'].includes(method)) {
         return configurations.offer(result, version, { load: method === 'load_configuration' });
       }
       if (version !== configurations.version) throw new Error('Конфигурация изменилась. Запоздалый результат не применён.');
-      return { ...result, configuration_version: version, active: !!configurations.active };
+      return { ...result, ...(traceSource ? { trace_source: traceSource } : {}), configuration_version: version,
+        active: traceSource === 'preset' ? false : !!configurations.active };
     } finally { operation = false; }
   });
   ipcMain.handle('mirrorlab:save', async (event, data) => {

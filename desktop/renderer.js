@@ -45,9 +45,15 @@ function updateControls() {
   $('controls').disabled = locked;
   $('calibrate').disabled = locked;
   $('start-trace').disabled = $('start-load').disabled = locked;
-  for (const id of ['optimize', 'save-configuration', 'load-configuration', 'load-manual', 'load-legacy', 'preview-candidate',
+  for (const id of ['optimize', 'add-manual-rays', 'save-configuration', 'load-configuration', 'load-manual', 'load-legacy', 'preview-candidate',
     'choose-legacy', 'accept-candidate', 'use-historical', 'save-source', 'legacy-frame']) $(id).disabled = locked;
   $('accept-candidate').disabled = locked || !!candidateBlockReason(reconstructionResult);
+  const candidateAvailable = !!reconstructionResult?.document && !reconstructionResult.active;
+  $('trace-source').options[1].disabled = !candidateAvailable;
+  if (!candidateAvailable) $('trace-source').value = 'active';
+  $('trace-source').disabled = locked;
+  $('trace-source').options[0].textContent = activeConfiguration ? 'Принятая конфигурация' : $('kind').selectedOptions[0].textContent;
+  $('trace-source').options[1].textContent = hasManualReconstruction(reconstructionResult) ? 'Кандидат с ручными зеркалами' : 'Диагностический кандидат';
   const manual = hasManualReconstruction(reconstructionResult);
   const historicalIdeal = !activeConfiguration && !real && !manual;
   $('optimize').textContent = manual ? 'Уточнить ручную реконструкцию' : 'Восстановить зеркала';
@@ -278,7 +284,7 @@ function showSummary(result, request) {
   $('result-notes').replaceChildren();
   const direction = directionLabel(request.direction);
   $('result-direction').textContent = direction;
-  $('scene-label').textContent = `${direction} · ${result.active ? 'принятая реконструкция' : request.kind === 'ideal' ? 'историческая идеальная' : 'историческая реальная'}`;
+  $('scene-label').textContent = `${direction} · ${result.trace_source === 'candidate' ? 'трассировка кандидата' : result.active ? 'принятая реконструкция' : request.kind === 'ideal' ? 'историческая идеальная' : 'историческая реальная'}`;
   paragraph($('result-notes'), `Поиск пересечений: ${request.collision_mode === 'exhaustive' ? 'полный перебор' : 'ожидаемые объекты'}. Лучей на лазер: ${request.ray_count}; максимум взаимодействий: ${request.max_interactions}.`);
   for (const warning of result.warnings || []) paragraph($('result-notes'), warning);
   $('result-json').textContent = JSON.stringify(metadata(result), null, 2);
@@ -538,7 +544,7 @@ function renderTrajectoryComparison(reports, context) {
   $('trajectory-comparison-result').hidden = !reports.length;
   preview.hidden = !reports.length;
   $('trajectory-comparison-context').textContent = context;
-  let fitMatched = 0, fitTotal = 0, physicalMatched = 0, physicalTotal = 0;
+  let fitMatched = 0, fitTotal = 0, physicalMatched = 0, physicalTotal = 0, apertureMatched = 0, apertureTotal = 0;
   for (const report of reports) {
     const fit = report.diagnostics?.geometric_fit;
     const physical = report.diagnostics?.trajectory_matching;
@@ -574,7 +580,7 @@ function renderTrajectoryComparison(reports, context) {
     }
     panels.append(fitPanel);
     const physicalPanel = document.createElement('section'); physicalPanel.className = 'comparison-panel physical-path-panel';
-    const physicalHeading = document.createElement('h4'); physicalHeading.textContent = 'Физическая проходимость'; physicalPanel.append(physicalHeading);
+    const physicalHeading = document.createElement('h4'); physicalHeading.textContent = 'Центральные трассы'; physicalPanel.append(physicalHeading);
     if (physical?.status === 'evaluated') {
       physicalMatched += physical.matched_count; physicalTotal += physical.observation_count;
       comparisonScore(physicalPanel, physical, 'physical-path-summary');
@@ -591,6 +597,20 @@ function renderTrajectoryComparison(reports, context) {
       paragraph(physicalPanel, 'Нет измерений, сохранённых физических путей или их общей привязки.').className = 'comparison-empty';
     }
     panels.append(physicalPanel);
+    const aperture = report.manual_rays;
+    if (aperture) {
+      apertureMatched += aperture.matched_count; apertureTotal += aperture.observation_count;
+      const panel = document.createElement('section'); panel.className = 'comparison-panel manual-rays-panel';
+      const title = document.createElement('h4'); title.textContent = 'Лучи из ручного анализа'; panel.append(title);
+      paragraph(panel, `${aperture.matched_count}/${aperture.observation_count} измерений · через центры: ${aperture.baseline_count}/${aperture.observation_count}`).className = 'manual-rays-summary';
+      paragraph(panel, `Дополнительных прослеженных путей: ${aperture.full_trace.paths.length}. Порог: ${format(aperture.distance_tolerance_m * 1000)} мм. Одно измерение на зеркало.`);
+      paragraph(panel, 'Бирюзовые линии в сцене — проверенные лучи через площадки. Доля мощности и форма пятна пока не рассчитаны.');
+      const details = comparisonDetails(panel, 'Соответствия измерениям и оставшиеся расхождения');
+      comparisonTable(details, ['Измерение', 'Зеркало', 'Ошибка, мм', 'Точка отражения'], aperture.matches.map(m =>
+        [m.observation_id, m.mirror_id, format(m.error_mm), m.sample_key ? 'На площадке' : 'Центр']));
+      for (const miss of aperture.unmatched) paragraph(details, `Не воспроизведено: ${miss.observation_id} · ближайший путь: ${format(miss.best_error_mm)} мм`);
+      panels.append(panel);
+    }
     renderTrajectoryDiagnostics(side, report.diagnostics?.trajectory_diagnostics);
     container.append(side);
   }
@@ -600,6 +620,7 @@ function renderTrajectoryComparison(reports, context) {
   $('trajectory-comparison-summary').textContent = fitTotal || physicalTotal
     ? `Подгонка: ${fitTotal ? `${fitMatched}/${fitTotal}` : 'недоступна'} · Проходимость: ${physicalTotal ? `${physicalMatched}/${physicalTotal}` : 'недоступна'} · ${toleranceLabels.length === 1 ? `порог ${toleranceLabels[0]} мм` : 'пороги в отчёте'}`
     : 'Нет реконструкции с измерениями для сравнения.';
+  if (apertureTotal) $('trajectory-comparison-summary').textContent += ` · Через площадки: ${apertureMatched}/${apertureTotal}`;
 }
 
 function showMirror() {
@@ -678,8 +699,8 @@ async function showReconstruction(result) {
   $('preview-candidate').hidden = result.active || !result.figure;
   $('preview-candidate').textContent = 'Показать кандидата в сцене';
   // Manual candidates require an explicit comparison preview; the accepted base stays intact.
-  if (hasManualReconstruction(result) && !result.active) $('show-reconstruction').checked = false;
-  $('candidate-note').textContent = result.active ? '' : 'Кандидат не принят для следующих расчётов.';
+  if (hasManualReconstruction(result) && !result.active) $('show-reconstruction').checked = reports.some(r => r.manual_rays);
+  $('candidate-note').textContent = result.active ? '' : 'Кандидат можно трассировать: выберите его в поле «Геометрия для трассировки».';
   $('candidate-note').hidden = result.active;
   $('accept-candidate').hidden = !result.document;
   $('accept-candidate').textContent = result.active ? 'Конфигурация принята' : 'Принять для расчётов';
@@ -781,7 +802,7 @@ async function run(method, payload) {
   const actionLabels = { trace: 'Трассировка лучей', calibrate: 'Обработка измерений', optimize: 'Проверка данных',
     save_configuration: 'Сохранение конфигурации', load_configuration: 'Проверка файла конфигурации',
     import_legacy: 'Проверка исторических данных', import_manual: 'Проверка ручной реконструкции',
-    refine_manual: 'Уточнение ручной реконструкции', accept_candidate: 'Применение результата', use_historical: 'Историческая конфигурация' };
+    refine_manual: 'Уточнение ручной реконструкции', add_manual_rays: 'Добавление лучей из ручного анализа', accept_candidate: 'Применение результата', use_historical: 'Историческая конфигурация' };
   setBusy(true, actionLabels[method]);
   try {
     const result = await bridge.request(method, payload);
@@ -793,7 +814,7 @@ async function run(method, payload) {
       showSummary(result, payload);
       const comparisons = result.comparison_reports ?? [];
       if (comparisons.some(report => report.diagnostics?.geometric_fit?.status === 'evaluated') || !reconstructionResult) {
-        renderTrajectoryComparison(comparisons, result.active
+        renderTrajectoryComparison(comparisons, result.trace_source === 'candidate' ? 'Источник: геометрия диагностического кандидата.' : result.active
           ? 'Источник: принятая реконструкция.'
           : 'Историческая геометрия. Нет реконструкции для оценки подгонки.');
       } else {
@@ -828,9 +849,16 @@ async function run(method, payload) {
       $('save-source').hidden = $('save-source-label').hidden = true;
       $('save-source').value = 'active';
       markSceneStale('Выбрана историческая конфигурация. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.');
-    } else await showReconstruction(result);
+    } else {
+      await showReconstruction(result);
+      if (method === 'add_manual_rays') {
+        $('trace-source').value = 'candidate';
+        $('scene-card').scrollIntoView({ block: 'start', behavior: 'smooth' });
+        notify('Зеркала и лучи добавлены. Для трассировки выбран кандидат: задайте число лучей и нажмите «Рассчитать лучи».');
+      }
+    }
     $('run-status').textContent = method === 'trace' ? 'Конфигурация построена' : method === 'calibrate'
-      ? 'Измерения обработаны' : method === 'save_configuration' ? 'Конфигурация сохранена' : 'Реконструкция обработана';
+      ? 'Измерения обработаны' : method === 'save_configuration' ? 'Конфигурация сохранена' : method === 'add_manual_rays' ? 'Лучи из ручного анализа добавлены' : 'Реконструкция обработана';
     if (method === 'calibrate') $('calibration-result').scrollIntoView({ block: 'start', behavior: 'smooth' });
   } catch (error) {
     notify(error.message || String(error), true);
@@ -841,10 +869,11 @@ async function run(method, payload) {
 $('trace-form').addEventListener('submit', (event) => {
   event.preventDefault();
   if (!$('trace-form').reportValidity()) return;
-  run('trace', { direction: $('direction').value, kind: $('kind').value,
+  run('trace', { source: $('trace-source').value, direction: $('direction').value, kind: $('kind').value,
     collision_mode: $('collision-mode').value, ray_count: Number($('ray-count').value),
     max_interactions: Number($('max-interactions').value) });
 });
+$('trace-source').addEventListener('change', () => markSceneStale('Источник геометрии изменён. Нажмите «Рассчитать лучи» для обновления.'));
 $('trace-form').addEventListener('invalid', event => {
   const details = event.target.closest('details');
   if (details) details.open = true;
@@ -861,6 +890,7 @@ $('optimize').addEventListener('click', () => run(hasManualReconstruction(recons
     ? 'both' : Object.keys(reconstructionResult.document.datasets)[0] } : {}),
 }));
 $('load-manual').addEventListener('click', () => run('import_manual', configurationSelection()));
+$('add-manual-rays').addEventListener('click', () => run('add_manual_rays', configurationSelection()));
 $('preview-candidate').addEventListener('click', async () => {
   $('show-reconstruction').checked = !$('show-reconstruction').checked;
   $('preview-candidate').textContent = $('show-reconstruction').checked ? 'Скрыть кандидата в сцене' : 'Показать кандидата в сцене';
