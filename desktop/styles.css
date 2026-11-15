@@ -208,3 +208,7 @@ tbody tr:hover { background:#f8f7f5; }
 /* Primary entry point for the bundled manual analysis. */
 .manual-rays-button { min-height: 64px; white-space: normal; line-height: 1.35; font-size: 16px; }
 .manual-rays-help { font-size: 12px; line-height: 1.5; color: #526478; }
+
+/* Retired workflows retain their DOM hooks while the static panel uses presets. */
+.legacy-workflow { display: none !important; }
+#configuration-description { margin-top: 12px; }

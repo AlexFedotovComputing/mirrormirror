@@ -59,9 +59,12 @@ function updateControls() {
   $('optimize').textContent = manual ? 'Уточнить ручную реконструкцию' : 'Восстановить зеркала';
   $('optimize').disabled = locked || historicalIdeal;
   $('optimize-reason').hidden = !historicalIdeal;
-  $('kind').disabled = locked || activeConfiguration;
-  $('historical-kind').hidden = activeConfiguration;
-  $('calculation-source').hidden = !activeConfiguration;
+  $('kind').disabled = locked;
+  $('historical-kind').hidden = false;
+  $('calculation-source').hidden = true;
+  $('configuration-description').textContent = real
+    ? 'Зеркала из ручной реконструкции и приложенная оптика. Для WEST — калиброванная оптика ручного набора.'
+    : 'Зеркала в идеальном расположении.';
   $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}`
     : $('kind').selectedOptions[0].textContent;
   $('save-source').options[0].textContent = activeConfiguration ? 'Принятая конфигурация' : 'Текущая историческая конфигурация';
@@ -284,7 +287,7 @@ function showSummary(result, request) {
   $('result-notes').replaceChildren();
   const direction = directionLabel(request.direction);
   $('result-direction').textContent = direction;
-  $('scene-label').textContent = `${direction} · ${result.trace_source === 'candidate' ? 'трассировка кандидата' : result.active ? 'принятая реконструкция' : request.kind === 'ideal' ? 'историческая идеальная' : 'историческая реальная'}`;
+  $('scene-label').textContent = `${direction} · ${request.source === 'preset' ? request.kind === 'ideal' ? 'Идеальная конфигурация' : 'Реальная конфигурация · ручные зеркала' : result.trace_source === 'candidate' ? 'трассировка кандидата' : result.active ? 'принятая реконструкция' : request.kind === 'ideal' ? 'идеальная' : 'реальная'}`;
   paragraph($('result-notes'), `Поиск пересечений: ${request.collision_mode === 'exhaustive' ? 'полный перебор' : 'ожидаемые объекты'}. Лучей на лазер: ${request.ray_count}; максимум взаимодействий: ${request.max_interactions}.`);
   for (const warning of result.warnings || []) paragraph($('result-notes'), warning);
   $('result-json').textContent = JSON.stringify(metadata(result), null, 2);
@@ -678,7 +681,7 @@ async function showReconstruction(result) {
   configurationVersion = result.configuration_version ?? configurationVersion;
   if (result.active) {
     activeConfiguration = true;
-    if (baseScene) markSceneStale('Источник расчёта изменён. На сцене сохранена предыдущая трассировка для сравнения. Нажмите «Рассчитать лучи» для нового расчёта.');
+    if (baseScene) markSceneStale('Источник расчёта изменён. На сцене сохранена предыдущая трассировка для сравнения. Нажмите «Выполнить трассировку» для нового расчёта.');
   }
   const reports = reconstructionReports(result);
   renderTrajectoryComparison(reports, result.active ? 'Источник: принятая реконструкция.'
@@ -811,6 +814,12 @@ async function run(method, payload) {
     session[method] = { parameters: payload, ...result };
     if (method === 'trace') {
       $('scene-stale').hidden = true;
+      if (payload.source === 'preset') {
+        reconstructionResult = null;
+        reconstructionScene = null;
+        sceneMeasurements = [];
+        activeConfiguration = false;
+      }
       showSummary(result, payload);
       const comparisons = result.comparison_reports ?? [];
       if (comparisons.some(report => report.diagnostics?.geometric_fit?.status === 'evaluated') || !reconstructionResult) {
@@ -848,13 +857,13 @@ async function run(method, payload) {
       $('use-historical').hidden = true;
       $('save-source').hidden = $('save-source-label').hidden = true;
       $('save-source').value = 'active';
-      markSceneStale('Выбрана историческая конфигурация. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.');
+      markSceneStale('Выбрана историческая конфигурация. На сцене предыдущий результат. Нажмите «Выполнить трассировку» для обновления.');
     } else {
       await showReconstruction(result);
       if (method === 'add_manual_rays') {
         $('trace-source').value = 'candidate';
         $('scene-card').scrollIntoView({ block: 'start', behavior: 'smooth' });
-        notify('Зеркала и лучи добавлены. Для трассировки выбран кандидат: задайте число лучей и нажмите «Рассчитать лучи».');
+        notify('Зеркала и лучи добавлены. Для трассировки выбран кандидат: задайте число лучей и нажмите «Выполнить трассировку».');
       }
     }
     $('run-status').textContent = method === 'trace' ? 'Конфигурация построена' : method === 'calibrate'
@@ -869,11 +878,11 @@ async function run(method, payload) {
 $('trace-form').addEventListener('submit', (event) => {
   event.preventDefault();
   if (!$('trace-form').reportValidity()) return;
-  run('trace', { source: $('trace-source').value, direction: $('direction').value, kind: $('kind').value,
+  run('trace', { source: 'preset', direction: $('direction').value, kind: $('kind').value,
     collision_mode: $('collision-mode').value, ray_count: Number($('ray-count').value),
     max_interactions: Number($('max-interactions').value) });
 });
-$('trace-source').addEventListener('change', () => markSceneStale('Источник геометрии изменён. Нажмите «Рассчитать лучи» для обновления.'));
+$('trace-source').addEventListener('change', () => markSceneStale('Источник геометрии изменён. Нажмите «Выполнить трассировку» для обновления.'));
 $('trace-form').addEventListener('invalid', event => {
   const details = event.target.closest('details');
   if (details) details.open = true;
@@ -929,7 +938,7 @@ for (const button of document.querySelectorAll('[data-result-target]')) button.a
   target.focus({ preventScroll: true });
   target.scrollIntoView({ block: 'start', behavior: 'smooth' });
 });
-function markSceneStale(message = 'Параметры изменены. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.') {
+function markSceneStale(message = 'Параметры изменены. На сцене предыдущий результат. Нажмите «Выполнить трассировку» для обновления.') {
   if (!baseScene && !reconstructionScene) return;
   $('scene-stale').textContent = message;
   $('scene-stale').hidden = false;

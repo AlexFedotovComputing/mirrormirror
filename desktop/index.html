@@ -120,8 +120,8 @@
                 <label><input id="show-boundary" data-scene-layer="boundary" type="checkbox" checked> Граница EAST / WEST</label>
               </fieldset>
             </details>
-            <p id="scene-stale" class="scene-stale" aria-live="polite" hidden>Параметры изменены. На сцене предыдущий результат. Нажмите «Рассчитать лучи» для обновления.</p>
-            <div class="plot-container"><div id="scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 8 5v8l-8 5-8-5V8l8-5Zm-8 5 8 5 8-5m-8 5v8"/></svg></div><h3>Откройте конфигурацию или рассчитайте лучи</h3><div class="empty-actions"><button id="start-trace" type="button" class="primary-button">Рассчитать лучи</button><button id="start-load" type="button" class="secondary-button">Открыть конфигурацию</button></div></div><div id="filtered-scene" class="filtered-scene" aria-live="polite" hidden><strong>Все слои скрыты</strong><button id="restore-layers" type="button" class="secondary-button">Показать все слои</button></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong></div></div>
+            <p id="scene-stale" class="scene-stale" aria-live="polite" hidden>Параметры изменены. На сцене предыдущий результат. Нажмите «Выполнить трассировку» для обновления.</p>
+            <div class="plot-container"><div id="scene"></div><div id="empty-scene" class="empty-scene"><div class="empty-symbol" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="m12 3 8 5v8l-8 5-8-5V8l8-5Zm-8 5 8 5 8-5m-8 5v8"/></svg></div><h3>Выберите конфигурацию и выполните трассировку</h3><div class="empty-actions"><button id="start-trace" type="button" class="primary-button">Выполнить трассировку</button><button id="start-load" type="button" class="secondary-button legacy-workflow" hidden>Открыть конфигурацию</button></div></div><div id="filtered-scene" class="filtered-scene" aria-live="polite" hidden><strong>Все слои скрыты</strong><button id="restore-layers" type="button" class="secondary-button">Показать все слои</button></div><div id="busy-overlay" class="busy-overlay" hidden><span class="spinner"></span><strong id="busy-label">Трассировка лучей</strong></div></div>
             <p id="scene-comparison-note" class="scene-comparison-note" aria-live="polite" hidden></p>
           </section>
           <div id="metrics" class="metrics" aria-live="polite"></div>
@@ -165,10 +165,9 @@
   </main>
   <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
     <div class="help-heading"><h2 id="help-title">Справка</h2><form method="dialog"><button class="secondary-button" autofocus>Закрыть</button></form></div>
-    <section><h3>Расчёт и реконструкция</h3>
-      <p>Для трассировки выберите сторону ввода, геометрию и число лучей на каждый лазер, затем нажмите «Рассчитать лучи». Можно открыть сохранённую конфигурацию или загрузить ручную реконструкцию.</p>
-      <p>«Восстановить лучи» восстанавливает направления по геодезическим измерениям. «Восстановить зеркала» оценивает геометрию зеркал по измерениям; для исторической конфигурации эта операция доступна в реальном режиме.</p>
-      <p>Кандидат доступен для просмотра и сравнения. Следующий расчёт использует текущую конфигурацию до принятия кандидата кнопкой «Принять для расчётов». Принятие сохраняет статусы проверок. Ручной кандидат сначала нужно показать в сцене или уточнить.</p>
+    <section><h3>Статическая конфигурация</h3>
+      <p>«Идеальная» использует идеальное расположение зеркал. «Реальная» загружает зеркала из ручной реконструкции вместе с приложенной оптикой; для WEST используется калиброванная оптика ручного набора.</p>
+      <p>Выберите конфигурацию и нажмите «Выполнить трассировку». Сторона ввода, число лучей и ограничения расчёта доступны в «Параметрах трассировки».</p>
     </section>
     <section><h3>Сцена и координаты</h3>
       <p>Вращение сцены — мышью, масштаб — колесом. «К объёму» приближает рабочий объём, «Вся схема» возвращает общий вид. «Сбросить вид» восстанавливает исходную камеру.</p>
@@ -179,11 +178,7 @@
       <p>«Полный перебор» проверяет все объекты. «Ожидаемые объекты» ограничивает поиск ожидаемыми объектами. Максимум взаимодействий ограничивает длину цепочки трассировки.</p>
       <p>Небольшое число лучей удобно для предварительного просмотра. Для малых зеркал проверяйте сходимость при увеличении числа лучей: зеркало может оказаться между узлами сетки.</p>
     </section>
-    <section><h3>Сравнение и источники</h3>
-      <p>В разделе «Сравнение с экспериментом» показаны точность подгонки и физическая проходимость. Правила сопоставления и определения ошибок доступны в блоке «Как считается сравнение».</p>
-      <p>Статус дополнительных экранов показан в отчёте «Лучи по измерениям». Привязка сцены по лучам не заменяет юстировку отдельных зеркал. Ручные ориентиры хранятся отдельно от первичных измерений и не увеличивают число независимых наблюдений.</p>
-      <p>Источники, контрольные суммы и подробные результаты проверок доступны в раскрываемой диагностике соответствующего отчёта.</p>
-    </section>
+
   </dialog>
 </body>
 </html>
