@@ -51,6 +51,27 @@ class ManualServiceTests(unittest.TestCase):
         self.assertEqual(original, self.document)
         self.assertFalse(result['can_activate'])
 
+    def test_old_both_manual_document_previews_only_east_and_keeps_west_archive(self):
+        from mirrorlab.state import new_document
+        west = import_manual(ROOT / 'data/manual_refinement/west_manual_corrected_survey.json')
+        document = new_document({**west['datasets'], **self.document['datasets']})
+        original = copy.deepcopy(document)
+        result = document_result(document)
+        self.assertEqual([d['direction'] for d in result['reports']], ['west_to_east'])
+        self.assertEqual(result['scene_direction'], 'west_to_east')
+        self.assertEqual(document, original)
+        self.assertEqual(result['document']['datasets']['east_to_west'], original['datasets']['east_to_west'])
+
+    @patch('mirrorlab.service.ENABLED_DIRECTIONS', ('east_to_west', 'west_to_east'))
+    def test_archival_west_manual_preview_with_explicit_test_enable(self):
+        west = import_manual(ROOT / 'data/manual_refinement/west_manual_corrected_survey.json')
+        original = copy.deepcopy(west)
+        result = document_result(west)
+        self.assertEqual(result['scene_direction'], 'east_to_west')
+        self.assertEqual([d['direction'] for d in result['reports']], ['east_to_west'])
+        self.assertEqual(west, original)
+        go.Figure(result['figure'])
+
 
 if __name__ == '__main__':
     unittest.main()

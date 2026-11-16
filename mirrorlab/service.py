@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from .configurations import DIRECTIONS, load_configuration
-from .directions import ROUTES, SIDE_DESIGNATIONS
+from .directions import ROUTES, SIDE_DESIGNATIONS, ENABLED_DIRECTIONS, DISABLED_DIRECTION_MESSAGE
 from .coordinates import survey_frames
 from .engine import RayTracer, to_numpy
 from .plotting import PlotlyRenderer, measurement_figure
@@ -17,8 +17,25 @@ from .plotting import PlotlyRenderer, measurement_figure
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _ring_note(metadata):
+    report = metadata.get('ring_alignment')
+    if not report:
+        return None
+    shifts = report.get('footprint_recentering', [])
+    detail = (f" Пятна в стержнях сдвинуты настройкой MS/MC не более чем на {max(s['transverse_shift_m'] for s in shifts)*1000:.3f} мм."
+              if shifts else '')
+    return ('Кольцо WEST отражено; перископ направлен вниз. Положения микрозеркал и направления падающих лучей сохранены.'
+            + detail + ' Распределение мощности по микрозеркалам может измениться.')
+
+
 def selected_directions(direction):
-    return ("east_to_west", "west_to_east") if direction == "both" else (direction,)
+    if direction == "both":
+        return ENABLED_DIRECTIONS
+    if direction not in DIRECTIONS:
+        raise ValueError("Неизвестное направление лучей.")
+    if direction not in ENABLED_DIRECTIONS:
+        raise ValueError(DISABLED_DIRECTION_MESSAGE)
+    return (direction,)
 
 
 def additional_screens(direction, report=None):
@@ -41,7 +58,7 @@ def additional_screens(direction, report=None):
 
 @dataclass(frozen=True)
 class TraceRequest:
-    direction: str = "both"
+    direction: str = ENABLED_DIRECTIONS[0] if len(ENABLED_DIRECTIONS) == 1 else "both"
     kind: str = "ideal"
     collision_mode: str = "expected"
     ray_count: int = 1000
@@ -49,8 +66,7 @@ class TraceRequest:
     max_interactions: int = 48
 
     def __post_init__(self):
-        if self.direction not in {*DIRECTIONS, "both"}:
-            raise ValueError("Неизвестное направление лучей.")
+        selected_directions(self.direction)
         if self.kind not in {"ideal", "real"}:
             raise ValueError("Выберите идеальную или реальную конфигурацию.")
         if self.collision_mode not in {"exhaustive", "expected"}:
@@ -66,9 +82,11 @@ class TraceRequest:
 
 def catalog():
     return dict(
-        directions=[dict(id="both", label="Обе стороны · WEST и EAST")] + [dict(id=key, label=f"{value['source_side']} → {value['injection_side']}", **value)
-                    for key, value in DIRECTIONS.items()],
-        additional_screens=[additional_screens(key) for key in DIRECTIONS],
+        directions=([dict(id="both", label="Обе стороны · WEST и EAST")] if len(ENABLED_DIRECTIONS) > 1 else []) +
+            [dict(id=key, label=f"{DIRECTIONS[key]['source_side']} → {DIRECTIONS[key]['injection_side']}", **DIRECTIONS[key])
+             for key in ENABLED_DIRECTIONS],
+        disabled_directions=[dict(id=key, reason=DISABLED_DIRECTION_MESSAGE) for key in DIRECTIONS if key not in ENABLED_DIRECTIONS],
+        additional_screens=[additional_screens(key) for key in ENABLED_DIRECTIONS],
         side_designations=SIDE_DESIGNATIONS,
         configurations=["ideal", "real"], collision_modes=["exhaustive", "expected"],
         defaults=asdict(TraceRequest()), units="m", separator_z_m=0, coordinate_frame="survey",
@@ -113,6 +131,9 @@ def _trace_one(request, dataset=None):
     visualization = build_visualization(configuration, rays, result, frame)
     segment_count = sum(len(block["x0"]) for block in result.segments)
     warnings = ["Исходные геодезические точки можно включить в легенде сцены."]
+    note = _ring_note(configuration.metadata)
+    if note:
+        warnings.append(note)
     if dataset is None:
         warnings.insert(0, f"{configuration.metadata['injection_side']}: привязка к геодезии по лучам — RMS {frame.report['rms_mm']:.1f} мм, максимум {frame.report['max_mm']:.1f} мм по центрам микросборок. Это оценка положения системы, без переюстировки зеркал.")
     else:
@@ -150,7 +171,8 @@ def static_manual_document(direction):
         filename = 'west_manual_corrected_survey.json' if d == 'east_to_west' else 'east_recovered_centers.json'
         imported = import_manual(BUNDLE / filename)['datasets'][d]
         datasets[d] = manual_starting_geometry(imported)
-    return new_document(datasets)
+    from .ring_migration import upgrade_ring_document
+    return upgrade_ring_document(new_document(datasets))
 
 
 def trace_static(payload):
@@ -277,10 +299,16 @@ def document_result(document):
     from .plotting import _surface_traces
     from .calibration.trajectory_matching import dataset_comparison_report
     validate_document(document)
-    document = copy.deepcopy(document)
+    from .ring_migration import upgrade_ring_document
+    document = upgrade_ring_document(document)
+    # Retain disabled datasets for a lossless save, but never build their scene,
+    # diagnostics or rays. Their historical status must not block the active side.
+    available = {d: value for d, value in document["datasets"].items() if d in ENABLED_DIRECTIONS}
+    if not available:
+        raise ValueError(DISABLED_DIRECTION_MESSAGE)
     figures, reports = [], []
     can_activate = True
-    for direction, dataset in document["datasets"].items():
+    for direction, dataset in available.items():
         dataset.setdefault("diagnostics", {}).update(dataset_comparison_report(dataset)["diagnostics"])
         if dataset.get("optics_snapshot") is not None:
             config = configuration_from_dataset(dataset)
@@ -312,19 +340,28 @@ def document_result(document):
                     item["direction"] = direction
         figures.append(figure)
         reports.append(dataset)
-    shared_frame = len(figures) == 1 or all(d.get("display_frame") for d in document["datasets"].values())
+    shared_frame = len(figures) == 1 or all(d.get("display_frame") for d in available.values())
     combined = (dict(data=[x for f in figures for x in f["data"]], layout=figures[0]["layout"])
                 if shared_frame else figures[0])
-    warnings = [f"{d}: {dataset['status']}" for d, dataset in document["datasets"].items()]
+    warnings = [f"{d}: {dataset['status']}" for d, dataset in available.items()]
+    for dataset in available.values():
+        note = _ring_note((dataset.get('optics_snapshot') or {}).get('metadata', {}))
+        if note:
+            warnings.append(note)
+    if len(available) != len(document["datasets"]):
+        warnings.append(DISABLED_DIRECTION_MESSAGE + " Данные отключённой стороны сохранены в документе.")
     if not shared_frame:
         warnings.append("Системы координат сторон не совмещены: показана только первая сторона. Для трассировки выберите одну сторону.")
-    return dict(document=document, status=document["status"], figure=combined, reports=reports,
-                scene_direction="both" if shared_frame and len(figures) > 1 else next(iter(document["datasets"])),
-                coordinate_frame=("survey" if all(d.get("display_frame") for d in document["datasets"].values())
-                                  else next(iter(document["datasets"].values())).get("coordinate_frame", "legacy")),
+    statuses = {d["status"] for d in available.values()}
+    status = next(iter(statuses)) if len(statuses) == 1 else "partial"
+    return dict(document=document, status=status, figure=combined, reports=reports,
+                enabled_directions=list(available),
+                scene_direction="both" if shared_frame and len(figures) > 1 else next(iter(available)),
+                coordinate_frame=("survey" if all(d.get("display_frame") for d in available.values())
+                                  else next(iter(available.values())).get("coordinate_frame", "legacy")),
                 can_activate=can_activate and all(d["status"] != "infeasible" and
                     (not d.get("manual_references") or d["status"] == "validated")
-                    for d in document["datasets"].values()),
+                    for d in available.values()),
                 warnings=warnings)
 
 
@@ -360,7 +397,8 @@ def optimize(payload, progress=None):
     from .state import new_document, dataset_from_config, validate_document, configuration_from_dataset
     from .calibration.reconstruction import reconstruct
     document = payload.get("candidate_configuration") or payload.get("active_configuration")
-    if document and any(d.get("manual_references") for d in document.get("datasets", {}).values()):
+    selected = selected_directions(payload.get("direction", "both"))
+    if document and any(d.get("manual_references") for key, d in document.get("datasets", {}).items() if key in selected):
         return refine_manual_configuration(payload, progress)
     if document is None and payload.get("kind", "real") == "ideal":
         raise ValueError("В исторической идеальной конфигурации все лучи заданы. "
@@ -416,7 +454,10 @@ def refine_manual_configuration(payload, progress=None):
     direction = payload.get("direction", "both")
     if direction not in {*DIRECTIONS, "both"}:
         raise ValueError("Неизвестная сторона")
-    chosen = list(document["datasets"]) if direction == "both" else [direction]
+    selected = selected_directions(direction)
+    chosen = [d for d in selected if d in document["datasets"]] if direction == "both" else selected
+    if not chosen:
+        raise ValueError(DISABLED_DIRECTION_MESSAGE)
     datasets = copy.deepcopy(document["datasets"])
     for d in chosen:
         if d not in datasets or not datasets[d].get("manual_references"):
@@ -455,6 +496,15 @@ def add_manual_analysis_rays(payload, progress=None):
 def dispatch(method, payload, progress=None):
     if not isinstance(payload, dict):
         raise ValueError("Параметры должны быть JSON-объектом.")
+    if payload.get("direction") is not None:
+        selected_directions(payload["direction"])
+    # All entry paths use the same versioned optics, including direct API
+    # requests that bypass the file-preview/accept workflow.
+    from .ring_migration import upgrade_ring_document
+    payload = dict(payload)
+    for key in ('document', 'active_configuration', 'candidate_configuration'):
+        if payload.get(key) is not None and method != 'trace_static':
+            payload[key] = upgrade_ring_document(payload[key])
     if method == "catalog":
         return catalog()
     if method == "trace":

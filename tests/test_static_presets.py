@@ -26,8 +26,9 @@ class StaticPresetTests(unittest.TestCase):
             else:
                 optics = raw['optics_snapshot']
                 bodies = {m['source_id']: m['cylinder'] for m in raw['mirrors']}
-            self.assertEqual(dataset['optics_sha256'], digest(optics))
-            self.assertEqual(dataset['optics_snapshot'], optics)
+            self.assertEqual(dataset['ring_alignment_previous_optics'], optics)
+            self.assertEqual(dataset['optics_sha256'], digest(dataset['optics_snapshot']))
+            self.assertTrue(dataset['optics_snapshot']['metadata']['ring_alignment'])
             for mirror in dataset['mirrors']:
                 supplied = bodies[mirror['source_manual_id']]
                 np.testing.assert_allclose(mirror['center_m'], supplied['center_m'], rtol=0, atol=1e-12)
@@ -36,10 +37,10 @@ class StaticPresetTests(unittest.TestCase):
     def test_real_trace_uses_manual_preset_and_requested_ray_count(self):
         with patch('mirrorlab.state.configuration_from_dataset', wraps=configuration_from_dataset) as build, \
                 patch('mirrorlab.calibration.manual_rays.add_manual_rays', side_effect=AssertionError('aperture audit')):
-            result = dispatch('trace_static', dict(direction='east_to_west', kind='real',
+            result = dispatch('trace_static', dict(direction='west_to_east', kind='real',
                 ray_count=37, active_configuration={'invalid': 'must not be used'}))
         used = build.call_args.args[0]
-        expected = self.manual['datasets']['east_to_west']
+        expected = self.manual['datasets']['west_to_east']
         self.assertEqual(used['mirrors'], expected['mirrors'])
         self.assertEqual(used['optics_snapshot'], expected['optics_snapshot'])
         self.assertEqual(result['summary']['ray_count'], 37)
@@ -49,9 +50,9 @@ class StaticPresetTests(unittest.TestCase):
     def test_ideal_trace_ignores_previously_loaded_manual_geometry(self):
         with patch('mirrorlab.service.load_configuration', wraps=load_configuration) as load, \
                 patch('mirrorlab.state.configuration_from_dataset', side_effect=AssertionError('stale candidate')):
-            result = dispatch('trace_static', dict(direction='east_to_west', kind='ideal',
+            result = dispatch('trace_static', dict(direction='west_to_east', kind='ideal',
                 ray_count=7, active_configuration=self.manual, candidate_configuration=self.manual))
-        load.assert_called_once_with('east_to_west', 'ideal')
+        load.assert_called_once_with('west_to_east', 'ideal')
         self.assertEqual(result['summary']['ray_count'], 7)
         self.assertEqual(result['metadata']['static_configuration'], 'ideal')
 

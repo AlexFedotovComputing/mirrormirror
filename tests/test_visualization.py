@@ -81,7 +81,8 @@ class VisualizationTests(unittest.TestCase):
         for kind in ('ideal', 'real'):
             result = dispatch('trace_static', dict(direction='both',kind=kind,ray_count=217,cpu_workers=1))
             json.dumps(result, allow_nan=False)
-            self.assertEqual(len(result['visualization']['sides']),2)
+            self.assertEqual(len(result['visualization']['sides']),1)
+            self.assertEqual(result['visualization']['sides'][0]['side'], 'EAST')
             for side, original in zip(result['visualization']['sides'],result['sides']):
                 self.assertEqual(len(side['gas_rows']),112)
                 self.assertEqual(len(side['cylinders']),16)

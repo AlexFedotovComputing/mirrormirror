@@ -22,8 +22,8 @@ class ParallelTests(unittest.TestCase):
         self.assertEqual(load_configuration().emit(50001).n_rays, 50001)
 
     def test_parallel_preserves_paths_power_and_identifiers(self):
-        manual = static_manual_document('east_to_west')['datasets']['east_to_west']
-        for config in (load_configuration('east_to_west'), configuration_from_dataset(manual)):
+        manual = static_manual_document('west_to_east')['datasets']['west_to_east']
+        for config in (load_configuration('west_to_east'), configuration_from_dataset(manual)):
             rays = config.emit(217)
             args = dict(max_interactions=48, max_time_s=config.integration_time_s,
                         collision_mode='expected', **config.tracer_options)

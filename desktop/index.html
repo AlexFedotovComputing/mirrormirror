@@ -57,7 +57,7 @@
               <label for="cpu-workers">Ядер CPU для расчёта</label><input id="cpu-workers" type="number" min="1" step="1" value="6" required>
               <details id="trace-settings" class="trace-settings"><summary>Параметры трассировки</summary>
                 <label for="direction">Сторона ввода</label>
-                <select id="direction"><option value="both">Обе: WEST и EAST</option><option value="east_to_west">WEST</option><option value="west_to_east">EAST</option></select>
+                <select id="direction"><option value="west_to_east">EAST</option></select>
                 <label for="collision-mode">Поиск пересечений</label>
                 <select id="collision-mode"><option value="exhaustive">Полный перебор</option><option value="expected">Ожидаемые объекты</option></select>
                 <label for="max-interactions">Максимум взаимодействий на путь луча</label><input id="max-interactions" type="number" min="1" max="100" step="1" value="48" required>
@@ -186,10 +186,11 @@
         <section id="viz-endcaps-view" data-viz-panel="endcaps" hidden>
           <div class="card viz-card">
             <h2>Проекции на плоскости считывания</h2>
-            <p>Виды ориентированы по схемам со стороны распределительного кольца: труба перископа вниз. Показана поперечная проекция лучей своей половины газового объёма. Это проекция траекторий, а не попадания фотонов в ROC и не расчёт дрейфа электронов.</p>
+            <p>Вид снаружи принимающего торца внутрь объёма; труба перископа вниз. Показана поперечная проекция лучей своей половины газового объёма. Это проекция траекторий, а не попадания фотонов в ROC и не расчёт дрейфа электронов.</p>
             <div class="viz-checks"><label><input id="viz-roc-outlines" type="checkbox" checked> Контуры ROC</label><label><input id="viz-roc-landmarks" type="checkbox" checked> Перископ и ориентиры</label><label><input id="viz-roc-hover" type="checkbox" checked> Координаты луча при наведении</label></div>
             <p class="field-note">Наведите на луч: имя, стержень, бандл и координаты X, Y, Z в метрах. Координаты вычисляются в ближайшей к курсору точке отрезка; при наложении лучей уточните выбор фильтрами выше.</p>
             <p id="viz-roc-note" class="field-note"></p>
+            <div class="viz-checks"><label><input id="viz-roc-measurements" type="checkbox" checked> Экспериментальные точки</label><label><input id="viz-roc-point-labels" type="checkbox"> Номера точек</label></div>
           </div>
           <div id="viz-endcaps" class="viz-camera-grid"></div>
         </section>

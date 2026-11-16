@@ -70,7 +70,7 @@ app.whenReady().then(() => {
       }
       if (method === 'refine_manual') {
         const selected = configurations.candidate ?? configurations.active;
-        if (!isManualConfiguration(selected?.document)) throw new Error('Сначала загрузите ручную реконструкцию.');
+        if (!isManualConfiguration(selected?.document, selected?.enabled_directions)) throw new Error('Сначала загрузите ручную реконструкцию.');
         clean.candidate_configuration = selected.document;
       }
       if (method === 'add_manual_rays') {

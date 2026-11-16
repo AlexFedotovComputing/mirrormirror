@@ -9,6 +9,13 @@ window.mirrorVisualization = (() => {
   let references = {};
   try { references = JSON.parse(localStorage.getItem(referenceKey) || '{}'); } catch (_) { /* No stored reference. */ }
   const colorscale = [[0, '#3070dc'], [1, '#e181d7']];
+  // Fixed shades, independent of selection: dark B1 through light B4.
+  const rocBundleColors = [
+    ['#48345f', '#624879', '#806397', '#a084b4'],
+    ['#175079', '#226d9b', '#368dc1', '#62a5ce'],
+    ['#145448', '#1c7060', '#278677', '#57a797'],
+    ['#70421e', '#925a2b', '#b07542', '#c58d5c'],
+  ];
   const number = (v, digits=4) => v == null || !Number.isFinite(v) ? '—' : v.toLocaleString('ru-RU', { maximumSignificantDigits: digits });
   const vector = v => v ? v.map(x => number(x, 6)).join('; ') : '—';
   const sides = () => (result?.visualization?.sides || []).filter(s => el('viz-side').value === 'both' || s.side === el('viz-side').value);
@@ -137,7 +144,7 @@ window.mirrorVisualization = (() => {
     for (const side of reports) {
       const card = node('section', null, 'card viz-card'); parent.append(card);
       const e = side.endcap;
-      card.append(node('h3', `${side.side} · по схеме со стороны ${e?.view_from_side || 'кольца'}`));
+      card.append(node('h3', `${side.side} · вид снаружи со стороны ${e?.view_from_side || side.side}${e?.view_from_designation ? ` (${e.view_from_designation})` : ''}`));
       if (!e?.available) { card.append(node('p', e?.reason || 'Проекция недоступна.')); continue; }
       card.append(node('p', `${e.orientation_note} Плоскость модели Z=${number(e.plane_z_m)} м.`, 'field-note'));
       if (e.registration_note) card.append(node('p', e.registration_note, 'scene-stale'));
@@ -145,15 +152,40 @@ window.mirrorVisualization = (() => {
       const rays = e.rays.filter(t => {
         const [rod,bundle,mirror] = t.meta.mirror_id.split('_');
         return accepts({rod,bundle,mirror});
+      }).map(t => {
+        const [rod, bundle] = t.meta.mirror_id.split('_').map(Number);
+        return {...t, line: {...t.line, color: rocBundleColors[rod-1]?.[bundle-1] || t.line.color}};
       });
+      const legend = node('div', null, 'viz-bundle-legend');
+      legend.setAttribute('aria-label', 'Оттенки бандлов');
+      for (let rod = 1; rod <= 4; rod++) {
+        if (!selected(rod, 'viz-rod')) continue;
+        const row = node('div', null, 'viz-bundle-legend-row');
+        row.append(node('span', `Стержень ${rod}`));
+        for (let bundle = 1; bundle <= 4; bundle++) {
+          if (!selected(bundle, 'viz-bundle')) continue;
+          const item = node('span', null, 'viz-bundle-legend-item');
+          const swatch = node('i');
+          swatch.style.backgroundColor = rocBundleColors[rod-1][bundle-1];
+          item.append(swatch, node('span', `B${rod}-${bundle}`)); row.append(item);
+        }
+        legend.append(row);
+      }
+      card.append(legend);
       const p = node('div', null, 'viz-endcap-plot'); card.append(p);
-      await plot(p, [...data, ...rays, ...(el('viz-roc-landmarks').checked ? e.landmarks || [] : [])], {
-        showlegend:false, hovermode:false, margin:{l:65,r:20,t:20,b:55},
+      const measurements = el('viz-roc-measurements').checked ? (e.experimental_points || []).filter(t =>
+        selected(t.meta.rod, 'viz-rod') && selected(t.meta.bundle, 'viz-bundle') &&
+        (el('viz-mirror').value === 'all' || !t.meta.mirror_ids.length ||
+          t.meta.mirror_ids.some(id => id.split('_')[2] === el('viz-mirror').value))) : [];
+      await plot(p, [...data, ...rays, ...(el('viz-roc-landmarks').checked ? e.landmarks || [] : []),
+        ...measurements.map(t => ({...t, mode: el('viz-roc-point-labels').checked ? 'markers+text' : 'markers'}))], {
+        showlegend:false, hovermode:'closest', margin:{l:65,r:20,t:20,b:55},
         xaxis:{title:{text:'u, мм от оси TPC'},range:[-1450,1450],constrain:'domain'},
         yaxis:{title:{text:'v, мм · перископ вниз'},range:[-1450,1450],scaleanchor:'x',scaleratio:1,constrain:'domain'},
       });
       if (el('viz-roc-hover').checked) hoverCleanups.set(p, window.mirrorRayHover.attach(p));
-      card.append(node('p', `${rays.reduce((n,t)=>n+t.x.length/3,0)} отрезков в проекции. Цвет обозначает стержень. Для отображения используется та же выборка лучей, что в 3D-сцене.`, 'field-note'));
+      card.append(node('p', `Экспериментальные точки: ${measurements.reduce((n,t) => n+t.x.length, 0)}. Синий круг — экран 1; красный крест — экран 2. Номер в подсказке относится к измерению.`, 'field-note'));
+      card.append(node('p', `${rays.reduce((n,t)=>n+t.x.length/3,0)} отрезков в проекции. Цвет обозначает стержень, оттенок — бандл: от тёмного B1 к светлому B4. Для отображения используется та же выборка лучей, что в 3D-сцене.`, 'field-note'));
     }
   }
   async function cameras() {
@@ -219,7 +251,7 @@ window.mirrorVisualization = (() => {
     return queue;
   }
   document.addEventListener('DOMContentLoaded', () => {
-    for (const id of ['viz-side','viz-rod','viz-bundle','viz-mirror','viz-optics','viz-common-rays','viz-smooth','viz-points','viz-roc-outlines','viz-roc-landmarks','viz-roc-hover','viz-source-map']) el(id).addEventListener('change', schedule);
+    for (const id of ['viz-side','viz-rod','viz-bundle','viz-mirror','viz-optics','viz-common-rays','viz-smooth','viz-points','viz-roc-outlines','viz-roc-landmarks','viz-roc-hover','viz-roc-measurements','viz-roc-point-labels','viz-source-map']) el(id).addEventListener('change', schedule);
     for (const button of document.querySelectorAll('[data-viz-view]')) button.addEventListener('click', () => { view=button.dataset.vizView; schedule(); });
     el('viz-reset-camera').addEventListener('click', () => { camera=null; schedule(); });
     el('viz-reference').addEventListener('click', () => {

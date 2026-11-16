@@ -95,6 +95,10 @@ def load_configuration(direction: str = "west_to_east", kind: str = "ideal", bac
         metadata={**ROUTES[direction].metadata(), "coordinate_frame": "legacy",
                   "units": "m", "provenance": data["provenance"]},
     )
+    from .ring_alignment import apply_ring_alignment
+    apply_ring_alignment(config)
+    from .gas_volume import apply_gas_boundary
+    apply_gas_boundary(config)
     # Historic files mix the geometric normal and the coating side. Preserve
     # their planes, but use one physical convention: outward normal opposes
     # the fully traced incident branch; coating reflects from its plus side.

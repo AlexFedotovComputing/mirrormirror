@@ -30,3 +30,12 @@ ROUTES = {
 # Original naming convention, independent of numerical survey coordinates.
 SIDE_DESIGNATIONS = {"EAST": "+", "WEST": "−"}
 DIRECTIONS = {key: route.metadata() for key, route in ROUTES.items()}
+
+# Temporary operating restriction: WEST injection (EAST → WEST, + → −)
+# is disabled. Keep its route and archives available for offline investigation.
+# Uncomment the second entry to restore this direction throughout the app.
+ENABLED_DIRECTIONS = (
+    "west_to_east",
+    # "east_to_west",
+)
+DISABLED_DIRECTION_MESSAGE = "WEST (EAST → WEST, + → −) временно отключён. Доступен EAST (WEST → EAST, − → +)."

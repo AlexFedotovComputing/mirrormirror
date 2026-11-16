@@ -146,7 +146,7 @@ def dataset_from_manual(data, raw, origin):
     if len(used_observations) != len(set(used_observations)):
         raise ValueError("A primary observation cannot be assigned to multiple manual mirrors")
     payload_hash = hashlib.sha256(raw).hexdigest()
-    return dict(direction=direction, physical_sides=ROUTES[direction].metadata(), status="legacy_unvalidated",
+    dataset = dict(direction=direction, physical_sides=ROUTES[direction].metadata(), status="legacy_unvalidated",
         model_kind="manual_reconstruction", mirrors=mirrors, observations=ledger, assignments=assignments,
         template=None, display_frame=frame, optics_snapshot=optics, optics_sha256=digest(optics),
         original_optics_snapshot=copy.deepcopy(optics), optics_origin=optics_origin,
@@ -159,6 +159,8 @@ def dataset_from_manual(data, raw, origin):
             "Mechanical holder/rod/waist dimensions and metrology are unknown",
             "Manual references do not contribute additional independent measurements"],
             supplied_baseline=copy.deepcopy(data.get("validation", data.get("summary", {})))))
+    from .ring_migration import upgrade_ring_dataset
+    return upgrade_ring_dataset(dataset)
 
 
 def _known_text(raw, origin):

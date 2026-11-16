@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from mirrorlab.endcap import drawing_xy, endcap_projection, mechanical_basis, roc_geometry
+from mirrorlab.endcap import drawing_xy, endcap_projection, experimental_points, mechanical_basis, roc_geometry
 
 
 def landmarks():
@@ -32,26 +32,49 @@ def frame_for(angle=0., parity=1, sign=1):
 
 
 class EndcapOrientationTests(unittest.TestCase):
-    def test_rotations_and_reflections_preserve_the_drawing(self):
+    def test_measured_points_keep_survey_coordinates_missing_screens_and_model_links(self):
+        frame = frame_for(.7, -1, -1)
+        records = [dict(id='obs4', old_id='2_2_4', rod=2, window=2,
+                        screens_m=[[.1, .2, -.6], [.3, .4, -.7]]),
+                   dict(id='obs5', old_id='2_2_5', rod=2, window=2,
+                        screens_m=[[None, .2, -.6], [.5, .6, -.7]])]
+        config = SimpleNamespace(reconstruction=dict(observations={'records': records},
+            mirrors=[dict(canonical_id='2_3_4', observation_ids=['obs4'])]))
+        before = copy.deepcopy(config.reconstruction)
+        axis = [.02, -.04, 0.]
+        basis = mechanical_basis(landmarks(), frame)
+        result = experimental_points(config, frame, axis, basis)
+        self.assertEqual([len(t['x']) for t in result], [2, 1])
+        self.assertEqual(result[0]['meta']['mirror_ids'], ['2_3_4'])
+        self.assertEqual(result[1]['meta']['bundle'], 3)
+        self.assertEqual(result[1]['meta']['mirror_ids'], [])
+        self.assertEqual(result[1]['customdata'][0], [.5, .6, -.7, '2 2 5', 2])
+        expected = drawing_xy(records[0]['screens_m'], axis, basis)*1000
+        np.testing.assert_allclose(np.c_[result[0]['x'], result[0]['y']], expected)
+        self.assertEqual(config.reconstruction, before)
+
+    def test_camera_is_outside_each_half_and_numbering_cannot_flip_the_view(self):
         surfaces = landmarks()
         source_points = np.array([surfaces[name].center for name in surfaces])
-        baseline = None
+        base_frame = frame_for()
+        baseline = drawing_xy(base_frame.points(source_points), base_frame.points([0., 0., 0.]),
+                              mechanical_basis(surfaces, base_frame))
         for angle in (0., .7, -2.1):
             for parity in (-1, 1):
-                with self.subTest(angle=angle, parity=parity):
-                    frame = frame_for(angle, parity)
-                    basis = mechanical_basis(surfaces, frame)
-                    np.testing.assert_allclose(basis.T @ basis, np.eye(2), atol=1e-14)
-                    positions = drawing_xy(frame.points(source_points), frame.points([0., 0., 0.]), basis)
-                    if baseline is None:
-                        baseline = positions
-                    np.testing.assert_allclose(positions, baseline, atol=1e-14)
-                    named = dict(zip(surfaces, positions))
-                    pipe = named['MP1'] - named['MP2']
-                    self.assertAlmostEqual(pipe[0], 0.)
-                    self.assertLess(pipe[1], 0.)
-                    self.assertLess(named['MS1'][0], 0.)
-                    self.assertGreater(named['MS4'][0], 0.)
+                for sign in (-1, 1):
+                    with self.subTest(angle=angle, parity=parity, sign=sign):
+                        frame = frame_for(angle, parity, sign)
+                        basis = mechanical_basis(surfaces, frame)
+                        np.testing.assert_allclose(basis.T @ basis, np.eye(2), atol=1e-14)
+                        self.assertAlmostEqual(np.linalg.det(basis), sign)
+                        positions = drawing_xy(frame.points(source_points), frame.points([0., 0., 0.]), basis)
+                        np.testing.assert_allclose(positions, baseline*[parity*sign, 1], atol=1e-14)
+                        named = dict(zip(surfaces, positions))
+                        pipe = named['MP1'] - named['MP2']
+                        self.assertAlmostEqual(pipe[0], 0.)
+                        self.assertLess(pipe[1], 0.)
+                        swapped = {**surfaces, 'MS1': surfaces['MS4'], 'MS4': surfaces['MS1']}
+                        np.testing.assert_array_equal(mechanical_basis(swapped, frame), basis)
 
     def test_degenerate_periscope_has_no_invented_orientation(self):
         surfaces = landmarks()
@@ -75,7 +98,8 @@ class EndcapOrientationTests(unittest.TestCase):
                 config = SimpleNamespace(
                     scene=SimpleNamespace(build_surfaces=lambda: list(surfaces.values())),
                     tracer_options={'bundle_clip_z_min_m': -2., 'bundle_clip_z_max_m': 2.},
-                    metadata={'ring_side': 'EAST'})
+                    metadata={'ring_side': 'EAST' if sign == 1 else 'WEST',
+                              'injection_side': 'WEST' if sign == 1 else 'EAST'})
                 result = endcap_projection(config, frame, [trace])
                 projected, = result['rays']
                 expected = ([[3., 2.5, 0.], [5., 3.5, 2.]] if sign == 1
@@ -90,6 +114,11 @@ class EndcapOrientationTests(unittest.TestCase):
                 np.testing.assert_allclose(projected['x'][:2], uv[:, 0])
                 np.testing.assert_allclose(projected['y'][:2], uv[:, 1])
                 self.assertEqual(result['plane_z_m'], sign*2.)
+                self.assertEqual(result['view_from_side'], config.metadata['injection_side'])
+                self.assertEqual(result['viewing_direction_survey'], [0., 0., -sign])
+                self.assertGreater(sign*result['camera_position_m'][2], sign*result['plane_z_m'])
+                right, up = np.asarray(result['basis_survey']).T
+                np.testing.assert_allclose(np.cross(np.r_[right, 0.], np.r_[up, 0.]), [0., 0., sign], atol=1e-14)
                 json.dumps(result, allow_nan=False)
         self.assertEqual(trace, original)
 

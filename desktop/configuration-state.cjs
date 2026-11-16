@@ -33,7 +33,7 @@ class ConfigurationState {
       throw new Error('Кандидат устарел. Запустите расчёт или загрузите файл заново.');
     }
     if (this.candidate.status === 'infeasible') throw new Error('Недопустимая конфигурация доступна только для диагностики.');
-    if (isManualConfiguration(this.candidate.document) && this.candidate.status !== 'validated') throw new Error('Ручная реконструкция не прошла все проверки. Доступны уточнение, просмотр и сохранение кандидата.');
+    if (isManualConfiguration(this.candidate.document, this.candidate.enabled_directions) && this.candidate.status !== 'validated') throw new Error('Ручная реконструкция не прошла все проверки. Доступны уточнение, просмотр и сохранение кандидата.');
     if (this.candidate.can_activate === false) throw new Error('Для этой геометрии не установлена общая оптика или конфигурация неполна. Результат можно сохранить как частичный импорт.');
     this.version++;
     this.active = { ...this.candidate, configuration_version: this.version, active: true };
@@ -48,9 +48,10 @@ class ConfigurationState {
   }
 }
 
-function isManualConfiguration(document) {
-  return Object.values(document?.datasets ?? {}).some(dataset =>
-    dataset?.model_kind === 'manual_reconstruction' || !!dataset?.manual_references);
+function isManualConfiguration(document, enabledDirections) {
+  return Object.entries(document?.datasets ?? {}).some(([direction, dataset]) =>
+    (!enabledDirections || enabledDirections.includes(direction)) &&
+    (dataset?.model_kind === 'manual_reconstruction' || !!dataset?.manual_references));
 }
 
 module.exports = { ConfigurationState, isManualConfiguration };

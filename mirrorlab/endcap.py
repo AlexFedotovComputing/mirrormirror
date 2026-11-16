@@ -4,6 +4,7 @@ This projects recorded optical paths, not photon intersections with the ROC
 and not a simulation of electron drift or charge collection.
 """
 import numpy as np
+from .directions import SIDE_DESIGNATIONS
 
 TDR_URL = 'https://mpd.jinr.ru/wp-content/uploads/2023/11/TpcTdr-v07.pdf'
 
@@ -52,21 +53,24 @@ def outer_xy(points, sign, axis):
     return (points[..., :2] - np.asarray(axis)[:2]) * [sign, 1]
 
 
-def mechanical_basis(surfaces, frame):
-    """Drawing orientation: periscope down; numbered branches 1 left, 4 right.
+def mechanical_basis(surfaces, frame, view_sign=None):
+    """Outside the receiving endcap, looking inward, with periscope down.
 
-    The survey registration may reverse XY handedness. Drawing chirality is
-    therefore fixed by named optical landmarks, not the survey Z sign.
+    right x up points toward the camera: +Z for the positive survey half,
+    -Z for the negative half. Branch numbering must not override handedness.
+    Physical EAST/WEST labels are independent of the survey Z convention.
     """
-    points = {name: frame.points(surfaces[name].center) for name in ('MP1', 'MP2', 'MS1', 'MS4')}
+    if view_sign is None:
+        view_sign = frame.report.get('survey_z_signs', {}).get('injection')
+    if view_sign not in (-1, 1):
+        raise ValueError('Не определена внешняя сторона наблюдения торца.')
+    points = {name: frame.points(surfaces[name].center) for name in ('MP1', 'MP2')}
     down = (points['MP1'] - points['MP2'])[:2]
     length = np.linalg.norm(down)
     if length < 1e-10:
         raise ValueError('Не определено поперечное направление трубы MP2 → MP1.')
     up = -down / length
-    right = np.array([up[1], -up[0]])
-    if np.dot((points['MS4'] - points['MS1'])[:2], right) < 0:
-        right = -right
+    right = view_sign * np.array([up[1], -up[0]])
     return np.column_stack((right, up))
 
 
@@ -81,10 +85,11 @@ def orientation_landmarks(surfaces, frame, axis, basis):
               ('Края разрыва кольца', ['ML3', 'MR2'], '#a98319'),
               ('Поворотные зеркала', ['MS1', 'MS2', 'MS3', 'MS4'], '#575463')]
     for title, names, color in groups:
-        names = [name for name in names if name in surfaces]
+        centers = {name: surfaces.get(name, surfaces.get(f'{name}:front')) for name in names}
+        names = [name for name in names if centers[name] is not None]
         if not names:
             continue
-        xyz = frame.points([surfaces[name].center for name in names])
+        xyz = frame.points([centers[name].center for name in names])
         uv = drawing_xy(xyz, axis, basis)*1000
         traces.append(dict(type='scatter', mode='lines+markers+text' if title.startswith('Перископ') else 'markers+text',
                            x=uv[:, 0].tolist(), y=uv[:, 1].tolist(), text=names, textposition='top center',
@@ -93,16 +98,69 @@ def orientation_landmarks(surfaces, frame, axis, basis):
     return traces
 
 
+def experimental_points(config, frame, axis, basis):
+    """Project primary survey points, including unmatched and single-screen rows.
+
+    Survey coordinates are already registered: do not transform them again.
+    Model IDs are filter links only, never replacements for measured ray IDs.
+    """
+    dataset = getattr(config, 'reconstruction', {})
+    records = dataset.get('observations')
+    if isinstance(records, dict):
+        records = records.get('records', [])
+    if records is None:
+        records = [m.to_dict() for m in getattr(frame, 'measurements', ())]
+    links, groups = {}, {}
+    by_id = {r.get('id', r.get('observation_id')): r for r in records}
+    for mirror in dataset.get('mirrors', []):
+        key = mirror.get('canonical_id', mirror.get('mirror_id'))
+        if not key:
+            continue
+        for identifier in set(mirror.get('observation_ids', []) +
+                              ([mirror['survey_observation_id']] if mirror.get('survey_observation_id') else [])):
+            links.setdefault(identifier, []).append(key)
+            row = by_id.get(identifier, {})
+            groups.setdefault((row.get('rod'), row.get('window')), set()).add(int(key.split('_')[1]))
+    traces = []
+    for row in records:
+        if row.get('source_type', 'primary') != 'primary' or row.get('exclusion_reason'):
+            continue
+        identifier = row.get('id', row.get('observation_id'))
+        label = row.get('old_id', str(identifier).split(':')[-1])
+        rod, window = row['rod'], row['window']
+        bundles = groups.get((rod, window), set())
+        bundle = next(iter(bundles)) if len(bundles) == 1 else frame.report.get(
+            'survey_window_to_legacy_window', {}).get(str(window))
+        xy, custom, labels, symbols, colors = [], [], [], [], []
+        for screen, point in enumerate(row.get('screens_m', []), 1):
+            if point is None or len(point) != 3 or any(v is None for v in point):
+                continue
+            if not np.isfinite(point).all():
+                continue
+            xy.append(drawing_xy(point, axis, basis)*1000)
+            custom.append([*point, label.replace('_', ' '), screen])
+            labels.append(f"{label.replace('_', ' ')} · э{screen}")
+            symbols.append('circle-open' if screen == 1 else 'x')
+            colors.append('#126caa' if screen == 1 else '#c44428')
+        if xy:
+            traces.append(dict(type='scatter', mode='markers',
+                x=[float(p[0]) for p in xy], y=[float(p[1]) for p in xy],
+                text=labels, textposition='top center', customdata=custom,
+                name=f'Измерение {label}', showlegend=False,
+                marker=dict(size=10, symbol=symbols, color=colors, line=dict(width=2)),
+                meta=dict(layer='experimental_points', rod=rod, bundle=bundle,
+                          observation_id=identifier, mirror_ids=links.get(identifier, [])),
+                hovertemplate='Измерение %{customdata[3]} · экран %{customdata[4]}<br>'
+                    'X=%{customdata[0]:.6f} м<br>Y=%{customdata[1]:.6f} м<br>Z=%{customdata[2]:.6f} м<extra></extra>'))
+    return traces
+
+
 def endcap_projection(config, frame, scene_rays):
     if frame is None:
         return dict(available=False, reason='Для вида ROC нужна привязка к общей системе координат TPC.')
     surfaces = {s.name: s for s in config.scene.build_surfaces()}
-    if any(name not in surfaces for name in ('MP1', 'MP2', 'MS1', 'MS4')):
-        return dict(available=False, reason='Для ориентации по схеме нужны MP1, MP2, MS1 и MS4.')
-    try:
-        basis = mechanical_basis(surfaces, frame)
-    except ValueError as error:
-        return dict(available=False, reason=str(error))
+    if any(name not in surfaces for name in ('MP1', 'MP2')):
+        return dict(available=False, reason='Для вертикальной ориентации нужны MP1 и MP2.')
     sign = frame.report.get('survey_z_signs', {}).get('injection')
     if sign not in (-1, 1):
         # Saved manual datasets can omit the registration report. Determine
@@ -113,6 +171,10 @@ def endcap_projection(config, frame, scene_rays):
             sign = int(np.sign(np.median(frame.points(centers)[:, 2])))
     if sign not in (-1, 1):
         return dict(available=False, reason='Не определено положение стороны ввода относительно катода.')
+    try:
+        basis = mechanical_basis(surfaces, frame, sign)
+    except ValueError as error:
+        return dict(available=False, reason=str(error))
     limits = [config.tracer_options[f'bundle_clip_z_{end}_m'] for end in ('min', 'max')]
     extent = frame.points([[0, 0, z] for z in limits])
     axis = extent.mean(axis=0)
@@ -144,9 +206,16 @@ def endcap_projection(config, frame, scene_rays):
                                   hoverinfo='skip', showlegend=False))
     return dict(available=True, sign=sign, axis_m=axis.tolist(), plane_z_m=sign*half_length,
                 horizontal_axis='u', vertical_axis='v', basis_survey=basis.tolist(),
-                view_from_side=config.metadata['ring_side'],
-                orientation_note='Труба MP2 → MP1 направлена вниз; ветви MS1 и MS4 задают левую и правую стороны схемы. Координаты подсказок остаются геодезическими.',
-                registration_note=('Общая оптика WEST в исходной модели повторяет XY стороны EAST. При вертикальном перископе короба и разрыв кольца не совпадают со схемой WEST; точная механическая привязка не подтверждена.'
+                view_from_side=config.metadata['injection_side'],
+                view_from_designation=SIDE_DESIGNATIONS[config.metadata['injection_side']],
+                view_from='outside_receiving_endcap',
+                camera_position_m=(axis + [0., 0., sign*(half_length+1.)]).tolist(),
+                camera_target_m=axis.tolist(), viewing_direction_survey=[0., 0., -sign],
+                orientation_note='Вид снаружи принимающего торца внутрь объёма: камера за плоскостью торца со стороны назначения лучей. Труба MP2 → MP1 направлена вниз. Координаты подсказок остаются геодезическими.',
+                registration_note=('Кольцо WEST отражено, перископ направлен вниз. Стержни и MC сохранены по прежней юстировке; точное метрическое совпадение внешних коробов с CAD не задано.'
+                                   if config.metadata.get('ring_alignment') else
+                                   'Общая оптика WEST в исходной модели повторяет XY стороны EAST. При вертикальном перископе короба и разрыв кольца не совпадают со схемой WEST; точная механическая привязка не подтверждена.'
                                    if config.metadata['ring_side'] == 'WEST' else ''),
                 landmarks=orientation_landmarks(surfaces, frame, axis, basis),
+                experimental_points=experimental_points(config, frame, axis, basis),
                 rays=projected, **roc_geometry(1))

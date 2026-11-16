@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 import numpy as np
 
 from mirrorlab.calibration.manual_rays import current_analysis, one_to_one_aperture, manual_geometry_on_base
@@ -40,6 +41,10 @@ class ManualRaysTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # This suite reproduces the archived WEST optical audit explicitly.
+        policy = patch('mirrorlab.service.ENABLED_DIRECTIONS', ('east_to_west', 'west_to_east'))
+        policy.start()
+        cls.addClassCleanup(policy.stop)
         cls.result = dispatch('add_manual_rays', {'direction': 'east_to_west', 'kind': 'real'})
 
     def test_full_scene_reproduces_audit_with_unique_physical_mirrors(self):

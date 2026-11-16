@@ -234,3 +234,7 @@ tbody tr:hover { background:#f8f7f5; }
 /* Retired workflows retain their DOM hooks while the static panel uses presets. */
 .legacy-workflow { display: none !important; }
 #configuration-description { margin-top: 12px; }
+.viz-bundle-legend { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 10px 0; font-size: 12px; }
+.viz-bundle-legend-row, .viz-bundle-legend-item { display: flex; align-items: center; gap: 8px; }
+.viz-bundle-legend-row { flex-wrap: wrap; }
+.viz-bundle-legend-item i { display: inline-block; width: 22px; height: 3px; border-radius: 2px; }

@@ -22,7 +22,7 @@ let currentJob = null;
 let busyText = '';
 const sideNames = {};
 const routes = {};
-const directionLabel = (direction) => direction === 'both' ? 'WEST и EAST' : sideNames[direction];
+const directionLabel = (direction) => direction === 'both' ? Object.values(sideNames).filter(Boolean).join(' и ') : sideNames[direction];
 const labels = {
   ray_count: 'Исходных лучей', initial_rays: 'Исходных лучей', rays: 'Исходных лучей',
   segments: 'Отрезков траекторий', segment_count: 'Отрезков траекторий',
@@ -64,7 +64,7 @@ function updateControls() {
   $('historical-kind').hidden = false;
   $('calculation-source').hidden = true;
   $('configuration-description').textContent = real
-    ? 'Зеркала из ручной реконструкции и приложенная оптика. Для WEST — калиброванная оптика ручного набора.'
+    ? 'Зеркала из ручной реконструкции и приложенная оптика.'
     : 'Зеркала в идеальном расположении.';
   $('active-state').textContent = activeConfiguration ? `Принятая конфигурация · версия ${configurationVersion}`
     : $('kind').selectedOptions[0].textContent;
@@ -279,7 +279,7 @@ function candidateBlockReason(result) {
 }
 
 function hasManualReconstruction(result) {
-  return Object.values(result?.document?.datasets ?? {}).some(dataset =>
+  return reconstructionReports(result ?? {}).some(dataset =>
     dataset?.model_kind === 'manual_reconstruction' || !!dataset?.manual_references);
 }
 
@@ -910,8 +910,8 @@ $('calibrate').addEventListener('click', () => run('calibrate', {
 const configurationSelection = () => ({ direction: $('direction').value, kind: $('kind').value });
 $('optimize').addEventListener('click', () => run(hasManualReconstruction(reconstructionResult) ? 'refine_manual' : 'optimize', {
   ...configurationSelection(),
-  ...(hasManualReconstruction(reconstructionResult) ? { direction: Object.keys(reconstructionResult.document.datasets).length > 1
-    ? 'both' : Object.keys(reconstructionResult.document.datasets)[0] } : {}),
+  ...(hasManualReconstruction(reconstructionResult) ? { direction: reconstructionReports(reconstructionResult).length > 1
+    ? 'both' : reconstructionReports(reconstructionResult)[0].direction } : {}),
 }));
 $('load-manual').addEventListener('click', () => run('import_manual', configurationSelection()));
 $('add-manual-rays').addEventListener('click', () => run('add_manual_rays', configurationSelection()));

@@ -246,6 +246,7 @@ class PhysicalStateTests(unittest.TestCase):
         reconstruct.assert_called_once()
         self.assertIn("west_to_east", result["document"]["datasets"])
 
+    @patch('mirrorlab.service.ENABLED_DIRECTIONS', ('east_to_west', 'west_to_east'))
     def test_failure_of_one_side_retains_other_side_diagnostics(self):
         from mirrorlab.legacy_import import historical_dataset
         def candidate(config, *args, **kwargs):
@@ -264,7 +265,7 @@ class PhysicalStateTests(unittest.TestCase):
 
     def test_no_silent_direction_fallback(self):
         with self.assertRaises(ValueError):
-            dispatch("trace", dict(direction="both", active_configuration=self.document))
+            dispatch("trace", dict(direction="east_to_west", active_configuration=self.document))
 
 
 if __name__ == "__main__":

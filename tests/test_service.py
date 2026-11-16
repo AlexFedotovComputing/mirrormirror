@@ -30,8 +30,20 @@ class ServiceTests(unittest.TestCase):
         import plotly.graph_objects as go
         go.Figure(result["figure"])
 
-    def test_default_build_contains_both_sides_and_preserves_each_calculation(self):
+    def test_default_build_contains_only_east(self):
         result = dispatch("trace", {"ray_count": 19})
+        self.assertEqual(result["request"]["direction"], "west_to_east")
+        self.assertEqual([s["metadata"]["injection_side"] for s in result["sides"]], ["EAST"])
+        self.assertEqual(result["summary"]["ray_count"], 19)
+        self.assertEqual(result["metadata"]["coordinate_frame"], "survey")
+        self.assertTrue(all(t.get("meta", {}).get("side") != "WEST" for t in result["figure"]["data"]))
+        single = dispatch("trace", {"direction": "west_to_east", "ray_count": 19})
+        for key in ("segment_count", "detector_hits", "detector_power_w", "unfinished_count"):
+            self.assertEqual(result["summary"][key], single["summary"][key])
+
+    @patch("mirrorlab.service.ENABLED_DIRECTIONS", ("east_to_west", "west_to_east"))
+    def test_archival_both_sides_preserve_each_calculation_when_explicitly_enabled(self):
+        result = dispatch("trace", {"direction": "both", "ray_count": 19})
         self.assertEqual(result["request"]["direction"], "both")
         self.assertEqual({s["metadata"]["injection_side"] for s in result["sides"]}, {"WEST", "EAST"})
         self.assertEqual(result["summary"]["ray_count"], 38)
@@ -57,8 +69,9 @@ class ServiceTests(unittest.TestCase):
         import plotly.graph_objects as go
         go.Figure(result["figure"])
 
-    def test_real_build_automatically_uses_available_screens_and_reports_partial_use(self):
-        result = dispatch("trace", {"kind": "real", "ray_count": 19})
+    @patch("mirrorlab.service.ENABLED_DIRECTIONS", ("east_to_west", "west_to_east"))
+    def test_archival_real_build_uses_available_screens_when_west_explicitly_enabled(self):
+        result = dispatch("trace", {"direction": "both", "kind": "real", "ray_count": 19})
         reports = {r["direction"]: r for r in result["measurements"]["reports"]}
         west = reports["east_to_west"]["additional_screens"]
         self.assertEqual(west["status"], "used_partial")
@@ -98,6 +111,7 @@ class ServiceTests(unittest.TestCase):
         import plotly.graph_objects as go
         go.Figure(result["figure"])
 
+    @patch("mirrorlab.service.ENABLED_DIRECTIONS", ("east_to_west", "west_to_east"))
     def test_missing_additional_file_is_not_reported_as_used(self):
         with TemporaryDirectory() as directory, patch("mirrorlab.service.ROOT", Path(directory)):
             result = dispatch("calibrate", {"direction": "east_to_west"})
